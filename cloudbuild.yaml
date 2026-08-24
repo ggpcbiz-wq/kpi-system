@@ -1,57 +1,66 @@
 steps:
-  # =========================================================================
-  # STEP 1: BACKEND - Build Container
-  # =========================================================================
   - name: 'gcr.io/cloud-builders/docker'
-    args: 
-      - 'build'
-      - '-t'
-      - 'asia-southeast1-docker.pkg.dev/ggpc-kpi-system/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'
-      - './server'
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA
+      - ./server
 
-  # =========================================================================
-  # STEP 2: BACKEND - Push Image
-  # =========================================================================
   - name: 'gcr.io/cloud-builders/docker'
-    args: 
-      - 'push'
-      - 'asia-southeast1-docker.pkg.dev/ggpc-kpi-system/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA
 
-  # =========================================================================
-  # STEP 3: BACKEND - Deploy to Cloud Run (Secured via Private Cloud SQL IP)
-  # =========================================================================
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
-      - 'run'
-      - 'deploy'
-      - 'kpi-backend-test'
-      - '--image=asia-southeast1-docker.pkg.dev/ggpc-kpi-system/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'
-      - '--region=asia-southeast1'
-      - '--platform=managed'
-      - '--allow-unauthenticated'
-      - '--vpc-connector=kpi-vpc-con'
-      - '--set-env-vars=DB_HOST=10.8.0.3,DB_PORT=5432,DB_NAME=kpi_db_test,PORT=5000,NODE_ENV=production'
-      - '--set-secrets=DB_USER=TEST_DB_USER:latest,DB_PASSWORD=TEST_DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,KINTONE_KPI_API_KEY=KINTONE_KPI_API_KEY:latest'
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --vpc-connector=${_VPC_CONNECTOR}
+      - --set-env-vars=^|^DB_HOST=${_DB_HOST}|DB_PORT=5432|DB_NAME=${_DB_NAME}|NODE_ENV=production|GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}|KINTONE_DOMAIN=${_KINTONE_DOMAIN}|KINTONE_KPI_APP_ID=${_KINTONE_KPI_APP_ID}|KINTONE_MASTER_APP_ID=${_KINTONE_MASTER_APP_ID}|KINTONE_ORGANIZATION_APP_ID=${_KINTONE_ORGANIZATION_APP_ID}|GOOGLE_DRIVE_FOLDER_ID=${_GOOGLE_DRIVE_FOLDER_ID}|CORS_ORIGINS=${_CORS_ORIGINS}
+      - --set-secrets=DB_USER=${_DB_USER_SECRET}:latest,DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,KINTONE_KPI_API_KEY=KINTONE_KPI_API_KEY:latest,KINTONE_MASTER_API_KEY=KINTONE_MASTER_API_KEY:latest,KINTONE_ORGANIZATION_API_KEY=KINTONE_ORGANIZATION_API_KEY:latest
 
-  # =========================================================================
-  # STEP 4: FRONTEND - Build React SPA
-  # =========================================================================
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - -c
+      - gcloud run services describe ${_SERVICE_NAME} --region=${_REGION} --format='value(status.url)' | xargs -I {} sh -c 'printf "VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=%s\n" "{}" "${_GOOGLE_CLIENT_ID}" > client/.env.production'
+
   - name: 'node:20'
     entrypoint: 'sh'
     args:
       - '-c'
       - |
         cd client
-        npm install
-        echo "VITE_API_URL=$(gcloud run services describe kpi-backend-test --region=asia-southeast1 --format='value(status.url)')" > .env.production
+        npm ci
         npm run build
 
-  # =========================================================================
-  # STEP 5: FRONTEND - Deploy to Firebase Hosting
-  # =========================================================================
   - name: 'gcr.io/ggpc-kpi-system/firebase'
-    args: ['deploy', '--project=ggpc-kpi-system', '--only=hosting']
+    args: ['deploy', '--project=${_FIREBASE_PROJECT}', '--only=hosting']
 
 images:
-  - 'asia-southeast1-docker.pkg.dev/ggpc-kpi-system/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA'
+
+substitutions:
+  _REGION: asia-southeast1
+  _REPOSITORY: cloud-run-source-deploy
+  _IMAGE: kpi-backend
+  _SERVICE_NAME: kpi-backend-test
+  _DB_NAME: pms-db-staging
+  _DB_HOST: 10.8.0.3
+  _DB_USER_SECRET: TEST_DB_USER
+  _VPC_CONNECTOR: kpi-vpc-con
+  _FIREBASE_PROJECT: ggpc-kpi-test
+  _CORS_ORIGINS: https://ggpc-kpi-test.web.app,https://ggpc-kpi-test.firebaseapp.com
+  _GOOGLE_CLIENT_ID: 390302333724-hk4tc6tqr08vb8pcp15ts8jtq1if5htb.apps.googleusercontent.com
+  _KINTONE_DOMAIN: vez7o26y38rb.cybozu.com
+  _KINTONE_KPI_APP_ID: '1910'
+  _KINTONE_MASTER_APP_ID: '111'
+  _KINTONE_ORGANIZATION_APP_ID: '204'
+  _GOOGLE_DRIVE_FOLDER_ID: 1pZWpmM6U32evDmGuzYHn8t5u0BgvzXjS
