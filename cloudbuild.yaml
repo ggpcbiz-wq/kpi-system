@@ -1,0 +1,57 @@
+steps:
+  # =========================================================================
+  # STEP 1: BACKEND - Build Container
+  # =========================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-t'
+      - 'asia-southeast1-docker.pkg.dev/ggpc-kpi-system/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'
+      - './server'
+
+  # =========================================================================
+  # STEP 2: BACKEND - Push Image
+  # =========================================================================
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'push'
+      - 'asia-southeast1-docker.pkg.dev/ggpc-kpi-system/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'
+
+  # =========================================================================
+  # STEP 3: BACKEND - Deploy to Cloud Run (Secured via Private Cloud SQL IP)
+  # =========================================================================
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'kpi-backend-test'
+      - '--image=asia-southeast1-docker.pkg.dev/ggpc-kpi-system/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'
+      - '--region=asia-southeast1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--vpc-connector=kpi-vpc-con'
+      - '--set-env-vars=DB_HOST=10.8.0.3,DB_PORT=5432,DB_NAME=kpi_db_test,PORT=5000,NODE_ENV=production'
+      - '--set-secrets=DB_USER=TEST_DB_USER:latest,DB_PASSWORD=TEST_DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,KINTONE_KPI_API_KEY=KINTONE_KPI_API_KEY:latest'
+
+  # =========================================================================
+  # STEP 4: FRONTEND - Build React SPA
+  # =========================================================================
+  - name: 'node:20'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        cd client
+        npm install
+        echo "VITE_API_URL=$(gcloud run services describe kpi-backend-test --region=asia-southeast1 --format='value(status.url)')" > .env.production
+        npm run build
+
+  # =========================================================================
+  # STEP 5: FRONTEND - Deploy to Firebase Hosting
+  # =========================================================================
+  - name: 'gcr.io/ggpc-kpi-system/firebase'
+    args: ['deploy', '--project=ggpc-kpi-system', '--only=hosting']
+
+images:
+  - 'asia-southeast1-docker.pkg.dev/ggpc-kpi-system/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'

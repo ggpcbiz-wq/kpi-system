@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/* ✨ FIX: Enforce manual class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Typography */
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+
+  /* Custom Brand Primary (Purple) */
+  --color-brand-50: #f2ebff;
+  --color-brand-100: #e0ccff;
+  --color-brand-500: #7933ff; 
+  --color-brand-600: #6122e6;
+
+  /* Secondary / Semantic Success Colors (Neon Green) */
+  --color-jira-success: #4cc45e;
+  --color-jira-success-bg: #e0fded;
+
+  /* Semantic Status Colors (Preserved) */
+  --color-jira-pending: #FF991F;
+  --color-jira-pending-bg: #FFFAE6;
+  --color-jira-danger: #DE350B;
+  --color-jira-danger-bg: #FFEBE6;
+
+  /* Structural Neutrals (Preserved) */
+  --color-jira-bg: #F4F5F7;
+  --color-jira-border: #DFE1E6;
+  --color-jira-text: #172B4D;
+  --color-jira-text-muted: #5E6C84;
+}
+
+/* Explicitly define the display font utility class */
+@layer utilities {
+  .font-display {
+    font-family: "Bebas Neue", sans-serif;
+  }
+}
+
+/* ✨ FIX: Apply dynamic background and text colors using Tailwind's apply directive */
+body {
+  @apply bg-[var(--color-jira-bg)] text-[var(--color-jira-text)] dark:bg-slate-900 dark:text-slate-100 transition-colors duration-200;
+  -webkit-font-smoothing: antialiased;
+}
