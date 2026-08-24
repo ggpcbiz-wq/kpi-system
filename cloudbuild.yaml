@@ -47,8 +47,13 @@ steps:
     args:
       - -c
       - |
+        set -e
+        gcloud projects describe ${_FIREBASE_PROJECT} >/dev/null
+        gcloud secrets versions access latest --secret=${_FIREBASE_SERVICE_ACCOUNT_SECRET} --project=$PROJECT_ID > /tmp/firebase-service-account.json
+        export GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-service-account.json
         curl -sL https://firebase.tools | bash
         firebase --version
+        firebase use --add ${_FIREBASE_PROJECT}
         firebase deploy --project=${_FIREBASE_PROJECT} --only=hosting --non-interactive
 
 images:
@@ -67,6 +72,7 @@ substitutions:
   _DB_USER_SECRET: TEST_DB_USER
   _VPC_CONNECTOR: kpi-vpc-con
   _FIREBASE_PROJECT: ggpc-kpi-test
+  _FIREBASE_SERVICE_ACCOUNT_SECRET: FIREBASE_SERVICE_ACCOUNT
   _CORS_ORIGINS: https://ggpc-kpi-test.web.app,https://ggpc-kpi-test.firebaseapp.com
   _GOOGLE_CLIENT_ID: 390302333724-hk4tc6tqr08vb8pcp15ts8jtq1if5htb.apps.googleusercontent.com
   _KINTONE_DOMAIN: vez7o26y38rb.cybozu.com
