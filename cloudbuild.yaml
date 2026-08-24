@@ -42,7 +42,7 @@ steps:
         npm ci
         npm run build
 
-  - name: 'gcr.io/ggpc-kpi-system/firebase'
+  - name: 'gcr.io/firebase-tools/firebase'
     args: ['deploy', '--project=${_FIREBASE_PROJECT}', '--only=hosting']
 
 images:
