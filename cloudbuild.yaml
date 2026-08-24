@@ -20,6 +20,7 @@ steps:
       - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA
       - --region=${_REGION}
       - --platform=managed
+      - --service-account=${_RUN_SERVICE_ACCOUNT}
       - --allow-unauthenticated
       - --port=8080
       - --vpc-connector=${_VPC_CONNECTOR}
@@ -55,6 +56,7 @@ substitutions:
   _REPOSITORY: cloud-run-source-deploy
   _IMAGE: kpi-backend
   _SERVICE_NAME: kpi-backend-test
+  _RUN_SERVICE_ACCOUNT: kpi-cloud-run-service-account@ggpc-kpi-test.iam.gserviceaccount.com
   _DB_NAME: pms-db-staging
   _DB_HOST: 10.8.0.3
   _DB_USER_SECRET: TEST_DB_USER
