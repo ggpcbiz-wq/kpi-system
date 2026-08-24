@@ -47,7 +47,6 @@ steps:
 
 images:
   - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA'
-
 options:
   logging: CLOUD_LOGGING_ONLY
 
@@ -69,3 +68,4 @@ substitutions:
   _KINTONE_MASTER_APP_ID: '111'
   _KINTONE_ORGANIZATION_APP_ID: '204'
   _GOOGLE_DRIVE_FOLDER_ID: 1pZWpmM6U32evDmGuzYHn8t5u0BgvzXjS
+
