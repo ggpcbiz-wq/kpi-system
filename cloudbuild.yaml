@@ -42,8 +42,14 @@ steps:
         npm ci
         npm run build
 
-  - name: 'gcr.io/firebase-tools/firebase'
-    args: ['deploy', '--project=${_FIREBASE_PROJECT}', '--only=hosting']
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        curl -sL https://firebase.tools | bash
+        firebase --version
+        firebase deploy --project=${_FIREBASE_PROJECT} --only=hosting --non-interactive
 
 images:
   - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA'
