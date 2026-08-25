@@ -2,31 +2,37 @@ const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db'); 
 
-// Initialize Google OAuth Client instance
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-/**
- * Validates Google OAuth Token, checks database whitelisting,
- * and issues JWT with user claims for downstream RBAC and audit logging.
- */
 const googleLogin = async (req, res) => {
+  const { credential } = req.body; 
+
+  if (!credential) {
+    return res.status(400).json({ message: 'No credential provided.' });
+  }
+
+  let email;
+
+  // ==========================================
+  // 1. Authentication Layer (Google)
+  // ==========================================
   try {
-    const { credential } = req.body; 
-
-    if (!credential) {
-      return res.status(400).json({ message: 'No Google credential token provided.' });
-    }
-
-    // 1. Verify Google ID Token against Client ID
     const ticket = await client.verifyIdToken({
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID, 
     });
     
     const payload = ticket.getPayload();
-    const email = payload.email;
+    email = payload.email;
+  } catch (error) {
+    console.error('[Auth Error] Google Token Verification Failed:', error.message);
+    return res.status(401).json({ message: 'Invalid or expired Google Token.' });
+  }
 
-    // 2. Query user profile, role, and assigned departments
+  // ==========================================
+  // 2. Data Layer (Cloud SQL Database)
+  // ==========================================
+  try {
     const { rows } = await db.query(`
       SELECT 
         u.id, 
@@ -44,21 +50,19 @@ const googleLogin = async (req, res) => {
     `, [email]);
     
     if (rows.length === 0) {
-      return res.status(403).json({ 
-        message: 'Access denied. You are not registered in the system.' 
-      });
+      console.warn(`[Auth Warning] Unregistered email login attempt: ${email}`);
+      return res.status(403).json({ message: 'Access denied. You are not registered in the system.' });
     }
 
     const dbUser = rows[0]; 
 
-    // 3. Verify Account Activation Status
     if (dbUser.status !== 'Active') {
-      return res.status(403).json({ 
-        message: 'Access denied. Your account has been deactivated.' 
-      });
+      return res.status(403).json({ message: 'Access denied. Your account has been deactivated.' });
     }
 
-    // 4. Issue App-Level JWT Token including user name for audit trailing
+    // ==========================================
+    // 3. Application Layer (RBAC JWT)
+    // ==========================================
     const token = jwt.sign(
       { 
         userId: dbUser.id, 
@@ -71,25 +75,13 @@ const googleLogin = async (req, res) => {
       { expiresIn: '12h' } 
     );
 
-    // 5. Send Auth Token and User Context
-    res.status(200).json({
-      token,
-      user: {
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-        role: dbUser.role,
-        departments: dbUser.departments, 
-        plant: dbUser.plant
-      }
-    });
+    return res.status(200).json({ token, user: dbUser });
 
   } catch (error) {
-    console.error('Authentication Error:', error);
-    res.status(401).json({ message: 'Invalid or expired Google Token.' });
+    console.error('[Database Error] Failed to execute user lookup query:', error.message);
+    // Explicit 500 error if Cloud SQL connection/schema fails
+    return res.status(500).json({ message: 'Internal server error during database lookup.' });
   }
 };
 
-module.exports = {
-  googleLogin
-};
+module.exports = { googleLogin };
