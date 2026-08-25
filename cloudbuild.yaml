@@ -1,5 +1,5 @@
 steps:
-  # 1. Build Backend Docker Container
+  # 1. Build Backend Docker Container Image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - build
@@ -7,13 +7,13 @@ steps:
       - asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA
       - ./server
 
-  # 2. Push Container to GCP Artifact Registry
+  # 2. Push Container to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - push
       - asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA
 
-  # 3. Deploy Backend to Cloud Run (Targeting kpi_db_test)
+  # 3. Deploy Backend to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -30,12 +30,12 @@ steps:
       - --set-env-vars=^|^INSTANCE_CONNECTION_NAME=ggpc-kpi-test:asia-southeast1:kpi-instance|DB_NAME=kpi_db_test|NODE_ENV=production|GOOGLE_CLIENT_ID=325496284731-eok0psn10r65eos2l3qdjq6dugse1kcr.apps.googleusercontent.com|KINTONE_DOMAIN=vez7o26y38rb.cybozu.com|KINTONE_KPI_APP_ID=1910|KINTONE_MASTER_APP_ID=111|KINTONE_ORGANIZATION_APP_ID=204|GOOGLE_DRIVE_FOLDER_ID=1pZWpmM6U32evDmGuzYHn8t5u0BgvzXjS|CORS_ORIGINS=https://ggpc-kpi-test.web.app,https://ggpc-kpi-test.firebaseapp.com
       - --set-secrets=DB_USER=TEST_DB_USER:latest,DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,KINTONE_KPI_API_KEY=KINTONE_KPI_API_KEY:latest,KINTONE_MASTER_API_KEY=KINTONE_MASTER_API_KEY:latest,KINTONE_ORGANIZATION_API_KEY=KINTONE_ORGANIZATION_API_KEY:latest
 
-  # 4. Inject Dynamic Backend URL into Client Production Environment
+  # 4. Inject Dynamic Backend URL & Correct Google Client ID into Client Production Environment
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - -c
-      - gcloud run services describe kpi-backend-test --region=asia-southeast1 --format='value(status.url)' | xargs -I {} sh -c 'printf "VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=156706219795-6beeu4k6jkbdtoal1rc04v6fhan98hbs.apps.googleusercontent.com\n" "{}" > client/.env.production'
+      - gcloud run services describe kpi-backend-test --region=asia-southeast1 --format='value(status.url)' | xargs -I {} sh -c 'printf "VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=325496284731-eok0psn10r65eos2l3qdjq6dugse1kcr.apps.googleusercontent.com\n" "{}" > client/.env.production'
 
   # 5. Build Vite React Frontend Client
   - name: 'node:20'
@@ -47,7 +47,7 @@ steps:
         npm ci
         npm run build
 
-  # 6. Deploy Bundle to Firebase Hosting
+  # 6. Deploy Client to Staging Firebase Hosting
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
