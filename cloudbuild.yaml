@@ -26,7 +26,7 @@ steps:
           echo "=========================================="
           SERVICE_NAME="kpi-backend-prod"
           DB_NAME="kpi_db_production"
-          CLIENT_ID="YOUR_PRODUCTION_GOOGLE_CLIENT_ID"
+          CLIENT_ID="156706219795-6beeu4k6jkbdtoal1rc04v6fhan98hbs.apps.googleusercontent.com"
           CORS="https://ggpc-kpi-system.web.app,https://ggpc-kpi-system.firebaseapp.com"
           USER_SECRET="PROD_DB_USER"
         else
