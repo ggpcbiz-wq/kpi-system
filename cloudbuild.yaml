@@ -13,31 +13,63 @@ steps:
       - push
       - asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA
 
-  # 3. Deploy Backend to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
-    args:
-      - run
-      - deploy
-      - kpi-backend-test
-      - --image=asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA
-      - --region=asia-southeast1
-      - --platform=managed
-      - --service-account=kpi-cloud-run-service-account@ggpc-kpi-test.iam.gserviceaccount.com
-      - --allow-unauthenticated
-      - --port=8080
-      - --add-cloudsql-instances=ggpc-kpi-test:asia-southeast1:kpi-instance
-      - --set-env-vars=^|^INSTANCE_CONNECTION_NAME=ggpc-kpi-test:asia-southeast1:kpi-instance|DB_NAME=kpi_db_test|NODE_ENV=production|GOOGLE_CLIENT_ID=325496284731-eok0psn10r65eos2l3qdjq6dugse1kcr.apps.googleusercontent.com|KINTONE_DOMAIN=vez7o26y38rb.cybozu.com|KINTONE_KPI_APP_ID=1910|KINTONE_MASTER_APP_ID=111|KINTONE_ORGANIZATION_APP_ID=204|GOOGLE_DRIVE_FOLDER_ID=1pZWpmM6U32evDmGuzYHn8t5u0BgvzXjS|CORS_ORIGINS=https://ggpc-kpi-test.web.app,https://ggpc-kpi-test.firebaseapp.com
-      - --set-secrets=DB_USER=TEST_DB_USER:latest,DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,KINTONE_KPI_API_KEY=KINTONE_KPI_API_KEY:latest,KINTONE_MASTER_API_KEY=KINTONE_MASTER_API_KEY:latest,KINTONE_ORGANIZATION_API_KEY=KINTONE_ORGANIZATION_API_KEY:latest
-
-  # 4. Inject Dynamic Backend URL & Correct Google Client ID into Client Production Environment
+  # 3. Deploy Backend to Cloud Run (Dynamic Switch based on $PROJECT_ID)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - -c
-      - gcloud run services describe kpi-backend-test --region=asia-southeast1 --format='value(status.url)' | xargs -I {} sh -c 'printf "VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=325496284731-eok0psn10r65eos2l3qdjq6dugse1kcr.apps.googleusercontent.com\n" "{}" > client/.env.production'
+      - |
+        set -e
+        if [ "$PROJECT_ID" = "ggpc-kpi-system" ]; then
+          echo "=========================================="
+          echo "===> EXECUTING PRODUCTION DEPLOYMENT <==="
+          echo "=========================================="
+          SERVICE_NAME="kpi-backend-prod"
+          DB_NAME="kpi_db_production"
+          CLIENT_ID="YOUR_PRODUCTION_GOOGLE_CLIENT_ID"
+          CORS="https://ggpc-kpi-system.web.app,https://ggpc-kpi-system.firebaseapp.com"
+          USER_SECRET="PROD_DB_USER"
+        else
+          echo "=========================================="
+          echo "===> EXECUTING STAGING DEPLOYMENT <======"
+          echo "=========================================="
+          SERVICE_NAME="kpi-backend-test"
+          DB_NAME="kpi_db_test"
+          CLIENT_ID="325496284731-eok0psn10r65eos2l3qdjq6dugse1kcr.apps.googleusercontent.com"
+          CORS="https://ggpc-kpi-test.web.app,https://ggpc-kpi-test.firebaseapp.com"
+          USER_SECRET="TEST_DB_USER"
+        fi
 
-  # 5. Build Vite React Frontend Client
+        # Safely quoted variables to prevent bash pipe execution errors
+        gcloud run deploy $$SERVICE_NAME \
+          --image=asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA \
+          --region=asia-southeast1 \
+          --platform=managed \
+          --allow-unauthenticated \
+          --port=8080 \
+          --add-cloudsql-instances=ggpc-kpi-test:asia-southeast1:kpi-instance \
+          --set-env-vars="^|^INSTANCE_CONNECTION_NAME=ggpc-kpi-test:asia-southeast1:kpi-instance|DB_NAME=$$DB_NAME|NODE_ENV=production|GOOGLE_CLIENT_ID=$$CLIENT_ID|CORS_ORIGINS=$$CORS" \
+          --set-secrets="DB_USER=$$USER_SECRET:latest,DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest"
+
+  # 4. Inject Dynamic Backend URL into Client Production Environment
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        if [ "$PROJECT_ID" = "ggpc-kpi-system" ]; then
+          SERVICE_NAME="kpi-backend-prod"
+          CLIENT_ID="YOUR_PRODUCTION_GOOGLE_CLIENT_ID"
+        else
+          SERVICE_NAME="kpi-backend-test"
+          CLIENT_ID="325496284731-eok0psn10r65eos2l3qdjq6dugse1kcr.apps.googleusercontent.com"
+        fi
+
+        BACKEND_URL=$(gcloud run services describe $$SERVICE_NAME --region=asia-southeast1 --format='value(status.url)')
+        printf "VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=%s\n" "$$BACKEND_URL" "$$CLIENT_ID" > client/.env.production
+
+  # 5. Build React Production Bundle
   - name: 'node:20'
     entrypoint: 'sh'
     args:
@@ -47,7 +79,7 @@ steps:
         npm ci
         npm run build
 
-  # 6. Deploy Client to Staging Firebase Hosting
+  # 6. Deploy Client to Firebase Hosting Target ($PROJECT_ID)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -57,8 +89,8 @@ steps:
         gcloud secrets versions access latest --secret=FIREBASE_SERVICE_ACCOUNT --project=$PROJECT_ID > /tmp/firebase-service-account.json
         export GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-service-account.json
         curl -sL https://firebase.tools | bash
-        firebase use --add ggpc-kpi-test
-        firebase deploy --project=ggpc-kpi-test --only=hosting --non-interactive
+        firebase use --add $PROJECT_ID
+        firebase deploy --project=$PROJECT_ID --only=hosting --non-interactive
 
 images:
   - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'
