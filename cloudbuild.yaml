@@ -1,41 +1,43 @@
 steps:
-  # 1. Build Backend Container Image
+  # 1. Build Backend Docker Container Image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - build
       - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA
+      - asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA
       - ./server
 
-  # 2. Push Container Image to Artifact Registry
+  # 2. Push Container to GCP Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - push
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA
+      - asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA
 
+  # 3. Deploy Backend Container to Cloud Run with Direct Cloud SQL Instance Binding
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - run
       - deploy
-      - ${_SERVICE_NAME}
-      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA
-      - --region=${_REGION}
+      - kpi-backend-test
+      - --image=asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA
+      - --region=asia-southeast1
       - --platform=managed
-      - --service-account=${_RUN_SERVICE_ACCOUNT}
+      - --service-account=kpi-cloud-run-service-account@ggpc-kpi-test.iam.gserviceaccount.com
       - --allow-unauthenticated
       - --port=8080
-      - --add-cloudsql-instances=$PROJECT_ID:${_REGION}:${_INSTANCE_NAME}
-      - --set-env-vars=^|^INSTANCE_CONNECTION_NAME=$PROJECT_ID:${_REGION}:${_INSTANCE_NAME}|DB_NAME=${_DB_NAME}|NODE_ENV=production|GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}|KINTONE_DOMAIN=${_KINTONE_DOMAIN}|KINTONE_KPI_APP_ID=${_KINTONE_KPI_APP_ID}|KINTONE_MASTER_APP_ID=${_KINTONE_MASTER_APP_ID}|KINTONE_ORGANIZATION_APP_ID=${_KINTONE_ORGANIZATION_APP_ID}|GOOGLE_DRIVE_FOLDER_ID=${_GOOGLE_DRIVE_FOLDER_ID}|CORS_ORIGINS=${_CORS_ORIGINS}
-      - --set-secrets=DB_USER=${_DB_USER_SECRET}:latest,DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,KINTONE_KPI_API_KEY=KINTONE_KPI_API_KEY:latest,KINTONE_MASTER_API_KEY=KINTONE_MASTER_API_KEY:latest,KINTONE_ORGANIZATION_API_KEY=KINTONE_ORGANIZATION_API_KEY:latest
-  # 4. Inject Dynamic Backend URL into Client Production Environment
+      - --add-cloudsql-instances=ggpc-kpi-test:asia-southeast1:kpi-instance
+      - --set-env-vars=^|^INSTANCE_CONNECTION_NAME=ggpc-kpi-test:asia-southeast1:kpi-instance|DB_NAME=pms-db-staging|NODE_ENV=production|GOOGLE_CLIENT_ID=325496284731-eok0psn10r65eos2l3qdjq6dugse1kcr.apps.googleusercontent.com|KINTONE_DOMAIN=vez7o26y38rb.cybozu.com|KINTONE_KPI_APP_ID=1910|KINTONE_MASTER_APP_ID=111|KINTONE_ORGANIZATION_APP_ID=204|GOOGLE_DRIVE_FOLDER_ID=1pZWpmM6U32evDmGuzYHn8t5u0BgvzXjS|CORS_ORIGINS=https://ggpc-kpi-test.web.app,https://ggpc-kpi-test.firebaseapp.com
+      - --set-secrets=DB_USER=TEST_DB_USER:latest,DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,KINTONE_KPI_API_KEY=KINTONE_KPI_API_KEY:latest,KINTONE_MASTER_API_KEY=KINTONE_MASTER_API_KEY:latest,KINTONE_ORGANIZATION_API_KEY=KINTONE_ORGANIZATION_API_KEY:latest
+
+  # 4. Inject Live Cloud Run URL into Client Environment Configuration
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - -c
-      - gcloud run services describe ${_SERVICE_NAME} --region=${_REGION} --format='value(status.url)' | xargs -I {} sh -c 'printf "VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=%s\n" "{}" "${_GOOGLE_CLIENT_ID}" > client/.env.production'
+      - gcloud run services describe kpi-backend-test --region=asia-southeast1 --format='value(status.url)' | xargs -I {} sh -c 'printf "VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=325496284731-eok0psn10r65eos2l3qdjq6dugse1kcr.apps.googleusercontent.com\n" "{}" > client/.env.production'
 
-  # 5. Build Vite React Frontend Application
+  # 5. Build Production Client Assets (Vite React)
   - name: 'node:20'
     entrypoint: 'sh'
     args:
@@ -45,42 +47,21 @@ steps:
         npm ci
         npm run build
 
-  # 6. Deploy Build Artifacts to Firebase Hosting
+  # 6. Deploy Static Bundle to Firebase Hosting
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - -c
       - |
         set -e
-        gcloud projects describe ${_FIREBASE_PROJECT} >/dev/null
-        gcloud secrets versions access latest --secret=${_FIREBASE_SERVICE_ACCOUNT_SECRET} --project=$PROJECT_ID > /tmp/firebase-service-account.json
+        gcloud secrets versions access latest --secret=FIREBASE_SERVICE_ACCOUNT --project=$PROJECT_ID > /tmp/firebase-service-account.json
         export GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-service-account.json
         curl -sL https://firebase.tools | bash
-        firebase --version
-        firebase use --add ${_FIREBASE_PROJECT}
-        firebase deploy --project=${_FIREBASE_PROJECT} --only=hosting --non-interactive
+        firebase use --add ggpc-kpi-test
+        firebase deploy --project=ggpc-kpi-test --only=hosting --non-interactive
 
 images:
-  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA'
+  - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'
+
 options:
   logging: CLOUD_LOGGING_ONLY
-
-substitutions:
-  _REGION: asia-southeast1
-  _REPOSITORY: cloud-run-source-deploy
-  _IMAGE: kpi-backend
-  _SERVICE_NAME: kpi-backend-test
-  _RUN_SERVICE_ACCOUNT: kpi-cloud-run-service-account@ggpc-kpi-test.iam.gserviceaccount.com
-  _DB_NAME: pms-db-staging
-  _DB_HOST: 10.8.0.3
-  _DB_USER_SECRET: TEST_DB_USER
-  _VPC_CONNECTOR: kpi-vpc-con
-  _FIREBASE_PROJECT: ggpc-kpi-test
-  _FIREBASE_SERVICE_ACCOUNT_SECRET: FIREBASE_SERVICE_ACCOUNT
-  _CORS_ORIGINS: https://ggpc-kpi-test.web.app,https://ggpc-kpi-test.firebaseapp.com
-  _GOOGLE_CLIENT_ID: 325496284731-eok0psn10r65eos2l3qdjq6dugse1kcr.apps.googleusercontent.com
-  _KINTONE_DOMAIN: vez7o26y38rb.cybozu.com
-  _KINTONE_KPI_APP_ID: '1910'
-  _KINTONE_MASTER_APP_ID: '111'
-  _KINTONE_ORGANIZATION_APP_ID: '204'
-  _GOOGLE_DRIVE_FOLDER_ID: 1pZWpmM6U32evDmGuzYHn8t5u0BgvzXjS
