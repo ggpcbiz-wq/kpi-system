@@ -14,7 +14,7 @@ steps:
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA
 
   # 3. Deploy Backend to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+ - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - run
@@ -27,6 +27,7 @@ steps:
       - --allow-unauthenticated
       - --port=8080
       - --vpc-connector=${_VPC_CONNECTOR}
+      - --vpc-egress=private-ranges-only
       - --set-env-vars=^|^DB_HOST=${_DB_HOST}|DB_PORT=5432|DB_NAME=${_DB_NAME}|NODE_ENV=production|GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}|KINTONE_DOMAIN=${_KINTONE_DOMAIN}|KINTONE_KPI_APP_ID=${_KINTONE_KPI_APP_ID}|KINTONE_MASTER_APP_ID=${_KINTONE_MASTER_APP_ID}|KINTONE_ORGANIZATION_APP_ID=${_KINTONE_ORGANIZATION_APP_ID}|GOOGLE_DRIVE_FOLDER_ID=${_GOOGLE_DRIVE_FOLDER_ID}|CORS_ORIGINS=${_CORS_ORIGINS}
       - --set-secrets=DB_USER=${_DB_USER_SECRET}:latest,DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,KINTONE_KPI_API_KEY=KINTONE_KPI_API_KEY:latest,KINTONE_MASTER_API_KEY=KINTONE_MASTER_API_KEY:latest,KINTONE_ORGANIZATION_API_KEY=KINTONE_ORGANIZATION_API_KEY:latest
 
