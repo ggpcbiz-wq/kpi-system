@@ -296,7 +296,7 @@ const handleProposeTarget = async (formData) => {
           </div>
           
           <div className="overflow-x-auto">
-             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1000px]">
+             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-250">
               <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                 <tr>
                   <th className="px-6 py-4 font-bold">Department</th>
