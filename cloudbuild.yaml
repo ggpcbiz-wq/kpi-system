@@ -35,7 +35,7 @@ steps:
     entrypoint: bash
     args:
       - -c
-      - gcloud run services describe kpi-backend-test --region=asia-southeast1 --format='value(status.url)' | xargs -I {} sh -c 'printf "VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=325496284731-eok0psn10r65eos2l3qdjq6dugse1kcr.apps.googleusercontent.com\n" "{}" > client/.env.production'
+      - gcloud run services describe kpi-backend-test --region=asia-southeast1 --format='value(status.url)' | xargs -I {} sh -c 'printf "VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=156706219795-6beeu4k6jkbdtoal1rc04v6fhan98hbs.apps.googleusercontent.com\n" "{}" > client/.env.production'
 
   # 5. Build Vite React Frontend Client
   - name: 'node:20'
