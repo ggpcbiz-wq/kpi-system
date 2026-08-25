@@ -60,7 +60,7 @@ steps:
         set -e
         if [ "$PROJECT_ID" = "ggpc-kpi-system" ]; then
           SERVICE_NAME="kpi-backend-prod"
-          CLIENT_ID="YOUR_PRODUCTION_GOOGLE_CLIENT_ID"
+          CLIENT_ID="156706219795-6beeu4k6jkbdtoal1rc04v6fhan98hbs.apps.googleusercontent.com"
         else
           SERVICE_NAME="kpi-backend-test"
           CLIENT_ID="325496284731-eok0psn10r65eos2l3qdjq6dugse1kcr.apps.googleusercontent.com"
