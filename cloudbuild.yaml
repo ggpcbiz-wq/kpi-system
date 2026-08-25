@@ -1,4 +1,5 @@
 steps:
+  # 1. Build Backend Container Image
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - build
@@ -6,11 +7,13 @@ steps:
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA
       - ./server
 
+  # 2. Push Container Image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - push
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$COMMIT_SHA
 
+  # 3. Deploy Backend to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -27,12 +30,14 @@ steps:
       - --set-env-vars=^|^DB_HOST=${_DB_HOST}|DB_PORT=5432|DB_NAME=${_DB_NAME}|NODE_ENV=production|GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}|KINTONE_DOMAIN=${_KINTONE_DOMAIN}|KINTONE_KPI_APP_ID=${_KINTONE_KPI_APP_ID}|KINTONE_MASTER_APP_ID=${_KINTONE_MASTER_APP_ID}|KINTONE_ORGANIZATION_APP_ID=${_KINTONE_ORGANIZATION_APP_ID}|GOOGLE_DRIVE_FOLDER_ID=${_GOOGLE_DRIVE_FOLDER_ID}|CORS_ORIGINS=${_CORS_ORIGINS}
       - --set-secrets=DB_USER=${_DB_USER_SECRET}:latest,DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,KINTONE_KPI_API_KEY=KINTONE_KPI_API_KEY:latest,KINTONE_MASTER_API_KEY=KINTONE_MASTER_API_KEY:latest,KINTONE_ORGANIZATION_API_KEY=KINTONE_ORGANIZATION_API_KEY:latest
 
+  # 4. Inject Dynamic Backend URL into Client Production Environment
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - -c
       - gcloud run services describe ${_SERVICE_NAME} --region=${_REGION} --format='value(status.url)' | xargs -I {} sh -c 'printf "VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=%s\n" "{}" "${_GOOGLE_CLIENT_ID}" > client/.env.production'
 
+  # 5. Build Vite React Frontend Application
   - name: 'node:20'
     entrypoint: 'sh'
     args:
@@ -42,6 +47,7 @@ steps:
         npm ci
         npm run build
 
+  # 6. Deploy Build Artifacts to Firebase Hosting
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -80,8 +86,3 @@ substitutions:
   _KINTONE_MASTER_APP_ID: '111'
   _KINTONE_ORGANIZATION_APP_ID: '204'
   _GOOGLE_DRIVE_FOLDER_ID: 1pZWpmM6U32evDmGuzYHn8t5u0BgvzXjS
-
-
-
-
-

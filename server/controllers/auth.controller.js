@@ -2,16 +2,22 @@ const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db'); 
 
+// Initialize Google OAuth Client instance
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+/**
+ * Validates Google OAuth Token, checks database whitelisting,
+ * and issues JWT with user claims for downstream RBAC and audit logging.
+ */
 const googleLogin = async (req, res) => {
   try {
     const { credential } = req.body; 
 
     if (!credential) {
-      return res.status(400).json({ message: 'No credential provided.' });
+      return res.status(400).json({ message: 'No Google credential token provided.' });
     }
 
+    // 1. Verify Google ID Token against Client ID
     const ticket = await client.verifyIdToken({
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID, 
@@ -20,6 +26,7 @@ const googleLogin = async (req, res) => {
     const payload = ticket.getPayload();
     const email = payload.email;
 
+    // 2. Query user profile, role, and assigned departments
     const { rows } = await db.query(`
       SELECT 
         u.id, 
@@ -37,16 +44,21 @@ const googleLogin = async (req, res) => {
     `, [email]);
     
     if (rows.length === 0) {
-      return res.status(403).json({ message: 'Access denied. You are not registered in the system.' });
+      return res.status(403).json({ 
+        message: 'Access denied. You are not registered in the system.' 
+      });
     }
 
     const dbUser = rows[0]; 
 
+    // 3. Verify Account Activation Status
     if (dbUser.status !== 'Active') {
-      return res.status(403).json({ message: 'Access denied. Your account has been deactivated.' });
+      return res.status(403).json({ 
+        message: 'Access denied. Your account has been deactivated.' 
+      });
     }
 
-    // ✨ FIX: Injected dbUser.name into the JWT payload for downstream audit logging
+    // 4. Issue App-Level JWT Token including user name for audit trailing
     const token = jwt.sign(
       { 
         userId: dbUser.id, 
@@ -59,6 +71,7 @@ const googleLogin = async (req, res) => {
       { expiresIn: '12h' } 
     );
 
+    // 5. Send Auth Token and User Context
     res.status(200).json({
       token,
       user: {
