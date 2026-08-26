@@ -190,7 +190,7 @@ const handleLookup = async () => {
     }
   };
 
-  const handleSubmitForm = async (e) => {
+const handleSubmitForm = async (e) => {
     e.preventDefault();
     
     const finalRole = forceAdmin ? 'Administrator' : formData.role;
@@ -216,18 +216,30 @@ const handleLookup = async () => {
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) throw new Error('Operation failed');
+      // 1. Extract the exact error message from the backend if it failed
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Backend operation failed with status ${response.status}`);
+      }
+
+      // Parse the successfully saved user data returned by the backend
+      const savedUser = await response.json();
       
-      const refreshResponse = await fetch(`${API_BASE_URL}/api/users`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setUsersList(await refreshResponse.json());
+      // 2. Direct State Mutation (Optimistic UI Update)
+      // FIX: We remove the secondary fetch and update the React array directly. 
+      // This is infinitely faster and prevents false-negative network failures.
+      if (isEditing) {
+        setUsersList(prev => prev.map(u => u.id === savedUser.id ? savedUser : u));
+      } else {
+        setUsersList(prev => [savedUser, ...prev]);
+      }
 
       addToast(`User ${formData.name} successfully ${isEditing ? 'updated' : 'created'}.`, 'success');
       setIsModalOpen(false);
     } catch (error) {
-      console.error(error);
-      addToast('Failed to save user data', 'error');
+      console.error('Submission Error:', error);
+      // 3. Display the exact error message to the user
+      addToast(error.message, 'error');
     }
   };
 
