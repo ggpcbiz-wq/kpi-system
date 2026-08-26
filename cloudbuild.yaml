@@ -48,8 +48,8 @@ steps:
           --allow-unauthenticated \
           --port=8080 \
           --add-cloudsql-instances=ggpc-kpi-test:asia-southeast1:kpi-instance \
-          --set-env-vars="^|^INSTANCE_CONNECTION_NAME=ggpc-kpi-test:asia-southeast1:kpi-instance|DB_NAME=$$DB_NAME|NODE_ENV=production|GOOGLE_CLIENT_ID=$$CLIENT_ID|CORS_ORIGINS=$$CORS" \
-          --set-secrets="DB_USER=$$USER_SECRET:latest,DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest"
+          --set-env-vars="^|^INSTANCE_CONNECTION_NAME=ggpc-kpi-test:asia-southeast1:kpi-instance|DB_NAME=$$DB_NAME|NODE_ENV=production|GOOGLE_CLIENT_ID=$$CLIENT_ID|CORS_ORIGINS=$$CORS|KINTONE_DOMAIN=vez7o26y38rb.cybozu.com|KINTONE_KPI_APP_ID=1910|KINTONE_MASTER_APP_ID=111|KINTONE_ORGANIZATION_APP_ID=204|GOOGLE_DRIVE_FOLDER_ID=1pZWpmM6U32evDmGuzYHn8t5u0BgvzXjS" \
+          --set-secrets="DB_USER=$$USER_SECRET:latest,DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,KINTONE_KPI_API_KEY=KINTONE_KPI_API_KEY:latest,KINTONE_MASTER_API_KEY=KINTONE_MASTER_API_KEY:latest,KINTONE_ORGANIZATION_API_KEY=KINTONE_ORGANIZATION_API_KEY:latest"
 
   # 4. Inject Dynamic Backend URL into Client Production Environment
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
