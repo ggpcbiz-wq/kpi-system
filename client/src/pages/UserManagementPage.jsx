@@ -101,7 +101,7 @@ const UserManagementPage = () => {
     }));
   };
 
-const handleLookup = async () => {
+  const handleLookup = async () => {
     if (!lookupEmail.trim()) {
       addToast('Please enter an email address to search.', 'info');
       return;
@@ -126,7 +126,6 @@ const handleLookup = async () => {
 
       const emp = await response.json();
       
-      // 1. Strict Kintone to Portal Role Dictionary
       const designationToRoleMap = {
         'Division Manager': 'Top Management',
         'Manager': 'Manager',
@@ -137,7 +136,6 @@ const handleLookup = async () => {
         'Supervisor': 'Supervisor'
       };
 
-      // 2. Hybrid Mapping: Prioritize DB -> Try Auto-Map -> Default to Empty (forces admin choice)
       let finalRole = '';
       if (emp.role && emp.role !== 'Unassigned') {
         finalRole = emp.role;
@@ -154,10 +152,10 @@ const handleLookup = async () => {
       
       setOriginalDept(finalBaseDept); 
 
-      const isTopMgmt = finalRole === 'Top Management';
+      // FIX: Decouple 'GLOBAL' visibility from Top Management role.
+      // Top Management will retain their true physical department.
       const isAlreadyGlobal = emp.assignedDepartments && emp.assignedDepartments.includes('GLOBAL');
-      const applyGlobal = isTopMgmt || isAlreadyGlobal;
-      setForceGlobal(applyGlobal);
+      setForceGlobal(isAlreadyGlobal);
 
       const toTitleCase = (str) => {
         if (!str) return '';
@@ -168,7 +166,7 @@ const handleLookup = async () => {
         id: null,
         email: lookupEmail,
         name: `${toTitleCase(emp.firstName)} ${toTitleCase(emp.lastName)}`.trim(),
-        departments: applyGlobal ? ['GLOBAL'] : (emp.assignedDepartments?.length > 0 ? emp.assignedDepartments : (finalBaseDept ? [finalBaseDept] : [])),
+        departments: isAlreadyGlobal ? ['GLOBAL'] : (emp.assignedDepartments?.length > 0 ? emp.assignedDepartments : (finalBaseDept ? [finalBaseDept] : [])),
         plant: emp.plant,
         role: finalRole,
         status: emp.status || 'Active'
@@ -190,7 +188,7 @@ const handleLookup = async () => {
     }
   };
 
-const handleSubmitForm = async (e) => {
+  const handleSubmitForm = async (e) => {
     e.preventDefault();
     
     const finalRole = forceAdmin ? 'Administrator' : formData.role;
@@ -216,18 +214,13 @@ const handleSubmitForm = async (e) => {
         body: JSON.stringify(payload)
       });
 
-      // 1. Extract the exact error message from the backend if it failed
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Backend operation failed with status ${response.status}`);
       }
 
-      // Parse the successfully saved user data returned by the backend
       const savedUser = await response.json();
       
-      // 2. Direct State Mutation (Optimistic UI Update)
-      // FIX: We remove the secondary fetch and update the React array directly. 
-      // This is infinitely faster and prevents false-negative network failures.
       if (isEditing) {
         setUsersList(prev => prev.map(u => u.id === savedUser.id ? savedUser : u));
       } else {
@@ -238,7 +231,6 @@ const handleSubmitForm = async (e) => {
       setIsModalOpen(false);
     } catch (error) {
       console.error('Submission Error:', error);
-      // 3. Display the exact error message to the user
       addToast(error.message, 'error');
     }
   };
@@ -525,7 +517,6 @@ const handleSubmitForm = async (e) => {
                           onChange={(e) => setFormData({...formData, role: e.target.value})}
                         >
                           <option value="" disabled>Select a role...</option>
-                          {/* Dynamically map over your roles array, excluding Admin */}
                           {roles.filter(r => r !== 'Administrator').map(role => (
                             <option key={role} value={role}>{role}</option>
                           ))}

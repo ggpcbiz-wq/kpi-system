@@ -50,6 +50,8 @@ const createSubmission = async (req, res) => {
 
 const getSubmissions = async (req, res) => {
   try {
+    // Top Management passes directly to Repo. 
+    // Ensure submission.repository.js bypasses 'department_id' filtering for 'Top Management'
     const submissions = await submissionRepo.findAll(req.user);
     res.status(200).json(submissions);
   } catch (error) {
@@ -57,7 +59,6 @@ const getSubmissions = async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch submissions' });
   }
 };
-
 const updateSubmissionStatus = async (req, res) => {
   try {
     const { id } = req.params;
