@@ -15,7 +15,7 @@ const UserManagementPage = () => {
   const [roleFilter, setRoleFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
 
-  const roles = ['Administrator', 'Top Management', 'Manager', 'Assistant Manager', 'Acting Supervisor', 'Senior Supervisor', 'Acting Supervisor'];
+  const roles = ['Administrator', 'Top Management', 'Manager', 'Assistant Manager', 'Acting Assistant Managers', 'Senior Supervisor', 'Acting Supervisor'];
   const departments = ['GLOBAL', 'DX Driving Force', 'Finance & Accounting', 'Corporate Administration',  'Sales & Purchasing', 'Info. Resources Management', 'Quality Management', 'Laguna Plant', 'Cavite Plant', 'Plant Management', 'Tooling Process Development'];  
 
   const [isModalOpen, setIsModalOpen] = useState(false);
