@@ -1,8 +1,3 @@
-/**
- * Submission Repository
- * Handles all database interactions for Monthly Actuals and CAR data.
- */
-
 const db = require('../config/db');
 
 class SubmissionRepository {
@@ -34,11 +29,10 @@ class SubmissionRepository {
     }
   }
 
-  // GET: Fetch submissions dynamically based on Controller-injected context
   async findAll(userContext) {
     try {
-      // ✨ ARCHITECTURAL FIX: Rely on the flag injected by the controller, falling back to Admin override
       const canViewAll = userContext?.globalActualsAccess || userContext?.role === 'Administrator';
+      const activeUserId = userContext?.userId || userContext?.id;
       
       let query = `
         SELECT 
@@ -52,15 +46,12 @@ class SubmissionRepository {
           m.status,
           m.remarks,
           m.created_at,
-          
-          -- CAR Data Columns
           m.kintone_car_id,
           m.problem_description,
           m.problem_cause,
           m.improvement_plan,
           m.pic,
           m.target_completion_date,
-
           t.metric_name,
           t.target_value,
           t.operator,
@@ -74,10 +65,12 @@ class SubmissionRepository {
       
       const params = [];
 
-      // If the user does not have global access, strictly scope to their departments
+      // ✨ ARCHITECTURAL FIX: If not Top Mgmt/Admin, explicitly scope to user's assigned departments via real-time DB relation
       if (!canViewAll) {
-        query += ` WHERE d.name = ANY($1)`;
-        params.push(userContext?.departments || []);
+        query += ` WHERE t.department_id IN (
+          SELECT department_id FROM user_departments WHERE user_id = $1
+        )`;
+        params.push(activeUserId);
       }
 
       query += ` ORDER BY m.created_at DESC`;
@@ -90,7 +83,6 @@ class SubmissionRepository {
     }
   }
 
-  // UPDATE: Modify Submission Status & Append CAR Details
   async updateStatus(id, status, remarks, carData = {}) {
     try {
       const { 

@@ -2,17 +2,13 @@ const targetRepository = require('../repositories/target.repository');
 const db = require('../config/db'); 
 
 const getDashboardTargets = async (user) => {
-  // STRICT RBAC FIX: Only Administrators get global target visibility (null).
-  // Top Management must be strictly filtered by their assigned physical departments[cite: 14].
-  const deptNames = user.role === 'Administrator' ? null : user.departments; 
-    
-  return await targetRepository.findAll(deptNames);
+  // ✨ FIX: Pass the precise userId to the repository for secure SQL subquery filtering
+  const activeUserId = user.userId || user.id;
+  return await targetRepository.findAll(activeUserId, user.role);
 };
 
 const proposeNewTarget = async (data, user) => {
-  if (user.role === 'Manager' && !user.departments?.includes(data.department)) {
-    throw new Error('Unauthorized department target proposal');
-  }
+  const activeUserId = user.userId || user.id;
 
   const deptRes = await db.query('SELECT id FROM departments WHERE name = $1', [data.department]);
   if (deptRes.rowCount === 0) throw new Error('Department not found in registry');
@@ -27,7 +23,7 @@ const proposeNewTarget = async (data, user) => {
     process_type: data.process_type || null,
     frequency: data.frequency || 'Monthly',
     departmentId: deptRes.rows[0].id,
-    userId: user.id || user.userId
+    userId: activeUserId
   };
 
   const client = await db.getClient();
@@ -44,7 +40,7 @@ const proposeNewTarget = async (data, user) => {
       'kpi_targets',
       newTarget.id,
       'CREATED_KPI_TARGET',
-      user.id || user.userId,
+      activeUserId,
       null, 
       JSON.stringify(newTarget)
     ]);
@@ -61,6 +57,7 @@ const proposeNewTarget = async (data, user) => {
 
 const changeTargetStatus = async (id, status, remarks, user) => {
   const client = await db.getClient();
+  const activeUserId = user.userId || user.id;
   
   try {
     await client.query('BEGIN');
@@ -79,7 +76,7 @@ const changeTargetStatus = async (id, status, remarks, user) => {
       'kpi_targets',
       id,
       actionString,
-      user.id || user.userId,
+      activeUserId,
       JSON.stringify(oldTarget),
       JSON.stringify(updatedTarget)
     ]);
