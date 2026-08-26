@@ -1,3 +1,8 @@
+/**
+ * Submission Repository
+ * Handles all database interactions for Monthly Actuals and CAR data.
+ */
+
 const db = require('../config/db');
 
 class SubmissionRepository {
@@ -28,14 +33,14 @@ class SubmissionRepository {
       throw error;
     }
   }
-// GET: Fetch all submissions
-  async findAll(user) {
-    try {
-      const canViewAll = user?.role === 'Administrator' || user?.role === 'Top Management';
-      const departmentFilter = canViewAll ? '' : 'WHERE d.name = ANY($1)';
-      const params = canViewAll ? [] : [user?.departments || []];
 
-      const { rows } = await db.query(`
+  // GET: Fetch submissions dynamically based on Controller-injected context
+  async findAll(userContext) {
+    try {
+      // ✨ ARCHITECTURAL FIX: Rely on the flag injected by the controller, falling back to Admin override
+      const canViewAll = userContext?.globalActualsAccess || userContext?.role === 'Administrator';
+      
+      let query = `
         SELECT 
           m.id,
           m.target_id,
@@ -48,7 +53,7 @@ class SubmissionRepository {
           m.remarks,
           m.created_at,
           
-          -- ✨ FIX: Added the new CAR columns so the frontend can read them!
+          -- CAR Data Columns
           m.kintone_car_id,
           m.problem_description,
           m.problem_cause,
@@ -65,18 +70,27 @@ class SubmissionRepository {
         LEFT JOIN kpi_targets t ON m.target_id = t.id
         LEFT JOIN departments d ON t.department_id = d.id
         LEFT JOIN users u ON m.submitted_by = u.id
-        ${departmentFilter}
-        ORDER BY m.created_at DESC
-      `, params);
+      `;
+      
+      const params = [];
+
+      // If the user does not have global access, strictly scope to their departments
+      if (!canViewAll) {
+        query += ` WHERE d.name = ANY($1)`;
+        params.push(userContext?.departments || []);
+      }
+
+      query += ` ORDER BY m.created_at DESC`;
+
+      const { rows } = await db.query(query, params);
       return rows;
     } catch (error) {
       console.error('DB Error in SubmissionRepository.findAll:', error);
       throw error;
     }
   }
-// UPDATE SUBMISSION STATUS & CAR DETAILS
-  // Inside your submission.repository.js class:
 
+  // UPDATE: Modify Submission Status & Append CAR Details
   async updateStatus(id, status, remarks, carData = {}) {
     try {
       const { 
@@ -87,7 +101,6 @@ class SubmissionRepository {
         pic = null 
       } = carData;
 
-      
       const { rows } = await db.query(`
         UPDATE monthly_actuals
         SET 
