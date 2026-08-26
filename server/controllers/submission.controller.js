@@ -35,7 +35,6 @@ const createSubmission = async (req, res) => {
     const submissionData = { 
       ...req.body, 
       remarks: formattedRemark, 
-      // Wrap the URL in JSON.stringify so PostgreSQL's JSON column accepts it
       supporting_data: attachmentUrl ? JSON.stringify(attachmentUrl) : null, 
       submitted_by: req.user?.userId || req.body.submitted_by 
     };
@@ -50,15 +49,25 @@ const createSubmission = async (req, res) => {
 
 const getSubmissions = async (req, res) => {
   try {
-    // Top Management passes directly to Repo. 
-    // Ensure submission.repository.js bypasses 'department_id' filtering for 'Top Management'
-    const submissions = await submissionRepo.findAll(req.user);
+    // ✨ ARCHITECTURAL FIX: Strictly disable caching at the API level to prevent 304 Not Modified
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    // Retain the RBAC context injection for Top Management visibility
+    const accessContext = {
+      ...req.user,
+      globalActualsAccess: req.user.role === 'Top Management' || req.user.role === 'Administrator'
+    };
+    
+    const submissions = await submissionRepo.findAll(accessContext);
     res.status(200).json(submissions);
   } catch (error) {
     console.error('Error fetching submissions:', error);
     res.status(500).json({ message: 'Failed to fetch submissions' });
   }
 };
+
 const updateSubmissionStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -114,7 +123,7 @@ const updateSubmissionStatus = async (req, res) => {
     const updatedSubmission = await submissionRepo.updateStatus(id, status, formattedRemark, carData);
     if (!updatedSubmission) return res.status(404).json({ message: 'Submission not found' });
 
-    // KINTONE LOGIC A
+    // Kintone sync logic
     if (status === 'Approved' || status === 'CAR Requested') {
       try {
         const { rows } = await db.query(`
@@ -128,7 +137,6 @@ const updateSubmissionStatus = async (req, res) => {
         `, [id]);
 
         if (rows[0]) {
-
           let driveLink = rows[0].supporting_data || '';
           if (typeof driveLink === 'string' && driveLink.startsWith('"')) {
             driveLink = JSON.parse(driveLink);
@@ -157,7 +165,6 @@ const updateSubmissionStatus = async (req, res) => {
       }
     }
 
-    // KINTONE LOGIC B
     if (status === 'Locked - Pending QMR Sign-Off' && carData.kintone_car_id && existingKintoneId) {
       try {
         await kintoneService.updateKintoneRecord(existingKintoneId, carData.kintone_car_id);
