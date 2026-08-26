@@ -101,7 +101,7 @@ const UserManagementPage = () => {
     }));
   };
 
-  const handleLookup = async () => {
+ const handleLookup = async () => {
     if (!lookupEmail.trim()) {
       addToast('Please enter an email address to search.', 'info');
       return;
@@ -119,45 +119,60 @@ const UserManagementPage = () => {
 
       if (!response.ok) {
         if (response.status === 404) throw new Error('Employee not found in Kintone.');
-        throw new Error('Failed to communicate with Kintone server.');
+        throw new Error('Failed to communicate with the server.');
       }
 
       const emp = await response.json();
       
-      let mappedRole = '';
-      if (emp.designation === 'Division Manager') mappedRole = 'Top Management';
-      else if (emp.designation === 'Manager') mappedRole = 'Manager';
-      else if (emp.designation === 'Supervisor') mappedRole = 'Supervisor';
+      // 1. Prioritize Postgres Database Role. Fallback to Kintone Designation mapping if new.
+      let finalRole = '';
+      if (emp.role && emp.role !== 'Unassigned') {
+        finalRole = emp.role;
+      } else {
+        // Auto-map new users based on HR designation
+        if (emp.designation === 'Division Manager') finalRole = 'Top Management';
+        else if (emp.designation === 'Manager') finalRole = 'Manager';
+        else if (emp.designation === 'Supervisor') finalRole = 'Supervisor';
+      }
 
+      // 2. Sync UI Checkboxes with the detected role
+      const isAdmin = finalRole === 'Administrator';
+      setForceAdmin(isAdmin);
+
+      // 3. Department & Global Visibility Logic
       const rawKintoneDept = emp.department ? emp.department.trim() : '';
       const matchedDept = departments.find(d => d.toLowerCase() === rawKintoneDept.toLowerCase());
       const finalBaseDept = matchedDept || rawKintoneDept; 
       
       setOriginalDept(finalBaseDept); 
 
-      const isTopMgmt = mappedRole === 'Top Management';
-      setForceGlobal(isTopMgmt);
+      // If they are Top Management OR already assigned GLOBAL in DB, force global view
+      const isTopMgmt = finalRole === 'Top Management';
+      const isAlreadyGlobal = emp.assignedDepartments && emp.assignedDepartments.includes('GLOBAL');
+      const applyGlobal = isTopMgmt || isAlreadyGlobal;
+      setForceGlobal(applyGlobal);
 
       const toTitleCase = (str) => {
         if (!str) return '';
         return str.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
       };
 
+      // 4. Hydrate React Form State
       setFormData({
         id: null,
         email: lookupEmail,
         name: `${toTitleCase(emp.firstName)} ${toTitleCase(emp.lastName)}`.trim(),
-        departments: isTopMgmt ? ['GLOBAL'] : (finalBaseDept ? [finalBaseDept] : []),
+        departments: applyGlobal ? ['GLOBAL'] : (emp.assignedDepartments?.length > 0 ? emp.assignedDepartments : (finalBaseDept ? [finalBaseDept] : [])),
         plant: emp.plant,
-        role: mappedRole,
-        status: 'Active'
+        role: finalRole,
+        status: emp.status || 'Active'
       });
       
       setIsLookupSuccessful(true);
       addToast('Employee details retrieved successfully!', 'success');
       
-      if (!mappedRole) {
-        addToast('Designation not recognized. Please assign role manually.', 'info');
+      if (!finalRole) {
+        addToast('Role not automatically recognized. Please assign manually.', 'info');
       }
 
     } catch (error) {
