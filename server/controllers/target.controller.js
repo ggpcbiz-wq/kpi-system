@@ -3,7 +3,10 @@ const targetService = require('../services/target.service');
 const getTargets = async (req, res) => {
   try {
     // 1. RBAC Context Validation
-    if (!req.user || !req.user.id) {
+    // ✨ FIX: Check for both userId (from JWT) and id (from session/middleware variations)
+    const activeUserId = req.user?.userId || req.user?.id;
+    
+    if (!req.user || !activeUserId) {
       return res.status(401).json({ message: 'Unauthorized. Invalid user context.' });
     }
 
