@@ -101,7 +101,7 @@ const UserManagementPage = () => {
     }));
   };
 
-  const handleLookup = async () => {
+ const handleLookup = async () => {
     if (!lookupEmail.trim()) {
       addToast('Please enter an email address to search.', 'info');
       return;
@@ -113,17 +113,14 @@ const UserManagementPage = () => {
     setForceGlobal(false);
 
     try {
-      // FIX: Strict Cache-Busting Implementation
+      // FIX: Use ONLY the URL timestamp for cache-busting to prevent CORS header blocks
       const timestamp = new Date().getTime();
       const response = await fetch(`${API_BASE_URL}/api/users/lookup?email=${encodeURIComponent(lookupEmail)}&_t=${timestamp}`, {
         method: 'GET',
         headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        },
-        cache: 'no-store'
+          'Authorization': `Bearer ${token}`
+          // Removed 'Cache-Control', 'Pragma', and 'Expires' to satisfy backend CORS policy
+        }
       });
 
       if (!response.ok) {
