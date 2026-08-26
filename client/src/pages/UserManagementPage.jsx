@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { UserPlus, Search, Edit, Trash2, ShieldCheck, SearchCode, CheckCircle2, X } from 'lucide-react';
+import { UserPlus, Search, Edit, Trash2, ShieldCheck, SearchCode, X } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 import { API_BASE_URL } from '../services/api';
 
