@@ -152,8 +152,8 @@ const UserManagementPage = () => {
       
       setOriginalDept(finalBaseDept); 
 
-      // FIX: Decouple 'GLOBAL' visibility from Top Management role.
-      // Top Management will retain their true physical department.
+      // ARCHITECTURE FIX: Top Management retains actual department[cite: 20]. 
+      // Only force 'GLOBAL' if it was explicitly granted in the DB.
       const isAlreadyGlobal = emp.assignedDepartments && emp.assignedDepartments.includes('GLOBAL');
       setForceGlobal(isAlreadyGlobal);
 

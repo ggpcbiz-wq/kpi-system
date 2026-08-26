@@ -2,9 +2,9 @@ const targetRepository = require('../repositories/target.repository');
 const db = require('../config/db'); 
 
 const getDashboardTargets = async (user) => {
-  const deptNames = user.role === 'Administrator' || user.role === 'Top Management' 
-    ? null 
-    : user.departments; 
+  // STRICT RBAC FIX: Only Administrators get global target visibility (null).
+  // Top Management must be strictly filtered by their assigned physical departments[cite: 14].
+  const deptNames = user.role === 'Administrator' ? null : user.departments; 
     
   return await targetRepository.findAll(deptNames);
 };
@@ -30,16 +30,13 @@ const proposeNewTarget = async (data, user) => {
     userId: user.id || user.userId
   };
 
-  // ✨ FIX: Check out a dedicated client to enforce ACID Transactions
   const client = await db.getClient();
   
   try {
-    await client.query('BEGIN'); // Start Transaction
+    await client.query('BEGIN'); 
 
-    // 1. Create Target
     const newTarget = await targetRepository.create(targetData);
 
-    // 2. Write Audit Log[cite: 10]
     await client.query(`
       INSERT INTO audit_logs (table_name, record_id, action, changed_by, old_payload, new_payload)
       VALUES ($1, $2, $3, $4, $5, $6)
@@ -52,13 +49,13 @@ const proposeNewTarget = async (data, user) => {
       JSON.stringify(newTarget)
     ]);
 
-    await client.query('COMMIT'); // Commit both operations atomically
+    await client.query('COMMIT'); 
     return newTarget;
   } catch (error) {
-    await client.query('ROLLBACK'); // Revert KPI insert if Audit fails
+    await client.query('ROLLBACK'); 
     throw error;
   } finally {
-    client.release(); // Return client to the pool
+    client.release(); 
   }
 };
 
@@ -75,7 +72,6 @@ const changeTargetStatus = async (id, status, remarks, user) => {
 
     const actionString = `STATUS_UPDATED_TO_${status.replace(/\s+/g, '_').toUpperCase()}`;
     
-    // Write Audit Log[cite: 10]
     await client.query(`
       INSERT INTO audit_logs (table_name, record_id, action, changed_by, old_payload, new_payload)
       VALUES ($1, $2, $3, $4, $5, $6)
