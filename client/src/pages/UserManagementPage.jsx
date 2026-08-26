@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { UserPlus, Search, Edit, Trash2, ShieldCheck, SearchCode, X } from 'lucide-react';
+import { UserPlus, Search, Edit, Trash2, ShieldCheck, SearchCode, CheckCircle2, X } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 import { API_BASE_URL } from '../services/api';
 
@@ -101,7 +101,7 @@ const UserManagementPage = () => {
     }));
   };
 
- const handleLookup = async () => {
+const handleLookup = async () => {
     if (!lookupEmail.trim()) {
       addToast('Please enter an email address to search.', 'info');
       return;
@@ -113,14 +113,10 @@ const UserManagementPage = () => {
     setForceGlobal(false);
 
     try {
-      // FIX: Use ONLY the URL timestamp for cache-busting to prevent CORS header blocks
       const timestamp = new Date().getTime();
       const response = await fetch(`${API_BASE_URL}/api/users/lookup?email=${encodeURIComponent(lookupEmail)}&_t=${timestamp}`, {
         method: 'GET',
-        headers: { 
-          'Authorization': `Bearer ${token}`
-          // Removed 'Cache-Control', 'Pragma', and 'Expires' to satisfy backend CORS policy
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (!response.ok) {
@@ -130,29 +126,35 @@ const UserManagementPage = () => {
 
       const emp = await response.json();
       
-      // 1. Prioritize Postgres Database Role. Fallback to Kintone Designation mapping if new.
+      // 1. Strict Kintone to Portal Role Dictionary
+      const designationToRoleMap = {
+        'Division Manager': 'Top Management',
+        'Manager': 'Manager',
+        'Assistant Manager': 'Assistant Manager',
+        'Acting Assistant Managers': 'Acting Assistant Managers',
+        'Senior Supervisor': 'Senior Supervisor',
+        'Acting Supervisor': 'Acting Supervisor',
+        'Supervisor': 'Supervisor'
+      };
+
+      // 2. Prioritize Postgres Role -> Fallback to Map -> Safe Default to 'User'
       let finalRole = '';
       if (emp.role && emp.role !== 'Unassigned') {
         finalRole = emp.role;
       } else {
-        // Auto-map new users based on HR designation
-        if (emp.designation === 'Division Manager') finalRole = 'Top Management';
-        else if (emp.designation === 'Manager') finalRole = 'Manager';
-        else if (emp.designation === 'Supervisor') finalRole = 'Supervisor';
+        // 100% Automatic: Map Kintone designation or default to least privilege
+        finalRole = designationToRoleMap[emp.designation] || 'User'; 
       }
 
-      // 2. Sync UI Checkboxes with the detected role
       const isAdmin = finalRole === 'Administrator';
       setForceAdmin(isAdmin);
 
-      // 3. Department & Global Visibility Logic
       const rawKintoneDept = emp.department ? emp.department.trim() : '';
       const matchedDept = departments.find(d => d.toLowerCase() === rawKintoneDept.toLowerCase());
       const finalBaseDept = matchedDept || rawKintoneDept; 
       
       setOriginalDept(finalBaseDept); 
 
-      // If they are Top Management OR already assigned GLOBAL in DB, force global view
       const isTopMgmt = finalRole === 'Top Management';
       const isAlreadyGlobal = emp.assignedDepartments && emp.assignedDepartments.includes('GLOBAL');
       const applyGlobal = isTopMgmt || isAlreadyGlobal;
@@ -163,7 +165,6 @@ const UserManagementPage = () => {
         return str.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
       };
 
-      // 4. Hydrate React Form State
       setFormData({
         id: null,
         email: lookupEmail,
@@ -175,11 +176,7 @@ const UserManagementPage = () => {
       });
       
       setIsLookupSuccessful(true);
-      addToast('Employee details retrieved successfully!', 'success');
-      
-      if (!finalRole) {
-        addToast('Role not automatically recognized. Please assign manually.', 'info');
-      }
+      addToast(`Employee details retrieved. Role auto-assigned to ${finalRole}.`, 'success');
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
@@ -500,31 +497,16 @@ const UserManagementPage = () => {
                 <div className="grid grid-cols-2 gap-6">
                  <div>
                     <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Mapped Portal Role</label>
-                    {forceAdmin ? (
-                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-brand-200 dark:border-brand-800/50 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 transition-colors">
-                        <ShieldCheck size={18} className="mr-2.5 text-brand-600 dark:text-brand-400"/> Administrator
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <select 
-                          className={`w-full px-4 py-2.5 text-sm font-semibold border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 transition-colors appearance-none ${!formData.role ? 'border-amber-400 dark:border-amber-500/50 ring-1 ring-amber-400/50' : 'border-slate-200 dark:border-slate-700'}`}
-                          value={formData.role} 
-                          onChange={(e) => setFormData({...formData, role: e.target.value})}
-                        >
-                          <option value="" disabled>Select a role...</option>
-                          {/* Dynamically map over your roles array, excluding Admin since it's a checkbox */}
-                          {roles.filter(r => r !== 'Administrator').map(role => (
-                            <option key={role} value={role}>{role}</option>
-                          ))}
-                        </select>
-                        {/* Custom dropdown arrow for UI consistency */}
-                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-500">
-                          <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
-                        </div>
-                      </div>
-                    )}
+                    <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-200 transition-colors cursor-not-allowed">
+                      {forceAdmin ? (
+                        <><ShieldCheck size={18} className="mr-2.5 text-brand-600 dark:text-brand-400"/> Administrator</>
+                      ) : formData.role ? (
+                        <><CheckCircle2 size={18} className="mr-2.5 text-jira-success"/> {formData.role}</>
+                      ) : (
+                        <span className="text-slate-400 dark:text-slate-500 font-medium">Pending Kintone Sync...</span>
+                      )}
+                    </div>
                   </div>
-                    
                   <div>
                     <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Assigned Department</label>
                     <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 transition-colors">
