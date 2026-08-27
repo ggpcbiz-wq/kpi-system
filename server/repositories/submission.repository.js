@@ -1,3 +1,8 @@
+/**
+ * Submission Repository
+ * Handles all database interactions for Monthly Actuals and CAR data.
+ */
+
 const db = require('../config/db');
 
 class SubmissionRepository {
@@ -29,6 +34,7 @@ class SubmissionRepository {
     }
   }
 
+  // GET: Fetch submissions dynamically based on Controller-injected context
   async findAll(userContext) {
     try {
       const canViewAll = userContext?.globalActualsAccess || userContext?.role === 'Administrator';
@@ -45,13 +51,17 @@ class SubmissionRepository {
           m.actual_value,
           m.status,
           m.remarks,
+          m.supporting_data, -- ✨ FIX: Explicitly added missing attachment column to SQL projection
           m.created_at,
+          
+          -- CAR Data Columns
           m.kintone_car_id,
           m.problem_description,
           m.problem_cause,
           m.improvement_plan,
           m.pic,
           m.target_completion_date,
+
           t.metric_name,
           t.target_value,
           t.operator,
@@ -65,7 +75,7 @@ class SubmissionRepository {
       
       const params = [];
 
-      // ✨ ARCHITECTURAL FIX: If not Top Mgmt/Admin, explicitly scope to user's assigned departments via real-time DB relation
+      // Strictly scope to user's assigned departments via real-time DB relation if not Global Admin/Top Mgmt
       if (!canViewAll) {
         query += ` WHERE t.department_id IN (
           SELECT department_id FROM user_departments WHERE user_id = $1
@@ -83,6 +93,7 @@ class SubmissionRepository {
     }
   }
 
+  // UPDATE: Modify Submission Status & Append CAR Details
   async updateStatus(id, status, remarks, carData = {}) {
     try {
       const { 
