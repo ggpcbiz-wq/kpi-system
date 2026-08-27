@@ -5,11 +5,16 @@ const { requireAuth } = require('../middleware/auth.middleware');
 const { authorizeRoles } = require('../middleware/role.middleware');
 const { createSubmission, getSubmissions, updateSubmissionStatus } = require('../controllers/submission.controller');
 
-const upload = multer({ storage: multer.memoryStorage() });
+// ✨ ARCHITECTURAL FIX: Enforce a strict 20MB file size limit to prevent memory exhaustion
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit[cite: 20]
+});
 
-// Routes
+// Routes[cite: 20]
 router.get('/', requireAuth, getSubmissions);
 
+// Intercept multipart/form-data and append the file to req.file
 router.post('/', requireAuth, authorizeRoles('Supervisor'), upload.single('attachment'), createSubmission);
 
 router.put('/:id', requireAuth, authorizeRoles('Supervisor', 'Manager', 'Administrator'), updateSubmissionStatus);
