@@ -90,7 +90,9 @@ const WorkflowControlPage = () => {
 
     const fetchAdminQueues = async () => {
       try {
-        const targetRes = await fetch(`${API_BASE_URL}/api/targets`, {
+        const timestamp = new Date().getTime();
+
+        const targetRes = await fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         
@@ -112,7 +114,7 @@ const WorkflowControlPage = () => {
           setFinalActivationQueue(finalTargets); 
         }
 
-        const subRes = await fetch(`${API_BASE_URL}/api/submissions`, {
+        const subRes = await fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -121,7 +123,7 @@ const WorkflowControlPage = () => {
           setPendingMonthlyData(allSubmissions.filter(sub => sub.status === 'Locked - Pending QMR Sign-Off'));
         }
 
-        const analyticsRes = await fetch(`${API_BASE_URL}/api/analytics`, {
+        const analyticsRes = await fetch(`${API_BASE_URL}/api/analytics?_t=${timestamp}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (analyticsRes.ok && isMounted) {
@@ -238,7 +240,6 @@ const WorkflowControlPage = () => {
           </div>
         </div>
 
-        {/* --- SECTION 1: TARGET PROPOSAL WORKFLOW --- */}
         <div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4 transition-colors">Target Management</h3>
           
@@ -326,7 +327,6 @@ const WorkflowControlPage = () => {
 
         <hr className="border-slate-200 dark:border-slate-800 my-8 transition-colors" />
 
-        {/* --- SECTION 2: MONTHLY DATA SIGN-OFF --- */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col w-full mb-8 transition-colors duration-300">
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between shrink-0 transition-colors">
             <div className="flex items-center">
@@ -464,7 +464,6 @@ const WorkflowControlPage = () => {
           </div>
         </div>
 
-        {/* --- SECTION 3: SYSTEM CHARTS --- */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden mb-6 transition-colors duration-300">
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between transition-colors">
             <div className="flex items-center">
