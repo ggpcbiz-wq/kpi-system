@@ -359,7 +359,7 @@ const ManagerPage = () => {
                             href={data.supporting_data.replace(/^"|"$/g, '')} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="inline-flex items-center mt-2.5 text-[10px] font-bold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/30 px-2.5 py-1.5 rounded border border-brand-200 dark:border-brand-800/50 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-colors shadow-sm"
+                            className="inline-flex items-center mt-2.5 text-[10px] font-bold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-slate-600 px-2.5 py-1.5 rounded border border-brand-200 dark:border-brand-800/50 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-colors shadow-sm"
                             title="View Supporting Evidence"
                           >
                             <FileSpreadsheet size={12} className="mr-1.5" />
