@@ -105,7 +105,7 @@ const MonthlyDataEntryForm = ({ activeTarget, onSuccess, onCancel }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        <div className="bg-brand-50 dark:bg-brand-900/30 border border-brand-200 dark:border-brand-800/50 text-brand-700 dark:text-brand-400 px-4 py-3 rounded-md flex items-start transition-colors">
+        <div className="bg-brand-50 dark:bg-slate-600 border border-brand-200 dark:border-brand-800/50 text-brand-700 dark:text-brand-400 px-4 py-3 rounded-md flex items-start transition-colors">
           <Info size={20} className="mr-3 shrink-0 mt-0.5" />
           <p className="text-sm">
             <strong>Note:</strong> Performance is evaluated strictly on a quarterly basis. Attach supporting evidence below for faster QMR approval.
