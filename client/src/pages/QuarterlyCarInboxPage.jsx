@@ -155,24 +155,28 @@ const QuarterlyCarInboxPage = () => {
     setIsResolveModalOpen(true);
   };
 
-  // --- 2. FETCH FROM KINTONE (Simulation) ---
   const handleFetchKintoneData = async () => {
     if (!kintoneIdInput.trim()) return;
     setIsFetching(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      setFetchedCarData({
-        control_no: kintoneIdInput.toUpperCase(),
-        problem_title: 'Non-achievement of quarterly target as reported by KPI system.',
-        root_cause: 'Root cause analysis extracted from Kintone database...',
-        action_plan: 'Standardized corrective action plan synced from Kintone.',
-        pic: user.name
+      // Securely hit the Node.js proxy, which securely queries Kintone
+      const response = await fetch(`${API_BASE_URL}/api/kintone/car/${encodeURIComponent(kintoneIdInput.trim())}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
+
+      if (!response.ok) {
+        if (response.status === 404) throw new Error("CAR Record not found in Kintone.");
+        throw new Error("Server communication error.");
+      }
+
+      const data = await response.json();
+      setFetchedCarData(data);
       addToast("Successfully connected and synced with Kintone.", "success");
     } catch (error) {
       console.error("Kintone fetch error:", error); 
-      addToast("Failed to fetch data from Kintone. Verify Control No.", "error");
+      addToast(error.message || "Failed to fetch data from Kintone. Verify Control No.", "error");
     } finally {
       setIsFetching(false);
     }

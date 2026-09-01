@@ -140,4 +140,36 @@ const getUniqueDepartments = async () => {
   }
 };
 
-module.exports = { postToKintone, updateKintoneRecord, getEmployeeByEmail, getUniqueDepartments };
+const getCarByControlNumber = async (controlNo) => {
+  const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
+  const CAR_APP_ID = process.env.KINTONE_CAR_APP_ID;
+  const CAR_API_KEY = process.env.KINTONE_CAR_API_KEY;
+
+  if (!KINTONE_DOMAIN || !CAR_APP_ID || !CAR_API_KEY) {
+    throw new Error("Missing Kintone CAR App .env variables.");
+  }
+
+  // Exact match query using the provided field code
+  const query = encodeURIComponent(`control_number = "${controlNo}"`);
+  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${CAR_APP_ID}&query=${query}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'X-Cybozu-API-Token': CAR_API_KEY }
+    });
+
+    if (!response.ok) throw new Error(`Kintone API responded with status: ${response.status}`);
+    
+    const data = await response.json();
+    
+    if (!data.records || data.records.length === 0) return null;
+
+    return data.records[0];
+  } catch (error) {
+    console.error('Kintone CAR Sync Error:', error);
+    throw error;
+  }
+};
+
+module.exports = { postToKintone, updateKintoneRecord, getEmployeeByEmail, getUniqueDepartments, getCarByControlNumber };
