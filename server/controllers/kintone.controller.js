@@ -20,10 +20,10 @@ const fetchCarDetails = async (req, res) => {
       return res.status(404).json({ message: 'CAR Record not found in Kintone.' });
     }
 
-    // Map the Kintone Field Codes to the UI DTO
+    // ✨ ARCHITECTURAL FIX: Flatten the nested Kintone object using your exact field codes
     const mappedData = {
       control_no: kintoneRecord.control_number?.value || controlNo,
-      problem_title: 'Kintone Sync Verified', // Add a field code here if you add a title field later
+      problem_title: kintoneRecord.problem?.value || 'No Problem Title Provided', 
       root_cause: kintoneRecord.root_cause_analysis?.value || 'No Root Cause Provided',
       action_plan: kintoneRecord.proposed_corrective_actions?.value || 'No Action Plan Provided',
       pic: kintoneRecord.corrective_person_in_charge?.value || 'Unassigned'
@@ -36,5 +36,4 @@ const fetchCarDetails = async (req, res) => {
   }
 };
 
-// CRITICAL: Ensure this export exists so the router can import it
 module.exports = { fetchDepartments, fetchCarDetails };
