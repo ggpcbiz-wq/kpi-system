@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { ExternalLink, AlertTriangle } from 'lucide-react';
 import FilterBar from '../components/FilterBar';
+import { API_BASE_URL } from '../services/api';
 
 const CarTrackingPage = () => {
-  const { user } = useAuth();
+  const {  token } = useAuth();
+  const { addToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [carLedger, setCarLedger] = useState([]);
   
@@ -12,35 +15,54 @@ const CarTrackingPage = () => {
   const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All' });
 
   useEffect(() => {
+    if (!token) return;
+    let isMounted = true;
+
     const fetchCarData = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 600)); 
-        setCarLedger([
-          {
-            id: 'd1', period: '2026-05', plant: 'Laguna', metric: '100% On-time delivery',
-            target: '100', actual: '66', kintone_cpar_id: 'CPAR-2026-041',
-            problem_description: 'Non-achievement of 100% OTD for overseas customers.',
-            problem_cause: 'Insufficient parts to ship and recover backlog.',
-            improvement_plan: 'Priority in operation; propose additional machining lines.',
-            pic: 'Sales / Prod', target_completion_date: '2026-12-31', status: 'Approved' 
-          },
-          {
-            id: 'd2', period: '2026-04', plant: 'Cavite', metric: 'Production Yield',
-            target: '95.0', actual: '91.2', kintone_cpar_id: 'CPAR-2026-022',
-            problem_description: 'Porosity issue encountered in production at Gunma Cavite.',
-            problem_cause: 'Mold defects resulting in 70-80% porosity.',
-            improvement_plan: 'Establish new way to check porosity at real-time; mold improvement actions.',
-            pic: 'QA / Mold', target_completion_date: '2026-07-31', status: 'Pending Manager Review'
-          }
-        ]);
+        const timestamp = new Date().getTime();
+        const response = await fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) throw new Error("Failed to fetch ledger data");
+        
+        if (isMounted) {
+          const allSubmissions = await response.json();
+          
+          // ✨ ARCHITECTURAL FIX: Filter to include only submissions with a linked Kintone CAR or pending request
+          const actualCars = allSubmissions
+            .filter(sub => sub.kintone_car_id || sub.status === 'CAR Requested')
+            .map(sub => ({
+              id: sub.id,
+              period: `${sub.report_year}-${String(sub.report_month).padStart(2, '0')}`,
+              plant: sub.plant || 'Unassigned',
+              department: sub.dept_name,
+              metric: sub.metric_name,
+              target: `${sub.operator} ${sub.target_value} ${sub.unit}`,
+              actual: `${sub.actual_value} ${sub.unit}`,
+              kintone_cpar_id: sub.kintone_car_id,
+              problem_description: sub.problem_description || 'Awaiting Kintone Sync...',
+              problem_cause: sub.problem_cause || 'Awaiting Kintone Sync...',
+              improvement_plan: sub.improvement_plan || 'Awaiting Kintone Sync...',
+              pic: sub.pic || '--',
+              target_completion_date: sub.target_completion_date || '--',
+              status: sub.status
+            }));
+
+          setCarLedger(actualCars);
+        }
       } catch (error) {
         console.error("Failed to fetch CAR ledger", error);
+        if (isMounted) addToast("Failed to load CAR ledger.", "error");
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
     fetchCarData();
-  }, [user.departmentId]);
+    
+    return () => { isMounted = false; };
+  }, [token, addToast]);
 
   const formatPeriod = (yyyy_mm) => {
     if (!yyyy_mm) return '';
@@ -49,10 +71,9 @@ const CarTrackingPage = () => {
     return date.toLocaleString('default', { month: 'long', year: 'numeric' });
   };
 
-  // Compound Filtering Logic mapped to the new unified state
   const filteredLedger = carLedger.filter(car => {
     const matchesSearch = !filters.search || 
-      car.kintone_cpar_id.toLowerCase().includes(filters.search.toLowerCase()) ||
+      (car.kintone_cpar_id && car.kintone_cpar_id.toLowerCase().includes(filters.search.toLowerCase())) ||
       car.metric.toLowerCase().includes(filters.search.toLowerCase());
       
     const matchesPlant = filters.plant === 'All' || car.plant === filters.plant;
@@ -74,11 +95,9 @@ const CarTrackingPage = () => {
 
   return (
     <div className="p-4 md:p-8 min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-      {/* MAXIMIZED CONTAINER WIDTH */}
       <div className="max-w-[1600px] mx-auto space-y-6">
         
         <div className="border-b border-slate-200 dark:border-slate-800 pb-6 transition-colors duration-300">
-          {/* ✨ FIX: Applied Bebas Neue typography and brand primary color */}
           <h1 className="text-5xl font-display tracking-tight text-brand-500 dark:text-brand-400 flex items-center uppercase">
             <AlertTriangle className="mr-3 text-brand-500 dark:text-brand-400" size={40} />
             CAR / CPAR TRACKING
@@ -88,14 +107,12 @@ const CarTrackingPage = () => {
           </p>
         </div>
 
-        {/* Reusable Filter Bar injected here (Already dark-mode configured) */}
         <FilterBar 
           filters={filters} 
           onFilterChange={setFilters} 
           config={{ showSearch: true, showPlant: true, showDate: true, showDept: false }} 
         />
 
-        {/* HIGH-DENSITY GRID FOR EXTRA LARGE SCREENS */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
           {filteredLedger.map((car) => (
             <div key={car.id} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden h-full flex flex-col transition-colors duration-300 hover:shadow-md">
@@ -106,7 +123,7 @@ const CarTrackingPage = () => {
                     <p className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center transition-colors">
                       {car.metric}
                       <span className="ml-2 text-[10px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded uppercase tracking-wider border border-slate-200 dark:border-slate-600 transition-colors">
-                        {car.plant}
+                        {car.department}
                       </span>
                     </p>
                   </div>
@@ -127,16 +144,19 @@ const CarTrackingPage = () => {
                   }`}>
                     {car.status}
                   </span>
-                  <a 
-                    href={`https://your-domain.kintone.com/k/car/${car.kintone_cpar_id}`} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="flex items-center px-3 py-1.5 bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/50 rounded-md text-sm font-bold transition-colors border border-brand-200 dark:border-brand-800/50 shrink-0 shadow-sm"
-                    title="Open in Kintone"
-                  >
-                    {car.kintone_cpar_id}
-                    <ExternalLink size={14} className="ml-2" />
-                  </a>
+                  
+                  {car.kintone_cpar_id && (
+                    <a 
+                      href={`https://${import.meta.env.VITE_KINTONE_DOMAIN || 'your-domain.cybozu.com'}/k/car`} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="flex items-center px-3 py-1.5 bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/50 rounded-md text-sm font-bold transition-colors border border-brand-200 dark:border-brand-800/50 shrink-0 shadow-sm"
+                      title="Open in Kintone"
+                    >
+                      {car.kintone_cpar_id}
+                      <ExternalLink size={14} className="ml-2" />
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -156,10 +176,6 @@ const CarTrackingPage = () => {
                 <div>
                   <p className="text-[10px] font-bold text-brand-600/70 dark:text-brand-400/70 uppercase tracking-widest mb-1 transition-colors">PIC</p>
                   <p className="text-slate-800 dark:text-slate-300 font-medium transition-colors">{car.pic}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-brand-600/70 dark:text-brand-400/70 uppercase tracking-widest mb-1 transition-colors">Target Completion</p>
-                  <p className="text-slate-800 dark:text-slate-300 font-medium transition-colors">{car.target_completion_date}</p>
                 </div>
               </div>
             </div>
