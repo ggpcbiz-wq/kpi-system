@@ -369,7 +369,8 @@ const WorkflowControlPage = () => {
                   );
                   const isQtdMissed = qtdAvg.actual !== '--' ? checkIsMissed(qtdAvg.actual, qtdAvg.target, data.operator) : false;
                   
-                  const isEndOfQuarter = data.report_month % 3 === 0;
+                  // const isEndOfQuarter = data.report_month % 3 === 0;
+                  const isEndOfQuarter = true;
 
                   return (
                     <tr key={data.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
