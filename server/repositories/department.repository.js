@@ -28,6 +28,7 @@ class DepartmentRepository {
     }
   }
 
+  // ✨ ARCHITECTURAL FIX: Deeply nested JSON aggregation (Department -> Sections -> Process Types)
   async findAll() {
     const query = `
       SELECT 
@@ -35,12 +36,17 @@ class DepartmentRepository {
         d.name, 
         d.plant,
         COALESCE(
-          (SELECT json_agg(json_build_object('category', dpt.category, 'process_name', dpt.process_name)) 
-           FROM department_process_types dpt WHERE d.id = dpt.department_id), '[]'::json
-        ) as "processTypes",
-        COALESCE(
-          (SELECT json_agg(json_build_object('id', s.id, 'name', s.name, 'segment', s.segment))
-           FROM sections s WHERE d.id = s.department_id), '[]'::json
+          (SELECT json_agg(
+             json_build_object(
+               'id', s.id, 
+               'name', s.name, 
+               'segment', s.segment,
+               'processTypes', COALESCE(
+                 (SELECT json_agg(json_build_object('category', spt.category, 'process_name', spt.process_name))
+                  FROM section_process_types spt WHERE spt.section_id = s.id), '[]'::json
+               )
+             )
+           ) FROM sections s WHERE s.department_id = d.id), '[]'::json
         ) as "sections"
       FROM departments d
       ORDER BY d.name ASC
@@ -49,19 +55,20 @@ class DepartmentRepository {
     return rows;
   }
 
-  async updateProcessTypes(departmentId, processTypes, userId) {
+  // ✨ ARCHITECTURAL FIX: Pointing mutations to the section_process_types table
+  async updateSectionProcessTypes(sectionId, processTypes, userId) {
     const currentMappings = await db.query(
-      'SELECT category, process_name FROM department_process_types WHERE department_id = $1',
-      [departmentId]
+      'SELECT category, process_name FROM section_process_types WHERE section_id = $1',
+      [sectionId]
     );
 
-    await db.query('DELETE FROM department_process_types WHERE department_id = $1', [departmentId]);
+    await db.query('DELETE FROM section_process_types WHERE section_id = $1', [sectionId]);
 
     if (processTypes && processTypes.length > 0) {
       for (const pt of processTypes) {
         await db.query(
-          'INSERT INTO department_process_types (department_id, category, process_name) VALUES ($1, $2, $3)',
-          [departmentId, pt.category, pt.process_name]
+          'INSERT INTO section_process_types (section_id, category, process_name) VALUES ($1, $2, $3)',
+          [sectionId, pt.category, pt.process_name]
         );
       }
     }
@@ -70,8 +77,8 @@ class DepartmentRepository {
       INSERT INTO audit_logs (table_name, record_id, action, changed_by, old_payload, new_payload)
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [
-      'department_process_types',
-      departmentId,
+      'section_process_types',
+      sectionId,
       'UPDATE_PROCESS_MAPPINGS',
       userId,
       JSON.stringify(currentMappings.rows),
