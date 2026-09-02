@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight} from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Layers, SplitSquareHorizontal } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
 import FilterBar from '../components/FilterBar'; 
 import ConfirmModal from '../components/ConfirmModal';
@@ -59,6 +59,7 @@ const TopManagementPage = () => {
           .map(t => ({
             id: t.id, 
             dept: t.dept_name, 
+            section: t.section_name, // ✨ Map Section Dimension
             metric: t.metric_name,
             processCategory: t.process_category,
             processType: t.process_type,
@@ -228,12 +229,20 @@ const TopManagementPage = () => {
             </span>
           </div>
           <div className="overflow-x-auto">
-             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1000px]">
+             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1100px]">
               <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                 <tr>
-                  <th className="px-6 py-4 font-bold">Department</th>
+                  <th className="px-6 py-4 font-bold">
+                    <div className="flex items-center">
+                      <Layers size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Dept
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 font-bold">
+                    <div className="flex items-center">
+                      <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
+                    </div>
+                  </th>
                   <th className="px-6 py-4 font-bold">Metric</th>
-                  {/* ✨ FIX: Separated Headers */}
                   <th className="px-6 py-4 font-bold">Process Type</th>
                   <th className="px-6 py-4 font-bold">Frequency</th>
                   <th className="px-6 py-4 font-bold">Proposed Target</th>
@@ -245,10 +254,9 @@ const TopManagementPage = () => {
                 {filteredTargets.map(target => (
                   <tr key={target.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
                     <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{target.dept}</td>
-                    
+                    <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">{target.section || '--'}</td>
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">{target.metric}</td>
                     
-                    {/* ✨ FIX: Process Type Column */}
                     <td className="px-6 py-4">
                       {target.processCategory && target.processType ? (
                         <div className="flex items-center">
@@ -263,7 +271,6 @@ const TopManagementPage = () => {
                       )}
                     </td>
 
-                    {/* ✨ FIX: Frequency Column */}
                     <td className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
                       {target.frequency || 'Monthly'}
                     </td>
@@ -292,7 +299,7 @@ const TopManagementPage = () => {
                     </td>
                   </tr>
                 ))}
-                {filteredTargets.length === 0 && <tr><td colSpan="7" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending targets match current filters.</td></tr>}
+                {filteredTargets.length === 0 && <tr><td colSpan="8" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending targets match current filters.</td></tr>}
               </tbody>
             </table>
           </div>
