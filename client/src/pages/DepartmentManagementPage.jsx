@@ -103,14 +103,14 @@ const DepartmentManagementPage = () => {
     });
   };
 
-  const handleSubmitMappings = async (e) => {
+ const handleSubmitMappings = async (e) => {
     e.preventDefault();
     if (!selectedSection) return;
 
     setIsSubmitting(true);
     try {
-      // ✨ FIX: Target the new /sections endpoint
-      const res = await fetch(`${API_BASE_URL}/api/sections/${selectedSection.id}/process-types`, {
+      // ✨ ARCHITECTURAL FIX: Align fetch URL with the Express router prefix hierarchy
+      const res = await fetch(`${API_BASE_URL}/api/departments/sections/${selectedSection.id}/process-types`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
