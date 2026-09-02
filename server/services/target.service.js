@@ -9,12 +9,10 @@ const getDashboardTargets = async (user) => {
 const proposeNewTarget = async (data, user) => {
   const activeUserId = user.userId || user.id;
 
-  // 1. Resolve Department ID
   const deptRes = await db.query('SELECT id FROM departments WHERE name = $1', [data.department]);
   if (deptRes.rowCount === 0) throw new Error('Department not found in registry');
   const deptId = deptRes.rows[0].id;
 
-  // 2. ✨ ARCHITECTURAL FIX: Securely resolve Section ID based on Department context
   let secId = null;
   if (data.section) {
     const secRes = await db.query(
@@ -24,9 +22,10 @@ const proposeNewTarget = async (data, user) => {
     if (secRes.rowCount > 0) secId = secRes.rows[0].id;
   }
 
-  // 3. Construct Data Transfer Object
+  // ✨ Incorporate the Objective field into the DTO
   const targetData = {
-    metric_name: data.metric_name,
+    metric_name: data.metric_name, 
+    objective: data.objective,
     target_value: data.target_value,
     operator: data.operator,
     unit: data.unit,
@@ -35,7 +34,7 @@ const proposeNewTarget = async (data, user) => {
     process_type: data.process_type || null,
     frequency: data.frequency || 'Monthly',
     departmentId: deptId,
-    sectionId: secId, // Inject the resolved Section ID
+    sectionId: secId, 
     userId: activeUserId
   };
 

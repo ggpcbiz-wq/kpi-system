@@ -4,11 +4,10 @@ class TargetRepository {
   
   async findAll(userId, role) {
     try {
-      // Administrators bypass row-level security
       if (role === 'Administrator') {
         const { rows } = await db.query(`
           SELECT 
-            t.id, t.metric_name, t.target_value, t.operator, t.unit,
+            t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
             t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
             d.name as dept_name, s.name as section_name, u.name as proposer_name, u.plant       
           FROM kpi_targets t
@@ -20,10 +19,9 @@ class TargetRepository {
         return rows;
       }
 
-      // Dynamically scope targets by joining the user_departments table via userId
       const { rows } = await db.query(`
         SELECT 
-          t.id, t.metric_name, t.target_value, t.operator, t.unit,
+          t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
           t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
           d.name as dept_name, s.name as section_name, u.name as proposer_name, u.plant       
         FROM kpi_targets t
@@ -45,25 +43,25 @@ class TargetRepository {
 
   async create(targetData) {
     const { 
-      metric_name, target_value, operator, unit, departmentId, sectionId, userId, remarks, 
+      metric_name, objective, target_value, operator, unit, departmentId, sectionId, userId, remarks, 
       process_category, process_type, frequency 
     } = targetData;
     
-    // ✨ ARCHITECTURAL FIX: Insert the section_id parameter
+    // ✨ Includes objective in the parameterized query
     const { rows } = await db.query(`
       INSERT INTO kpi_targets (
-        id, department_id, section_id, proposed_by, metric_name, target_value, 
+        id, department_id, section_id, proposed_by, metric_name, objective, target_value, 
         status, remarks, operator, unit, process_category, process_type, frequency, 
         created_at, updated_at
       )
       VALUES (
-        gen_random_uuid(), $1, $2, $3, $4, $5, 
-        'Pending Top Management Approval', $6, $7, $8, $9, $10, $11, 
+        gen_random_uuid(), $1, $2, $3, $4, $5, $6, 
+        'Pending Top Management Approval', $7, $8, $9, $10, $11, $12, 
         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
       )
       RETURNING *
     `, [
-      departmentId, sectionId, userId, metric_name, target_value, remarks, operator, unit, 
+      departmentId, sectionId, userId, metric_name, objective, target_value, remarks, operator, unit, 
       process_category, process_type, frequency
     ]);
 
