@@ -2,17 +2,13 @@ const targetRepository = require('../repositories/target.repository');
 const db = require('../config/db'); 
 
 const getDashboardTargets = async (user) => {
-  const deptNames = user.role === 'Administrator' || user.role === 'Top Management' 
-    ? null 
-    : user.departments; 
-    
-  return await targetRepository.findAll(deptNames);
+  // ✨ FIX: Pass the precise userId to the repository for secure SQL subquery filtering
+  const activeUserId = user.userId || user.id;
+  return await targetRepository.findAll(activeUserId, user.role);
 };
 
 const proposeNewTarget = async (data, user) => {
-  if (user.role === 'Manager' && !user.departments?.includes(data.department)) {
-    throw new Error('Unauthorized department target proposal');
-  }
+  const activeUserId = user.userId || user.id;
 
   const deptRes = await db.query('SELECT id FROM departments WHERE name = $1', [data.department]);
   if (deptRes.rowCount === 0) throw new Error('Department not found in registry');
@@ -27,19 +23,16 @@ const proposeNewTarget = async (data, user) => {
     process_type: data.process_type || null,
     frequency: data.frequency || 'Monthly',
     departmentId: deptRes.rows[0].id,
-    userId: user.id || user.userId
+    userId: activeUserId
   };
 
-  // ✨ FIX: Check out a dedicated client to enforce ACID Transactions
   const client = await db.getClient();
   
   try {
-    await client.query('BEGIN'); // Start Transaction
+    await client.query('BEGIN'); 
 
-    // 1. Create Target
     const newTarget = await targetRepository.create(targetData);
 
-    // 2. Write Audit Log[cite: 10]
     await client.query(`
       INSERT INTO audit_logs (table_name, record_id, action, changed_by, old_payload, new_payload)
       VALUES ($1, $2, $3, $4, $5, $6)
@@ -47,23 +40,24 @@ const proposeNewTarget = async (data, user) => {
       'kpi_targets',
       newTarget.id,
       'CREATED_KPI_TARGET',
-      user.id || user.userId,
+      activeUserId,
       null, 
       JSON.stringify(newTarget)
     ]);
 
-    await client.query('COMMIT'); // Commit both operations atomically
+    await client.query('COMMIT'); 
     return newTarget;
   } catch (error) {
-    await client.query('ROLLBACK'); // Revert KPI insert if Audit fails
+    await client.query('ROLLBACK'); 
     throw error;
   } finally {
-    client.release(); // Return client to the pool
+    client.release(); 
   }
 };
 
 const changeTargetStatus = async (id, status, remarks, user) => {
   const client = await db.getClient();
+  const activeUserId = user.userId || user.id;
   
   try {
     await client.query('BEGIN');
@@ -75,7 +69,6 @@ const changeTargetStatus = async (id, status, remarks, user) => {
 
     const actionString = `STATUS_UPDATED_TO_${status.replace(/\s+/g, '_').toUpperCase()}`;
     
-    // Write Audit Log[cite: 10]
     await client.query(`
       INSERT INTO audit_logs (table_name, record_id, action, changed_by, old_payload, new_payload)
       VALUES ($1, $2, $3, $4, $5, $6)
@@ -83,7 +76,7 @@ const changeTargetStatus = async (id, status, remarks, user) => {
       'kpi_targets',
       id,
       actionString,
-      user.id || user.userId,
+      activeUserId,
       JSON.stringify(oldTarget),
       JSON.stringify(updatedTarget)
     ]);

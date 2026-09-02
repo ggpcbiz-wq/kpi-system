@@ -1,3 +1,8 @@
+/**
+ * Database Configuration & Connection Pool
+ * Handles standard queries and dedicated client checkout for ACID Transactions.
+ */
+
 const { Pool } = require('pg');
 const { Connector } = require('@google-cloud/cloud-sql-connector');
 
@@ -43,8 +48,15 @@ const initPool = async () => {
 };
 
 module.exports = {
+  // Use for standard, single-statement queries where atomicity is not a concern
   query: async (text, params) => {
     const currentPool = await initPool();
     return currentPool.query(text, params);
   },
+  
+  // Use for multi-statement ACID Transactions (Requires manual client.release() in a finally block)
+  getClient: async () => {
+    const currentPool = await initPool();
+    return currentPool.connect(); 
+  }
 };

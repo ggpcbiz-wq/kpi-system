@@ -58,7 +58,9 @@ const ManagerPage = () => {
 
     const fetchManagerData = async () => {
       try {
-        const targetRes = await fetch(`${API_BASE_URL}/api/targets`, {
+        const timestamp = new Date().getTime();
+
+        const targetRes = await fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (targetRes.ok && isMounted) {
@@ -66,7 +68,7 @@ const ManagerPage = () => {
           setProposedTargets(targets);
         }
 
-        const submissionsRes = await fetch(`${API_BASE_URL}/api/submissions`, {
+        const submissionsRes = await fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (submissionsRes.ok && isMounted) {
@@ -89,7 +91,7 @@ const ManagerPage = () => {
           );
         }
 
-        const analyticsRes = await fetch(`${API_BASE_URL}/api/analytics`, {
+        const analyticsRes = await fetch(`${API_BASE_URL}/api/analytics?_t=${timestamp}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (analyticsRes.ok && isMounted) {
@@ -139,10 +141,10 @@ const ManagerPage = () => {
     const maxPage = Math.max(1, Math.ceil(globalFinalizedSubmissions.length / itemsPerPage));
     setCurrentPage(Math.min(Math.max(nextPage, 1), maxPage));
   };
-const handleProposeTarget = async (formData) => {
+
+  const handleProposeTarget = async (formData) => {
     setIsSubmittingTarget(true);
     try {
-      // ✨ FIX: Hydrate the DTO with the missing Process and Frequency dimensions
       const payload = {
         metric_name: formData.metric_name, 
         target_value: parseFloat(formData.target_value),
@@ -150,9 +152,9 @@ const handleProposeTarget = async (formData) => {
         unit: formData.unit,
         department: formData.department, 
         remarks: '',
-        process_category: formData.process_category, // Added
-        process_type: formData.process_type,         // Added
-        frequency: formData.frequency                // Added
+        process_category: formData.process_category, 
+        process_type: formData.process_type,         
+        frequency: formData.frequency                
       };
 
       const response = await fetch(`${API_BASE_URL}/api/targets`, {
@@ -247,7 +249,6 @@ const handleProposeTarget = async (formData) => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 relative font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
       <div className="max-w-[1600px] mx-auto space-y-8">
         
-        {/* Sleek Enterprise Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6 transition-colors duration-300">
           <div>
             <h1 className="text-5xl font-display tracking-tight text-brand-500 dark:text-brand-400 uppercase">
@@ -267,7 +268,6 @@ const handleProposeTarget = async (formData) => {
         />
 
         <div className="flex flex-col space-y-8">
-          
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 sm:p-8 w-full transition-colors duration-300">
             <div className="mb-6">
               <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Propose Department KPI Target</h3>
@@ -281,7 +281,6 @@ const handleProposeTarget = async (formData) => {
           </div>
         </div>
 
-        {/* Action Required: Pending Submissions */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col w-full mb-8 mt-8 transition-colors duration-300">
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between shrink-0 transition-colors">
             <div className="flex items-center">
@@ -360,7 +359,7 @@ const handleProposeTarget = async (formData) => {
                             href={data.supporting_data.replace(/^"|"$/g, '')} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="inline-flex items-center mt-2.5 text-[10px] font-bold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/30 px-2.5 py-1.5 rounded border border-brand-200 dark:border-brand-800/50 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-colors shadow-sm"
+                            className="inline-flex items-center mt-2.5 text-[10px] font-bold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-slate-600 px-2.5 py-1.5 rounded border border-brand-200 dark:border-brand-800/50 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-colors shadow-sm"
                             title="View Supporting Evidence"
                           >
                             <FileSpreadsheet size={12} className="mr-1.5" />
@@ -388,7 +387,6 @@ const handleProposeTarget = async (formData) => {
           </div>
         </div>
 
-        {/* Charts Container Widget */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden mb-8 transition-colors duration-300">
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
             <div className="flex items-center">
@@ -444,17 +442,16 @@ const handleProposeTarget = async (formData) => {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center text-center py-12">
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-full mb-4 border border-slate-100 dark:border-slate-700 transition-colors">
-                  <BarChart3 size={32} className="text-slate-300 dark:text-slate-600" />
+                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-full border border-slate-100 dark:border-slate-700 mb-4 transition-colors">
+                  <BarChart3 size={32} className="text-slate-300 dark:text-slate-600 transition-colors" />
                 </div>
-                <h4 className="text-slate-700 dark:text-slate-300 font-semibold mb-1">No Chart Data</h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">No submission data available for this metric yet.</p>
+                <h4 className="text-slate-700 dark:text-slate-300 font-semibold mb-1 transition-colors">No Chart Data</h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium transition-colors">No submission data available for this metric yet.</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Global Finalized Submissions Table Component */}
         <FinalizedSubmissionsTable
           rows={globalFinalizedSubmissions}
           emptyText="No finalized submissions available across the company yet."

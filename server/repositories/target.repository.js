@@ -1,10 +1,11 @@
 const db = require('../config/db');
 
 class TargetRepository {
-  // ✨ FIX: Renamed parameter to deptNames and updated the SQL WHERE clause
-  async findAll(deptNames) {
+  
+  async findAll(userId, role) {
     try {
-      if (deptNames === null) {
+      // Administrators bypass row-level security
+      if (role === 'Administrator') {
         const { rows } = await db.query(`
           SELECT 
             t.id, t.metric_name, t.target_value, t.operator, t.unit,
@@ -18,6 +19,8 @@ class TargetRepository {
         return rows;
       }
 
+      // ✨ ARCHITECTURAL FIX: Dynamically scope targets by joining the user_departments table via userId
+      // This strictly limits Top Management (and Managers) to targets within their actual jurisdiction.
       const { rows } = await db.query(`
         SELECT 
           t.id, t.metric_name, t.target_value, t.operator, t.unit,
@@ -26,9 +29,11 @@ class TargetRepository {
         FROM kpi_targets t
         LEFT JOIN departments d ON t.department_id = d.id
         LEFT JOIN users u ON t.proposed_by = u.id
-        WHERE d.name = ANY($1) -- ✨ FIX: Compare against department name (String), not ID (UUID)
+        WHERE t.department_id IN (
+            SELECT department_id FROM user_departments WHERE user_id = $1
+        )
         ORDER BY t.created_at DESC
-      `, [deptNames]);
+      `, [userId]);
 
       return rows;
     } catch (error) {

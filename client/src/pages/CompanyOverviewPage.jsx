@@ -31,15 +31,21 @@ const CompanyOverviewPage = () => {
 
     const fetchOverviewData = async () => {
       try {
+        // ✨ FIX 1: Implemented timestamp cache-busting to prevent 304 Not Modified stale data
+        const timestamp = new Date().getTime();
         const [targetRes, subRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/targets`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/api/submissions`, { headers: { 'Authorization': `Bearer ${token}` } })
+          fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
 
         if (targetRes.ok && subRes.ok && isMounted) {
           setRawTargets(await targetRes.json());
           const submissions = await subRes.json();
-          setRawSubmissions(submissions.filter(s => s.status === 'Approved' || s.status === 'CAR Requested'));
+          
+          // ✨ FIX 2: Expanded visibility to include pending submissions so charts reflect real-time data
+          setRawSubmissions(submissions.filter(s => 
+            ['Approved', 'CAR Requested', 'Locked - Pending Manager Review', 'Locked - Pending QMR Sign-Off'].includes(s.status)
+          ));
         }
       } catch (error) {
         console.error("Failed to fetch overview data:", error);
@@ -128,7 +134,6 @@ const CompanyOverviewPage = () => {
   const handlePrevChart = () => setCurrentChartIndex(prev => (prev > 0 ? prev - 1 : visibleChartDataEntries.length - 1));
   const handleNextChart = () => setCurrentChartIndex(prev => (prev < visibleChartDataEntries.length - 1 ? prev + 1 : 0));
 
-  // Auto-scroll logic for the carousel
   useEffect(() => {
     if (visibleChartDataEntries.length <= 1) return;
 
@@ -156,7 +161,6 @@ const CompanyOverviewPage = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 relative font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
       <div className="max-w-[1600px] mx-auto space-y-6"> 
         
-        {/* Sleek Enterprise Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4 transition-colors duration-300">
           <div>
             <div className="flex items-center space-x-3 mb-1">
@@ -174,7 +178,6 @@ const CompanyOverviewPage = () => {
           
           <div className="flex items-center text-xs font-medium bg-white dark:bg-slate-800 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm transition-colors duration-300">
             <span className="text-slate-500 dark:text-slate-400 mr-2 transition-colors">Overall Health:</span>
-            {/* ✨ FIX: Mapped to global semantic variables with dark mode translucent overlays */}
             <div className={`flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border transition-colors ${
                 filteredSubmissions.length === 0 ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700' : 
                 achievementRate >= 80 ? 'bg-jira-success-bg dark:bg-jira-success/20 text-jira-success border-jira-success/30 dark:border-jira-success/30' : 
@@ -196,9 +199,7 @@ const CompanyOverviewPage = () => {
           departments={allDepartments} 
         />
 
-        {/* Compact Analytics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex flex-col justify-between h-24 relative overflow-hidden transition-all duration-300 hover:shadow-md">
             <div className="flex justify-between items-start">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider transition-colors">Active Targets</span>
@@ -240,12 +241,9 @@ const CompanyOverviewPage = () => {
               {filters.department === 'All' ? allDepartments.length : 1}
             </div>
           </div>
-
         </div>
 
-        {/* Expanded Trends Carousel */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col overflow-hidden transition-colors duration-300">
-          
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
             <div className="flex items-center">
               <div className="w-1.5 h-4 bg-brand-600 dark:bg-brand-500 rounded-full mr-3"></div>
@@ -258,7 +256,6 @@ const CompanyOverviewPage = () => {
                 Chart {visibleChartDataEntries.length > 0 ? currentChartIndex + 1 : 0} of {visibleChartDataEntries.length}
               </span>
               
-              {/* Sleek Carousel Controls */}
               {visibleChartDataEntries.length > 1 && (
                 <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md p-0.5 shadow-sm transition-colors">
                   <button onClick={handlePrevChart} className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors">
@@ -276,7 +273,6 @@ const CompanyOverviewPage = () => {
           <div className="p-6 relative flex flex-col items-center justify-center min-h-150 w-full">
             {visibleChartDataEntries.length > 0 ? (
               <div className="w-full max-w-350 h-full flex flex-col items-center animate-in fade-in duration-500 flex-1">
-                
                 <div className="w-full px-2 sm:px-4 flex-1 flex flex-col">
                   <PerformanceChart 
                     data={visibleChartDataEntries[currentChartIndex].data} 

@@ -5,7 +5,6 @@ import { useToast } from '../context/ToastContext';
 import { Inbox, AlertTriangle, Link as LinkIcon, CheckCircle, Send, Search, Loader2, CalendarClock, ArrowRight, X } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 
-// --- HELPERS ---
 const getQuarterText = (year, month) => {
   const q = Math.ceil(month / 3);
   const ranges = { 1: '(Jan - Mar)', 2: '(Apr - Jun)', 3: '(Jul - Sep)', 4: '(Oct - Dec)' };
@@ -60,7 +59,6 @@ const QuarterlyCarInboxPage = () => {
   const [globalChartData, setGlobalChartData] = useState({});
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  // Modal & Fetch State
   const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
   const [activeItem, setActiveItem] = useState(null);
   
@@ -69,7 +67,6 @@ const QuarterlyCarInboxPage = () => {
   const [fetchedCarData, setFetchedCarData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // TIMING LOGIC
   const today = new Date();
   const currentDay = today.getDate();
   let expectedReportMonth = today.getMonth(); 
@@ -82,17 +79,17 @@ const QuarterlyCarInboxPage = () => {
   
   const isFirstWeek = currentDay >= 1 && currentDay <= 7;
 
-  // --- 1. FETCH LIVE INBOX DATA ---
   useEffect(() => {
     if (!token) return;
     let isMounted = true;
 
     const fetchInbox = async () => {
       try {
+        const timestamp = new Date().getTime();
         const [subRes, analyticsRes, targetRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/submissions`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/api/analytics`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/api/targets`, { headers: { 'Authorization': `Bearer ${token}` } })
+          fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/api/analytics?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
         
         if (subRes.ok && isMounted) {
@@ -108,7 +105,6 @@ const QuarterlyCarInboxPage = () => {
           });
           setPendingCARs(myPendingCARs);
 
-          // Generate Reminders for Missing Data (First Week Only)
           if (isFirstWeek && targetRes.ok) {
             const allTargets = await targetRes.json();
             
@@ -155,30 +151,34 @@ const QuarterlyCarInboxPage = () => {
     setIsResolveModalOpen(true);
   };
 
-  // --- 2. FETCH FROM KINTONE (Simulation) ---
+  // ARCHITECTURAL FIX: Replaced mock timeout with secure backend proxy fetch
   const handleFetchKintoneData = async () => {
     if (!kintoneIdInput.trim()) return;
     setIsFetching(true);
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      setFetchedCarData({
-        control_no: kintoneIdInput.toUpperCase(),
-        problem_title: 'Non-achievement of quarterly target as reported by KPI system.',
-        root_cause: 'Root cause analysis extracted from Kintone database...',
-        action_plan: 'Standardized corrective action plan synced from Kintone.',
-        pic: user.name
+      const timestamp = new Date().getTime();
+      const response = await fetch(`${API_BASE_URL}/api/kintone/car/${encodeURIComponent(kintoneIdInput.trim())}?_t=${timestamp}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
+
+      if (!response.ok) {
+        if (response.status === 404) throw new Error("CAR Record not found in Kintone.");
+        throw new Error("Server communication error.");
+      }
+
+      const data = await response.json();
+      setFetchedCarData(data);
       addToast("Successfully connected and synced with Kintone.", "success");
     } catch (error) {
       console.error("Kintone fetch error:", error); 
-      addToast("Failed to fetch data from Kintone. Verify Control No.", "error");
+      addToast(error.message || "Failed to fetch data from Kintone. Verify Control No.", "error");
     } finally {
       setIsFetching(false);
     }
   };
 
-  // --- 3. SUBMIT / CLOSE THE LOOP ---
   const handleSubmitResolution = async (e) => {
     e.preventDefault();
     if (!fetchedCarData) return;
@@ -230,7 +230,6 @@ const QuarterlyCarInboxPage = () => {
     <div className="p-4 md:p-8 min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
       <div className="max-w-[1600px] mx-auto space-y-6">
         
-        {/* Header */}
         <div className="border-b border-slate-200 dark:border-slate-800 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4 transition-colors duration-300">
           <div>
             <h1 className="text-5xl font-display tracking-tight text-brand-500 dark:text-brand-400 flex items-center uppercase">
@@ -249,10 +248,8 @@ const QuarterlyCarInboxPage = () => {
           )}
         </div>
 
-        {/* HIGH-DENSITY INBOX LIST GRID */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pt-2">
           
-          {/* DATA SUBMISSION REMINDERS (Only visible days 1-7) */}
           {pendingReminders.map(target => (
             <div key={`reminder-${target.id}`} className="bg-white dark:bg-slate-800 rounded-xl border border-amber-200 dark:border-amber-800/30 shadow-sm p-6 flex flex-col md:flex-row md:items-start justify-between gap-4 border-l-4 border-l-amber-500 hover:shadow-md transition-all duration-300">
               <div className="flex-1">
@@ -282,7 +279,6 @@ const QuarterlyCarInboxPage = () => {
             </div>
           ))}
 
-          {/* CAR LINKING REQUESTS */}
           {pendingCARs.map((item) => {
             const qtdAvg = getQuarterlyAverage(item.dept_name, item.metric_name, item.report_month, globalChartData);
             const quarterText = getQuarterText(item.report_year, item.report_month);
@@ -326,7 +322,6 @@ const QuarterlyCarInboxPage = () => {
           )}
         </div>
 
-        {/* AUTOMATED RESOLUTION MODAL */}
         {isResolveModalOpen && activeItem && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-900/80 backdrop-blur-sm overflow-y-auto transition-all duration-300">
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden my-8 animate-in zoom-in-95 duration-200 transition-colors">
@@ -347,7 +342,6 @@ const QuarterlyCarInboxPage = () => {
                   <span className="text-slate-500 dark:text-slate-400">Actual: <strong className="text-rose-600 dark:text-rose-400">{activeItem.qtdAvg?.actual} {activeItem.unit}</strong></span>
                 </div>
 
-                {/* 1. Fetch Interface */}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 transition-colors">Kintone Control No. <span className="text-rose-500 dark:text-rose-400">*</span></label>
                   <div className="flex space-x-3">
@@ -382,7 +376,6 @@ const QuarterlyCarInboxPage = () => {
                   <p className="text-xs font-medium text-slate-400 dark:text-slate-500 mt-2 transition-colors">Enter the ID to pull the official report from Kintone.</p>
                 </div>
 
-                {/* 2. Read-Only Verification Display */}
                 {fetchedCarData && (
                   <div className="bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800/50 rounded-xl p-6 space-y-5 animate-in fade-in slide-in-from-top-2 duration-300 transition-colors">
                     <div className="flex items-center text-brand-700 dark:text-brand-400 font-bold border-b border-brand-200 dark:border-brand-800/50 pb-3 transition-colors">
@@ -411,7 +404,6 @@ const QuarterlyCarInboxPage = () => {
                   </div>
                 )}
 
-                {/* 3. Final Submission */}
                 <div className="pt-6 mt-8 border-t border-slate-100 dark:border-slate-700 flex justify-end space-x-3 transition-colors">
                   <button type="button" onClick={() => setIsResolveModalOpen(false)} className="px-5 py-2.5 text-sm font-bold bg-white dark:bg-slate-800 border rounded-lg text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                     Cancel

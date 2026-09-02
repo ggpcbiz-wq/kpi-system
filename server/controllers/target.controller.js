@@ -3,7 +3,10 @@ const targetService = require('../services/target.service');
 const getTargets = async (req, res) => {
   try {
     // 1. RBAC Context Validation
-    if (!req.user || !req.user.id) {
+    // ✨ FIX: Support both 'userId' (JWT) and 'id' (Session) payload structures
+    const activeUserId = req.user?.userId || req.user?.id;
+    
+    if (!req.user || !activeUserId) {
       return res.status(401).json({ message: 'Unauthorized. Invalid user context.' });
     }
 
@@ -13,7 +16,6 @@ const getTargets = async (req, res) => {
     // 3. Respond
     return res.status(200).json(targets);
   } catch (error) {
-    // Extensive error boundary logging for GCP Cloud Run debugging
     console.error('[Target Controller Error] Failed to fetch targets:', error.message, error.stack);
     return res.status(500).json({ 
       message: 'Failed to fetch KPI targets. Check backend logs for SQL exceptions.' 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { UserPlus, Search, Edit, Trash2, ShieldCheck, SearchCode, CheckCircle2, X } from 'lucide-react';
+import { UserPlus, Search, Edit, Trash2, ShieldCheck, SearchCode, X } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 import { API_BASE_URL } from '../services/api';
 
@@ -15,7 +15,7 @@ const UserManagementPage = () => {
   const [roleFilter, setRoleFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
 
-  const roles = ['Administrator', 'Top Management', 'Manager', 'Supervisor'];
+  const roles = ['Administrator', 'Top Management', 'Manager', 'Assistant Manager', 'Acting Assistant Managers', 'Senior Supervisor', 'Acting Supervisor'];
   const departments = ['GLOBAL', 'DX Driving Force', 'Finance & Accounting', 'Corporate Administration',  'Sales & Purchasing', 'Info. Resources Management', 'Quality Management', 'Laguna Plant', 'Cavite Plant', 'Plant Management', 'Tooling Process Development'];  
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -113,21 +113,38 @@ const UserManagementPage = () => {
     setForceGlobal(false);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users/lookup?email=${encodeURIComponent(lookupEmail)}`, {
+      const timestamp = new Date().getTime();
+      const response = await fetch(`${API_BASE_URL}/api/users/lookup?email=${encodeURIComponent(lookupEmail)}&_t=${timestamp}`, {
+        method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (!response.ok) {
         if (response.status === 404) throw new Error('Employee not found in Kintone.');
-        throw new Error('Failed to communicate with Kintone server.');
+        throw new Error('Failed to communicate with the server.');
       }
 
       const emp = await response.json();
       
-      let mappedRole = '';
-      if (emp.designation === 'Division Manager') mappedRole = 'Top Management';
-      else if (emp.designation === 'Manager') mappedRole = 'Manager';
-      else if (emp.designation === 'Supervisor') mappedRole = 'Supervisor';
+      const designationToRoleMap = {
+        'Division Manager': 'Top Management',
+        'Manager': 'Manager',
+        'Assistant Manager': 'Assistant Manager',
+        'Acting Assistant Managers': 'Acting Assistant Managers',
+        'Senior Supervisor': 'Senior Supervisor',
+        'Acting Supervisor': 'Acting Supervisor',
+        'Supervisor': 'Supervisor'
+      };
+
+      let finalRole = '';
+      if (emp.role && emp.role !== 'Unassigned') {
+        finalRole = emp.role;
+      } else {
+        finalRole = designationToRoleMap[emp.designation] || ''; 
+      }
+
+      const isAdmin = finalRole === 'Administrator';
+      setForceAdmin(isAdmin);
 
       const rawKintoneDept = emp.department ? emp.department.trim() : '';
       const matchedDept = departments.find(d => d.toLowerCase() === rawKintoneDept.toLowerCase());
@@ -135,8 +152,10 @@ const UserManagementPage = () => {
       
       setOriginalDept(finalBaseDept); 
 
-      const isTopMgmt = mappedRole === 'Top Management';
-      setForceGlobal(isTopMgmt);
+      // ARCHITECTURE FIX: Top Management retains actual department[cite: 20]. 
+      // Only force 'GLOBAL' if it was explicitly granted in the DB.
+      const isAlreadyGlobal = emp.assignedDepartments && emp.assignedDepartments.includes('GLOBAL');
+      setForceGlobal(isAlreadyGlobal);
 
       const toTitleCase = (str) => {
         if (!str) return '';
@@ -147,17 +166,18 @@ const UserManagementPage = () => {
         id: null,
         email: lookupEmail,
         name: `${toTitleCase(emp.firstName)} ${toTitleCase(emp.lastName)}`.trim(),
-        departments: isTopMgmt ? ['GLOBAL'] : (finalBaseDept ? [finalBaseDept] : []),
+        departments: isAlreadyGlobal ? ['GLOBAL'] : (emp.assignedDepartments?.length > 0 ? emp.assignedDepartments : (finalBaseDept ? [finalBaseDept] : [])),
         plant: emp.plant,
-        role: mappedRole,
-        status: 'Active'
+        role: finalRole,
+        status: emp.status || 'Active'
       });
       
       setIsLookupSuccessful(true);
-      addToast('Employee details retrieved successfully!', 'success');
       
-      if (!mappedRole) {
-        addToast('Designation not recognized. Please assign role manually.', 'info');
+      if (finalRole) {
+        addToast(`Employee found. Role auto-mapped to ${finalRole}. You may override if needed.`, 'success');
+      } else {
+        addToast('Employee found. Designation not recognized; please assign a role manually.', 'info');
       }
 
     } catch (error) {
@@ -194,18 +214,24 @@ const UserManagementPage = () => {
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) throw new Error('Operation failed');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Backend operation failed with status ${response.status}`);
+      }
+
+      const savedUser = await response.json();
       
-      const refreshResponse = await fetch(`${API_BASE_URL}/api/users`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setUsersList(await refreshResponse.json());
+      if (isEditing) {
+        setUsersList(prev => prev.map(u => u.id === savedUser.id ? savedUser : u));
+      } else {
+        setUsersList(prev => [savedUser, ...prev]);
+      }
 
       addToast(`User ${formData.name} successfully ${isEditing ? 'updated' : 'created'}.`, 'success');
       setIsModalOpen(false);
     } catch (error) {
-      console.error(error);
-      addToast('Failed to save user data', 'error');
+      console.error('Submission Error:', error);
+      addToast(error.message, 'error');
     }
   };
 
@@ -477,19 +503,30 @@ const UserManagementPage = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
-                  <div>
+               <div>
                     <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Mapped Portal Role</label>
-                    <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-200 transition-colors">
-                      {forceAdmin ? (
-                        <><ShieldCheck size={18} className="mr-2.5 text-brand-600 dark:text-brand-400"/> Administrator</>
-                      ) : formData.role ? (
-                        <><CheckCircle2 size={18} className="mr-2.5 text-jira-success"/> {formData.role}</>
-                      ) : (
-                        <span className="text-slate-400 dark:text-slate-500 font-medium">Pending...</span>
-                      )}
-                    </div>
+                    {forceAdmin ? (
+                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-brand-200 dark:border-brand-800/50 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 transition-colors">
+                        <ShieldCheck size={18} className="mr-2.5 text-brand-600 dark:text-brand-400"/> Administrator
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <select 
+                          className={`w-full px-4 py-2.5 text-sm font-semibold border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 bg-white dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 transition-colors appearance-none ${!formData.role ? 'border-amber-400 dark:border-amber-500/50 ring-1 ring-amber-400/50' : 'border-slate-200 dark:border-slate-700'}`}
+                          value={formData.role} 
+                          onChange={(e) => setFormData({...formData, role: e.target.value})}
+                        >
+                          <option value="" disabled>Select a role...</option>
+                          {roles.filter(r => r !== 'Administrator').map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-500">
+                          <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                    
                   <div>
                     <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Assigned Department</label>
                     <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 transition-colors">
