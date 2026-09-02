@@ -147,7 +147,7 @@ const CarTrackingPage = () => {
                   
                   {car.kintone_cpar_id && (
                     <a 
-                      href={`https://${import.meta.env.VITE_KINTONE_DOMAIN || 'your-domain.cybozu.com'}/k/1915/show#record=${car.kintone_cpar_id}`} 
+                      href={`https://${import.meta.env.VITE_KINTONE_DOMAIN || 'vez7o26y38rb.cybozu.com/'}/k/1915`} 
                       target="_blank" 
                       rel="noreferrer"
                       className="flex items-center px-3 py-1.5 bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/50 rounded-md text-sm font-bold transition-colors border border-brand-200 dark:border-brand-800/50 shrink-0 shadow-sm"
