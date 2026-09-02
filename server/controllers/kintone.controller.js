@@ -20,7 +20,11 @@ const fetchCarDetails = async (req, res) => {
       return res.status(404).json({ message: 'CAR Record not found in Kintone.' });
     }
 
-    // 1. Initialize variables (Checking root level first in case they aren't in subtables)
+    // ✨ DIAGNOSTIC INJECTION: Print the EXACT payload to your VSCode terminal
+    console.log("========== KINTONE RAW RECORD ==========");
+    console.log(JSON.stringify(kintoneRecord, null, 2));
+    console.log("========================================");
+
     let extractedRootCause = kintoneRecord.root_cause_analysis?.value || null;
     let extractedActionPlan = kintoneRecord.proposed_corrective_actions?.value || null;
     let extractedPic = null;
@@ -34,12 +38,10 @@ const fetchCarDetails = async (req, res) => {
       }
     }
 
-    // 2. ✨ ARCHITECTURAL FIX: Globally traverse ALL Kintone Subtables without breaking early
     for (const fieldKey in kintoneRecord) {
       const field = kintoneRecord[fieldKey];
       
       if (field.type === 'SUBTABLE' && Array.isArray(field.value) && field.value.length > 0) {
-        // Iterate through rows to find the data
         for (const row of field.value) {
           const rowData = row.value;
           
@@ -63,7 +65,6 @@ const fetchCarDetails = async (req, res) => {
       }
     }
 
-    // 3. Map safely to the frontend DTO
     const mappedData = {
       control_no: kintoneRecord.control_number?.value || controlNo,
       problem_title: kintoneRecord.problem?.value || 'No Problem Title Provided', 
