@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Info, FileSpreadsheet } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Info, FileSpreadsheet, Layers, SplitSquareHorizontal } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
 import TargetProposalForm from '../components/TargetProposalForm';
 import TargetListTable from '../components/TargetListTable'; 
@@ -142,8 +142,6 @@ const ManagerPage = () => {
     setCurrentPage(Math.min(Math.max(nextPage, 1), maxPage));
   };
 
- // ... inside client/src/pages/ManagerPage.jsx
-
   const handleProposeTarget = async (formData) => {
     setIsSubmittingTarget(true);
     try {
@@ -153,7 +151,7 @@ const ManagerPage = () => {
         operator: formData.operator, 
         unit: formData.unit,
         department: formData.department, 
-        section: formData.section, // ✨ Pass Section dimension to payload
+        section: formData.section,
         remarks: '',
         process_category: formData.process_category, 
         process_type: formData.process_type,         
@@ -298,10 +296,19 @@ const ManagerPage = () => {
           </div>
           
           <div className="overflow-x-auto">
-             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-250">
+             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1200px]">
               <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                 <tr>
-                  <th className="px-6 py-4 font-bold">Department</th>
+                  <th className="px-6 py-4 font-bold">
+                    <div className="flex items-center">
+                      <Layers size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Dept
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 font-bold">
+                    <div className="flex items-center">
+                      <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
+                    </div>
+                  </th>
                   <th className="px-6 py-4 font-bold">Metric (Month)</th>
                   <th className="px-6 py-4 font-bold">Target</th>
                   <th className="px-6 py-4 font-bold">Actual</th>
@@ -320,6 +327,7 @@ const ManagerPage = () => {
                   return (
                     <tr key={data.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
                       <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{data.dept_name || 'Unassigned'}</td>
+                      <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">{data.section_name || '--'}</td>
                       <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
                         {data.metric_name} 
                         <span className="block text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">({getMonthName(data.report_month)})</span>
@@ -384,7 +392,7 @@ const ManagerPage = () => {
                     </tr>
                   )
                 })}
-                {pendingData.length === 0 && <tr><td colSpan="7" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending submissions match your filter.</td></tr>}
+                {pendingData.length === 0 && <tr><td colSpan="8" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending submissions match your filter.</td></tr>}
               </tbody>
             </table>
           </div>
