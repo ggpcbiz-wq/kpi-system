@@ -142,6 +142,8 @@ const ManagerPage = () => {
     setCurrentPage(Math.min(Math.max(nextPage, 1), maxPage));
   };
 
+ // ... inside client/src/pages/ManagerPage.jsx
+
   const handleProposeTarget = async (formData) => {
     setIsSubmittingTarget(true);
     try {
@@ -151,6 +153,7 @@ const ManagerPage = () => {
         operator: formData.operator, 
         unit: formData.unit,
         department: formData.department, 
+        section: formData.section, // ✨ Pass Section dimension to payload
         remarks: '',
         process_category: formData.process_category, 
         process_type: formData.process_type,         

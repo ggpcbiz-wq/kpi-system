@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Target, Send, Building2, Briefcase, CalendarClock, Layers } from 'lucide-react';
+import { Target, Send, Building2, Briefcase, CalendarClock, Layers, SplitSquareHorizontal } from 'lucide-react';
 import { useToast } from '../context/ToastContext'; 
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../services/api';
@@ -20,6 +20,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
   const [formData, setFormData] = useState({ 
     plant: user?.plant || 'Laguna Plant',
     department: managerDepartments[0], 
+    section: '',
     frequency: 'Monthly',
     process_category: '',
     process_type: '',
@@ -29,7 +30,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
     unit: '%'      
   });
 
-  // Fetch department mappings from backend to populate allowed process types
+  // Fetch department & section hierarchy from backend
   useEffect(() => {
     let isMounted = true;
     const fetchDeptMappings = async () => {
@@ -38,7 +39,14 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok && isMounted) {
-          setDeptMappings(await res.json());
+          const data = await res.json();
+          setDeptMappings(data);
+          
+          // Auto-select first section if available
+          const initialDept = data.find(d => d.name === managerDepartments[0]);
+          if (initialDept && initialDept.sections && initialDept.sections.length > 0) {
+            setFormData(prev => ({ ...prev, section: initialDept.sections[0].name }));
+          }
         }
       } catch (error) {
         console.error("Failed to load department mappings", error);
@@ -48,15 +56,32 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
     return () => { isMounted = false; };
   }, [token]);
 
-  // Compute available processes based on the currently selected department
-  const selectedDeptMapping = deptMappings.find(d => d.name === formData.department);
-  const availableProcesses = selectedDeptMapping?.processTypes || [];
+  // Compute active Department and active Section models
+  const selectedDeptModel = deptMappings.find(d => d.name === formData.department);
+  const availableSections = selectedDeptModel?.sections || [];
+  
+  const selectedSectionModel = availableSections.find(s => s.name === formData.section);
+  const availableProcesses = selectedSectionModel?.processTypes || [];
 
   const handleDepartmentChange = (e) => {
+    const newDeptName = e.target.value;
+    const newDeptModel = deptMappings.find(d => d.name === newDeptName);
+    const firstSection = newDeptModel?.sections?.[0]?.name || '';
+
     setFormData({
       ...formData, 
-      department: e.target.value,
-      process_category: '', // Reset process selections if department changes
+      department: newDeptName,
+      section: firstSection,
+      process_category: '',
+      process_type: ''
+    });
+  };
+
+  const handleSectionChange = (e) => {
+    setFormData({
+      ...formData,
+      section: e.target.value,
+      process_category: '',
       process_type: ''
     });
   };
@@ -74,9 +99,8 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Strict validation to ensure Process Type is sent to the backend
     if (!formData.process_category || !formData.process_type) {
-      addToast('Please select a mapped Process Type for this target.', 'error');
+      addToast('Please select an ISO Process Type mapped to this Section.', 'error');
       return;
     }
     
@@ -87,7 +111,6 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
     
     onSubmit(finalData);
     
-    // Reset form state after successful submission
     setFormData(prev => ({ 
       ...prev,
       process_category: '',
@@ -100,8 +123,8 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       
-      {/* ROW 1: Context Setup (Plant & Department) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {/* ROW 1: Context Setup (Plant, Department, Section) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div>
           <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
             Plant Location
@@ -148,9 +171,35 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
             )}
           </div>
         </div>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
+            Section <span className="text-rose-600 dark:text-rose-400">*</span>
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <SplitSquareHorizontal size={16} className={availableSections.length > 0 ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500"} />
+            </div>
+            <select 
+              required
+              disabled={availableSections.length === 0}
+              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 disabled:bg-slate-50 dark:disabled:bg-slate-800/50 appearance-none cursor-pointer transition-colors shadow-sm"
+              value={formData.section}
+              onChange={handleSectionChange}
+            >
+              {availableSections.length > 0 ? (
+                availableSections.map(sec => (
+                  <option key={sec.id} value={sec.name}>{sec.name} ({sec.segment})</option>
+                ))
+              ) : (
+                <option value="">-- No Sections Found --</option>
+              )}
+            </select>
+          </div>
+        </div>
       </div>
 
-      {/* ROW 2: Analytical Dimensions (Frequency & Process Type) */}
+      {/* ROW 2: Analytical Dimensions (Frequency & Section-Mapped Process) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
@@ -174,7 +223,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
 
         <div>
           <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
-            Assigned Process Type <span className="text-rose-600 dark:text-rose-400">*</span>
+            Assigned Section Process Type <span className="text-rose-600 dark:text-rose-400">*</span>
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -188,7 +237,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
               onChange={handleProcessChange}
             >
               <option value="|" disabled>
-                {availableProcesses.length > 0 ? '-- Select Mapped Process --' : '-- No Processes Mapped to Dept --'}
+                {availableProcesses.length > 0 ? '-- Select Mapped Process --' : '-- No Processes Mapped to Section --'}
               </option>
               {availableProcesses.map(p => (
                 <option key={`${p.category}|${p.process_name}`} value={`${p.category}|${p.process_name}`}>
@@ -266,7 +315,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
       <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-700/50 mt-8 transition-colors">
         <button 
           type="submit" 
-          disabled={isSubmitting || !formData.metric_name || !formData.target_value || !formData.process_type}
+          disabled={isSubmitting || !formData.metric_name || !formData.target_value || !formData.process_type || !formData.section}
           className="flex items-center bg-brand-600 dark:bg-brand-500 hover:bg-brand-700 dark:hover:bg-brand-600 text-white text-sm font-bold py-2.5 px-6 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? 'Routing...' : <><Send size={16} className="mr-2" /> Route for Approval</>}
