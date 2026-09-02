@@ -2,7 +2,6 @@ const targetRepository = require('../repositories/target.repository');
 const db = require('../config/db'); 
 
 const getDashboardTargets = async (user) => {
-  // ✨ FIX: Pass the precise userId to the repository for secure SQL subquery filtering
   const activeUserId = user.userId || user.id;
   return await targetRepository.findAll(activeUserId, user.role);
 };
@@ -10,9 +9,22 @@ const getDashboardTargets = async (user) => {
 const proposeNewTarget = async (data, user) => {
   const activeUserId = user.userId || user.id;
 
+  // 1. Resolve Department ID
   const deptRes = await db.query('SELECT id FROM departments WHERE name = $1', [data.department]);
   if (deptRes.rowCount === 0) throw new Error('Department not found in registry');
+  const deptId = deptRes.rows[0].id;
 
+  // 2. ✨ ARCHITECTURAL FIX: Securely resolve Section ID based on Department context
+  let secId = null;
+  if (data.section) {
+    const secRes = await db.query(
+      'SELECT id FROM sections WHERE name = $1 AND department_id = $2', 
+      [data.section, deptId]
+    );
+    if (secRes.rowCount > 0) secId = secRes.rows[0].id;
+  }
+
+  // 3. Construct Data Transfer Object
   const targetData = {
     metric_name: data.metric_name,
     target_value: data.target_value,
@@ -22,7 +34,8 @@ const proposeNewTarget = async (data, user) => {
     process_category: data.process_category || null,
     process_type: data.process_type || null,
     frequency: data.frequency || 'Monthly',
-    departmentId: deptRes.rows[0].id,
+    departmentId: deptId,
+    sectionId: secId, // Inject the resolved Section ID
     userId: activeUserId
   };
 
