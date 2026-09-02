@@ -20,43 +20,56 @@ const fetchCarDetails = async (req, res) => {
       return res.status(404).json({ message: 'CAR Record not found in Kintone.' });
     }
 
-    let extractedRootCause = 'No Root Cause Provided';
-    let extractedActionPlan = 'No Action Plan Provided';
-    let extractedPic = 'Unassigned';
+    // 1. Initialize variables (Checking root level first in case they aren't in subtables)
+    let extractedRootCause = kintoneRecord.root_cause_analysis?.value || null;
+    let extractedActionPlan = kintoneRecord.proposed_corrective_actions?.value || null;
+    let extractedPic = null;
 
-    // ✨ ARCHITECTURAL FIX: Dynamically traverse Kintone Subtables to locate and extract embedded row data
+    if (kintoneRecord.corrective_person_in_charge?.value) {
+      const picRoot = kintoneRecord.corrective_person_in_charge.value;
+      if (Array.isArray(picRoot) && picRoot.length > 0) {
+        extractedPic = picRoot.map(u => u.name).join(', ');
+      } else if (typeof picRoot === 'string' && picRoot.trim() !== '') {
+        extractedPic = picRoot;
+      }
+    }
+
+    // 2. ✨ ARCHITECTURAL FIX: Globally traverse ALL Kintone Subtables without breaking early
     for (const fieldKey in kintoneRecord) {
       const field = kintoneRecord[fieldKey];
       
-      // Identify if the current field is a Subtable and contains at least one row
       if (field.type === 'SUBTABLE' && Array.isArray(field.value) && field.value.length > 0) {
-        const firstRowData = field.value[0].value;
-        
-        // Verify if this specific table contains our target CAR columns
-        if (firstRowData.root_cause_analysis) {
-          extractedRootCause = firstRowData.root_cause_analysis.value || extractedRootCause;
-          extractedActionPlan = firstRowData.proposed_corrective_actions?.value || extractedActionPlan;
+        // Iterate through rows to find the data
+        for (const row of field.value) {
+          const rowData = row.value;
           
-          // Handle Kintone USER_SELECT fields which return arrays of user objects
-          const picData = firstRowData.corrective_person_in_charge?.value;
-          if (Array.isArray(picData) && picData.length > 0) {
-            extractedPic = picData.map(u => u.name).join(', '); 
-          } else if (typeof picData === 'string' && picData.trim() !== '') {
-            extractedPic = picData;
+          if (!extractedRootCause && rowData.root_cause_analysis?.value) {
+            extractedRootCause = rowData.root_cause_analysis.value;
           }
           
-          // Stop searching once we've found and extracted the target table
-          break; 
+          if (!extractedActionPlan && rowData.proposed_corrective_actions?.value) {
+            extractedActionPlan = rowData.proposed_corrective_actions.value;
+          }
+          
+          if (!extractedPic && rowData.corrective_person_in_charge?.value) {
+            const picData = rowData.corrective_person_in_charge.value;
+            if (Array.isArray(picData) && picData.length > 0) {
+              extractedPic = picData.map(u => u.name).join(', '); 
+            } else if (typeof picData === 'string' && picData.trim() !== '') {
+              extractedPic = picData;
+            }
+          }
         }
       }
     }
 
+    // 3. Map safely to the frontend DTO
     const mappedData = {
       control_no: kintoneRecord.control_number?.value || controlNo,
       problem_title: kintoneRecord.problem?.value || 'No Problem Title Provided', 
-      root_cause: extractedRootCause,
-      action_plan: extractedActionPlan,
-      pic: extractedPic
+      root_cause: extractedRootCause || 'No Root Cause Provided',
+      action_plan: extractedActionPlan || 'No Action Plan Provided',
+      pic: extractedPic || 'Unassigned'
     };
 
     res.status(200).json(mappedData);
