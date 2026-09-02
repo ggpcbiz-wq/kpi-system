@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Building2, Edit, X, ShieldAlert, Layers, RefreshCw } from 'lucide-react';
+import { Building2, Edit, X, ShieldAlert, Layers, RefreshCw, ChevronDown, ChevronRight, SplitSquareHorizontal } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 
-// Official ISO/QMS Process Taxonomy
 const PROCESS_TAXONOMY = {
-  MBO: [
+  MOP: [
     'Continual Improvement Management',
     'QMS Planning',
     'Performance Review',
@@ -42,6 +41,7 @@ const DepartmentManagementPage = () => {
   const [departments, setDepartments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [expandedRows, setExpandedRows] = useState({});
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +50,6 @@ const DepartmentManagementPage = () => {
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Fetch departments (triggers auto-sync from Kintone on backend)
   useEffect(() => {
     let isMounted = true;
     const fetchDepartments = async () => {
@@ -82,10 +81,15 @@ const DepartmentManagementPage = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  const handleOpenConfigure = (dept) => {
+  const handleOpenConfigure = (dept, e) => {
+    e.stopPropagation();
     setSelectedDept(dept);
     setSelectedProcessTypes(dept.processTypes || []);
     setIsModalOpen(true);
+  };
+
+  const toggleRow = (id) => {
+    setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const toggleProcessType = (category, processName) => {
@@ -127,7 +131,6 @@ const DepartmentManagementPage = () => {
     }
   };
 
-  // Enforce Administrator RBAC
   if (user?.role !== 'Administrator') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
@@ -156,14 +159,13 @@ const DepartmentManagementPage = () => {
       <div className="min-h-screen p-4 bg-slate-50 dark:bg-slate-900 md:p-8 font-sans transition-colors duration-300">
         <div className="max-w-[1600px] mx-auto space-y-8">
           
-          {/* Header */}
           <div className="flex flex-col gap-4 pb-6 border-b md:flex-row md:items-end justify-between border-slate-200 dark:border-slate-800 transition-colors">
             <div>
               <h1 className="text-5xl font-display tracking-tight text-brand-500 dark:text-brand-400 uppercase transition-colors">
                 DEPARTMENT PROCESS MAPPING
               </h1>
               <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400 transition-colors">
-                Map MBO, COP, and SOP process types to synchronized Kintone departments.
+                Map MOP, COP, and SOP process types to synchronized Kintone departments.
               </p>
             </div>
             <button 
@@ -176,7 +178,6 @@ const DepartmentManagementPage = () => {
             </button>
           </div>
 
-          {/* Department Data Grid */}
           <div className="overflow-hidden bg-white dark:bg-slate-800 border rounded-xl shadow-sm border-slate-200 dark:border-slate-700 transition-colors duration-300">
             <div className="flex items-center px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 transition-colors">
               <div className="w-1.5 h-5 bg-brand-600 dark:bg-brand-500 rounded-full mr-3"></div>
@@ -190,42 +191,79 @@ const DepartmentManagementPage = () => {
               <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300 min-w-[900px]">
                 <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                   <tr>
+                    <th className="px-6 py-4 font-bold w-10"></th>
                     <th className="px-6 py-4 font-bold">Kintone Department Name</th>
-                    <th className="px-6 py-4 font-bold">Plant Location</th>
                     <th className="px-6 py-4 font-bold">Assigned Process Types</th>
                     <th className="px-6 py-4 font-bold text-right">Configure</th>
                   </tr>
                 </thead> 
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 transition-colors">
                   {departments.map(dept => (
-                    <tr key={dept.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
-                      <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">{dept.name}</td>
-                      <td className="px-6 py-4 font-semibold text-slate-700 dark:text-slate-300">{dept.plant || '-'}</td>
-                      <td className="px-6 py-4">
-                        {dept.processTypes && dept.processTypes.length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5">
-                            {dept.processTypes.map((pt, idx) => (
-                              <span 
-                                key={idx} 
-                                className="px-2 py-0.5 text-[11px] font-bold bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-md"
-                              >
-                                [{pt.category}] {pt.process_name}
-                              </span>
-                            ))}
+                    <React.Fragment key={dept.id}>
+                      <tr 
+                        onClick={() => toggleRow(dept.id)}
+                        className={`transition-colors cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-700/50 ${expandedRows[dept.id] ? 'bg-slate-50/50 dark:bg-slate-800' : ''}`}
+                      >
+                        <td className="px-6 py-4 text-slate-400">
+                          {expandedRows[dept.id] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                        </td>
+                        <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">
+                          {dept.name}
+                          <div className="text-xs font-normal text-slate-400 dark:text-slate-500 mt-1">
+                            {dept.sections?.length || 0} Child Section(s)
                           </div>
-                        ) : (
-                          <span className="text-slate-400 dark:text-slate-500 italic text-xs">No processes mapped yet</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button 
-                          onClick={() => handleOpenConfigure(dept)} 
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-slate-600 border border-brand-200 dark:border-brand-800/50 hover:bg-brand-100 dark:hover:bg-brand-900/50 rounded-lg transition-colors shadow-sm"
-                        >
-                          <Edit size={14} className="mr-1.5" /> Attach Processes
-                        </button>
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="px-6 py-4">
+                          {dept.processTypes && dept.processTypes.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {dept.processTypes.map((pt, idx) => (
+                                <span 
+                                  key={idx} 
+                                  className="px-2 py-0.5 text-[11px] font-bold bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-md"
+                                >
+                                  [{pt.category}] {pt.process_name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500 italic text-xs">No processes mapped yet</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button 
+                            onClick={(e) => handleOpenConfigure(dept, e)} 
+                            className="inline-flex items-center px-3 py-1.5 text-xs font-bold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-slate-600 border border-brand-200 dark:border-brand-800/50 hover:bg-brand-100 dark:hover:bg-brand-900/50 rounded-lg transition-colors shadow-sm"
+                          >
+                            <Edit size={14} className="mr-1.5" /> Attach Processes
+                          </button>
+                        </td>
+                      </tr>
+                      {expandedRows[dept.id] && (
+                        <tr className="bg-slate-50/50 dark:bg-slate-900/30">
+                          <td colSpan="4" className="p-0 border-b border-slate-200 dark:border-slate-700">
+                            <div className="px-16 py-4">
+                              <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center">
+                                <SplitSquareHorizontal size={14} className="mr-2" /> Sections under {dept.name}
+                              </h4>
+                              {dept.sections && dept.sections.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {dept.sections.map(sec => (
+                                    <div key={sec.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 shadow-sm flex items-center justify-between">
+                                      <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{sec.name}</span>
+                                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-400 rounded uppercase tracking-wider">
+                                        {sec.segment}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 dark:text-slate-500 italic text-sm">No sections found for this department.</span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))}
                   {departments.length === 0 && (
                     <tr>
@@ -240,7 +278,6 @@ const DepartmentManagementPage = () => {
           </div>
         </div>
 
-        {/* Modal for Process Type Assignment */}
         {isModalOpen && selectedDept && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-900/80 backdrop-blur-sm transition-all duration-300 overflow-y-auto">
             <div className="w-full max-w-5xl my-8 overflow-hidden bg-white dark:bg-slate-800 rounded-xl shadow-2xl animate-in zoom-in-95 duration-200 transition-colors">

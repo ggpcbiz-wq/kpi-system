@@ -2,7 +2,6 @@ const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
 const KPI_APP_ID = process.env.KINTONE_KPI_APP_ID;
 const KPI_API_KEY = process.env.KINTONE_KPI_API_KEY;
 
-// 1. POST: Create a new row
 const postToKintone = async (data) => {
   if (!KINTONE_DOMAIN || !KPI_APP_ID || !KPI_API_KEY) throw new Error("Missing Kintone .env variables.");
 
@@ -41,7 +40,6 @@ const postToKintone = async (data) => {
   }
 };
 
-// 2. PUT: Update an existing row (Injecting the CAR ID)
 const updateKintoneRecord = async (kintoneRecordId, carIdString) => {
   if (!KINTONE_DOMAIN || !KPI_APP_ID || !KPI_API_KEY) throw new Error("Missing Kintone .env variables.");
 
@@ -104,7 +102,6 @@ const getEmployeeByEmail = async (email) => {
   }
 };
 
-// ✨ FIX: Highly optimized fetch targeting the dedicated Organization Master App
 const getUniqueDepartments = async () => {
   const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
   const ORG_APP_ID = process.env.KINTONE_ORGANIZATION_APP_ID;
@@ -114,8 +111,7 @@ const getUniqueDepartments = async () => {
     throw new Error("Missing Kintone Organization App .env variables.");
   }
 
-  // NOTE: Ensure 'Department' matches the exact Field Code of the column in your new Kintone App.
-  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department`;
+  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department&fields[1]=Section&fields[2]=Segment`;
 
   try {
     const response = await fetch(url, {
@@ -126,14 +122,27 @@ const getUniqueDepartments = async () => {
     if (!response.ok) throw new Error(`Kintone API responded with status: ${response.status}`);
     
     const data = await response.json();
+    const deptMap = {};
     
-    // Extract values, remove empty strings, and ensure uniqueness just in case of duplicates in Kintone
-    const uniqueDepartments = [...new Set(data.records
-      .map(record => record.Department?.value?.trim())
-      .filter(name => name)
-    )];
+    data.records.forEach(record => {
+      const deptName = record.Department?.value?.trim();
+      const secName = record.Section?.value?.trim();
+      const segName = record.Segment?.value?.trim();
 
-    return uniqueDepartments.sort();
+      if (!deptName) return;
+
+      if (!deptMap[deptName]) {
+        deptMap[deptName] = { name: deptName, sections: [] };
+      }
+
+      if (secName) {
+        if (!deptMap[deptName].sections.some(s => s.name === secName)) {
+          deptMap[deptName].sections.push({ name: secName, segment: segName || 'Unassigned' });
+        }
+      }
+    });
+
+    return Object.values(deptMap).sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
     console.error('Kintone Organization Sync Error:', error);
     throw error;
@@ -149,7 +158,6 @@ const getCarByControlNumber = async (controlNo) => {
     throw new Error("Missing Kintone CAR App .env variables.");
   }
 
-  // Exact match query using the provided field code
   const query = encodeURIComponent(`control_number = "${controlNo}"`);
   const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${CAR_APP_ID}&query=${query}`;
 
