@@ -46,10 +46,13 @@ const TopManagementPage = () => {
 
   const fetchGlobalQueues = useCallback(async () => {
     try {
+      // ✨ ARCHITECTURAL FIX: Append a cache-busting timestamp to bypass stale 304 browser caches
+      const timestamp = new Date().getTime();
+      
       const [targetRes, subRes, analyticsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/targets`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_BASE_URL}/api/submissions`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_BASE_URL}/api/analytics`, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/api/analytics?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
       
       if (targetRes.ok) {
@@ -61,7 +64,7 @@ const TopManagementPage = () => {
             dept: t.dept_name, 
             section: t.section_name,
             metric: t.metric_name,
-            objective: t.objective, // ✨ Map Objective Dimension
+            objective: t.objective, 
             processCategory: t.process_category,
             processType: t.process_type,
             frequency: t.frequency,
@@ -192,7 +195,6 @@ const TopManagementPage = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 relative font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
       <div className="max-w-[1600px] mx-auto space-y-8">
         
-        {/* Sleek Enterprise Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6 transition-colors">
           <div>
             <h1 className="text-5xl font-display tracking-tight text-brand-500 dark:text-brand-400 uppercase transition-colors">
@@ -216,7 +218,6 @@ const TopManagementPage = () => {
           departments={allDepartments} 
         />
 
-        {/* Action Required: Target Proposals */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col w-full mb-8 transition-colors duration-300">
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between shrink-0 transition-colors">
             <div className="flex items-center">
@@ -230,7 +231,7 @@ const TopManagementPage = () => {
             </span>
           </div>
           <div className="overflow-x-auto">
-             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1200px]">
+             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1100px]">
               <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                 <tr>
                   <th className="px-6 py-4 font-bold">
@@ -243,12 +244,10 @@ const TopManagementPage = () => {
                       <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                     </div>
                   </th>
-                  {/* ✨ FIX: Updated Label to KPI */}
                   <th className="px-6 py-4 font-bold">KPI</th>
-                  {/* ✨ FIX: Injected Objective Header */}
                   <th className="px-6 py-4 font-bold">Objective</th>
                   <th className="px-6 py-4 font-bold">Process Type</th>
-                  <th className="px-6 py-4 font-bold">Freq</th>
+                  <th className="px-6 py-4 font-bold">Frequency</th>
                   <th className="px-6 py-4 font-bold">Proposed Target</th>
                   <th className="px-6 py-4 font-bold">Remarks</th>
                   <th className="px-6 py-4 font-bold text-right">Executive Actions</th>
@@ -260,10 +259,8 @@ const TopManagementPage = () => {
                     <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{target.dept}</td>
                     <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">{target.section || '--'}</td>
                     
-                    {/* ✨ FIX: KPI Render */}
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">{target.metric}</td>
                     
-                    {/* ✨ FIX: Objective Render with strict bounds */}
                     <td className="px-6 py-4 min-w-[200px] max-w-xs">
                       {target.objective ? (
                         <span className="text-slate-600 dark:text-slate-300 text-xs line-clamp-2" title={target.objective}>
@@ -322,7 +319,6 @@ const TopManagementPage = () => {
           </div>
         </div>
 
-        {/* Charts Container Widget */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden mb-8 transition-colors duration-300">
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
             <div className="flex items-center">
