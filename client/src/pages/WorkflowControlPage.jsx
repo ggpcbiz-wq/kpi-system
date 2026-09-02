@@ -103,8 +103,9 @@ const WorkflowControlPage = () => {
             .map(t => ({
               id: t.id, 
               dept: t.dept_name, 
-              section: t.section_name, // Map section dimension
+              section: t.section_name, 
               metric: t.metric_name,
+              objective: t.objective, // ✨ Map Objective Dimension
               processCategory: t.process_category,
               processType: t.process_type,
               frequency: t.frequency,
@@ -253,7 +254,7 @@ const WorkflowControlPage = () => {
               <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider transition-colors">Approved by Top Management</p>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1200px]">
+              <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1300px]">
                 <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                   <tr>
                     <th className="px-6 py-4 font-bold">
@@ -266,7 +267,10 @@ const WorkflowControlPage = () => {
                         <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                       </div>
                     </th>
-                    <th className="px-6 py-4 font-bold">Metric</th>
+                    {/* ✨ FIX: Header Renamed to KPI */}
+                    <th className="px-6 py-4 font-bold">KPI</th>
+                    {/* ✨ FIX: Added Objective column */}
+                    <th className="px-6 py-4 font-bold">Objective</th>
                     <th className="px-6 py-4 font-bold">Category</th>
                     <th className="px-6 py-4 font-bold">Process Type</th>
                     <th className="px-6 py-4 font-bold">Freq</th>
@@ -284,8 +288,21 @@ const WorkflowControlPage = () => {
                     <tr key={target.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
                       <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">{target.dept}</td>
                       <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">{target.section || '--'}</td>
+                      
+                      {/* ✨ FIX: KPI Render */}
                       <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 truncate" title={target.metric}>{target.metric}</td>
                       
+                      {/* ✨ FIX: Objective Render */}
+                      <td className="px-6 py-4 min-w-[200px] max-w-xs">
+                        {target.objective ? (
+                          <span className="text-slate-600 dark:text-slate-300 text-xs line-clamp-2" title={target.objective}>
+                            {target.objective}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500 italic text-xs">--</span>
+                        )}
+                      </td>
+
                       <td className="px-6 py-4">
                         {target.processCategory ? (
                           <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-md">
@@ -328,7 +345,7 @@ const WorkflowControlPage = () => {
                     </tr>
                   ))}
                   {finalActivationQueue.length === 0 && (
-                    <tr><td colSpan="9" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No targets pending final activation.</td></tr>
+                    <tr><td colSpan="10" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No targets pending final activation.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -362,7 +379,8 @@ const WorkflowControlPage = () => {
                       <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                     </div>
                   </th>
-                  <th className="px-6 py-4 font-bold">Metric (Month)</th>
+                  {/* ✨ FIX: Header Renamed to KPI */}
+                  <th className="px-6 py-4 font-bold">KPI (Month)</th>
                   <th className="px-6 py-4 font-bold">Monthly Actual</th>
                   <th className="px-6 py-4 font-bold border-l border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 transition-colors">QTD Average</th>
                   <th className="px-6 py-4 font-bold">

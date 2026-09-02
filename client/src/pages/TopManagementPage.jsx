@@ -59,8 +59,9 @@ const TopManagementPage = () => {
           .map(t => ({
             id: t.id, 
             dept: t.dept_name, 
-            section: t.section_name, // ✨ Map Section Dimension
+            section: t.section_name,
             metric: t.metric_name,
+            objective: t.objective, // ✨ Map Objective Dimension
             processCategory: t.process_category,
             processType: t.process_type,
             frequency: t.frequency,
@@ -229,7 +230,7 @@ const TopManagementPage = () => {
             </span>
           </div>
           <div className="overflow-x-auto">
-             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1100px]">
+             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1200px]">
               <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                 <tr>
                   <th className="px-6 py-4 font-bold">
@@ -242,9 +243,12 @@ const TopManagementPage = () => {
                       <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                     </div>
                   </th>
-                  <th className="px-6 py-4 font-bold">Metric</th>
+                  {/* ✨ FIX: Updated Label to KPI */}
+                  <th className="px-6 py-4 font-bold">KPI</th>
+                  {/* ✨ FIX: Injected Objective Header */}
+                  <th className="px-6 py-4 font-bold">Objective</th>
                   <th className="px-6 py-4 font-bold">Process Type</th>
-                  <th className="px-6 py-4 font-bold">Frequency</th>
+                  <th className="px-6 py-4 font-bold">Freq</th>
                   <th className="px-6 py-4 font-bold">Proposed Target</th>
                   <th className="px-6 py-4 font-bold">Remarks</th>
                   <th className="px-6 py-4 font-bold text-right">Executive Actions</th>
@@ -255,7 +259,20 @@ const TopManagementPage = () => {
                   <tr key={target.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
                     <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{target.dept}</td>
                     <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">{target.section || '--'}</td>
+                    
+                    {/* ✨ FIX: KPI Render */}
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">{target.metric}</td>
+                    
+                    {/* ✨ FIX: Objective Render with strict bounds */}
+                    <td className="px-6 py-4 min-w-[200px] max-w-xs">
+                      {target.objective ? (
+                        <span className="text-slate-600 dark:text-slate-300 text-xs line-clamp-2" title={target.objective}>
+                          {target.objective}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 dark:text-slate-500 italic text-xs">--</span>
+                      )}
+                    </td>
                     
                     <td className="px-6 py-4">
                       {target.processCategory && target.processType ? (
@@ -299,7 +316,7 @@ const TopManagementPage = () => {
                     </td>
                   </tr>
                 ))}
-                {filteredTargets.length === 0 && <tr><td colSpan="8" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending targets match current filters.</td></tr>}
+                {filteredTargets.length === 0 && <tr><td colSpan="9" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending targets match current filters.</td></tr>}
               </tbody>
             </table>
           </div>

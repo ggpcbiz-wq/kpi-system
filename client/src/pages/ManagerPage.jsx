@@ -309,7 +309,8 @@ const ManagerPage = () => {
                       <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                     </div>
                   </th>
-                  <th className="px-6 py-4 font-bold">Metric (Month)</th>
+                  {/* ✨ FIX: Header Renamed to KPI */}
+                  <th className="px-6 py-4 font-bold">KPI (Month)</th>
                   <th className="px-6 py-4 font-bold">Target</th>
                   <th className="px-6 py-4 font-bold">Actual</th>
                   <th className="px-6 py-4 font-bold">Status</th>
@@ -328,6 +329,8 @@ const ManagerPage = () => {
                     <tr key={data.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
                       <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{data.dept_name || 'Unassigned'}</td>
                       <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">{data.section_name || '--'}</td>
+                      
+                      {/* ✨ FIX: KPI Render */}
                       <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
                         {data.metric_name} 
                         <span className="block text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">({getMonthName(data.report_month)})</span>
