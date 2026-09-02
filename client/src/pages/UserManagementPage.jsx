@@ -132,8 +132,8 @@ const UserManagementPage = () => {
         'Assistant Manager': 'Assistant Manager',
         'Acting Assistant Managers': 'Acting Assistant Managers',
         'Senior Supervisor': 'Senior Supervisor',
-        'Acting Supervisor': 'Acting Supervisor',
-        'Supervisor': 'Supervisor'
+        'Supervisor': 'Supervisor',
+        'Acting Supervisor': 'Acting Supervisor'
       };
 
       let finalRole = '';
