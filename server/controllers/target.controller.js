@@ -2,18 +2,13 @@ const targetService = require('../services/target.service');
 
 const getTargets = async (req, res) => {
   try {
-    // 1. RBAC Context Validation
-    // ✨ FIX: Support both 'userId' (JWT) and 'id' (Session) payload structures
     const activeUserId = req.user?.userId || req.user?.id;
     
     if (!req.user || !activeUserId) {
       return res.status(401).json({ message: 'Unauthorized. Invalid user context.' });
     }
 
-    // 2. Delegate to Data Access Layer
     const targets = await targetService.getDashboardTargets(req.user);
-    
-    // 3. Respond
     return res.status(200).json(targets);
   } catch (error) {
     console.error('[Target Controller Error] Failed to fetch targets:', error.message, error.stack);
@@ -49,7 +44,6 @@ const updateTargetStatus = async (req, res) => {
     return res.status(400).json({ message: 'Invalid target state transition requested.' });
   }
 
-  // Strict RBAC Enforcement
   if (req.user?.role !== allowedRoleByStatus[status]) {
     return res.status(403).json({ message: `Forbidden. Role [${req.user?.role}] cannot authorize state [${status}].` });
   }

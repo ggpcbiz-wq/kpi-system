@@ -1,21 +1,34 @@
 const db = require('../config/db');
 
 class DepartmentRepository {
-  // Sync departments received from Kintone into PostgreSQL
-  async syncKintoneDepartments(kintoneDeptNames) {
-    if (!kintoneDeptNames || kintoneDeptNames.length === 0) return;
+  async syncKintoneDepartments(kintoneData) {
+    if (!kintoneData || kintoneData.length === 0) return;
 
-    for (const name of kintoneDeptNames) {
-      await db.query(`
+    for (const dept of kintoneData) {
+      const deptRes = await db.query(`
         INSERT INTO departments (id, name, created_at, updated_at)
         VALUES (gen_random_uuid(), $1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT (name) DO UPDATE 
         SET updated_at = CURRENT_TIMESTAMP
-      `, [name]);
+        RETURNING id
+      `, [dept.name]);
+      
+      const deptId = deptRes.rows[0].id;
+
+      if (dept.sections && dept.sections.length > 0) {
+        for (const sec of dept.sections) {
+          await db.query(`
+            INSERT INTO sections (id, department_id, name, segment, created_at, updated_at)
+            VALUES (gen_random_uuid(), $1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT (department_id, name) DO UPDATE 
+            SET segment = $3, updated_at = CURRENT_TIMESTAMP
+          `, [deptId, sec.name, sec.segment]);
+        }
+      }
     }
   }
 
-  // Fetch all synchronized departments along with their mapped process types
+  // ✨ ARCHITECTURAL FIX: Deeply nested JSON aggregation (Department -> Sections -> Process Types)
   async findAll() {
     const query = `
       SELECT 
@@ -23,46 +36,49 @@ class DepartmentRepository {
         d.name, 
         d.plant,
         COALESCE(
-          json_agg(
-            json_build_object('category', dpt.category, 'process_name', dpt.process_name)
-          ) FILTER (WHERE dpt.category IS NOT NULL), '[]'::json
-        ) as "processTypes"
+          (SELECT json_agg(
+             json_build_object(
+               'id', s.id, 
+               'name', s.name, 
+               'segment', s.segment,
+               'processTypes', COALESCE(
+                 (SELECT json_agg(json_build_object('category', spt.category, 'process_name', spt.process_name))
+                  FROM section_process_types spt WHERE spt.section_id = s.id), '[]'::json
+               )
+             )
+           ) FROM sections s WHERE s.department_id = d.id), '[]'::json
+        ) as "sections"
       FROM departments d
-      LEFT JOIN department_process_types dpt ON d.id = dpt.department_id
-      GROUP BY d.id
       ORDER BY d.name ASC
     `;
     const { rows } = await db.query(query);
     return rows;
   }
 
-  // Update process type assignments for a department with audit logging
-  async updateProcessTypes(departmentId, processTypes, userId) {
-    // 1. Fetch current mappings for audit comparison
+  // ✨ ARCHITECTURAL FIX: Pointing mutations to the section_process_types table
+  async updateSectionProcessTypes(sectionId, processTypes, userId) {
     const currentMappings = await db.query(
-      'SELECT category, process_name FROM department_process_types WHERE department_id = $1',
-      [departmentId]
+      'SELECT category, process_name FROM section_process_types WHERE section_id = $1',
+      [sectionId]
     );
 
-    // 2. Clear old mappings and insert new ones
-    await db.query('DELETE FROM department_process_types WHERE department_id = $1', [departmentId]);
+    await db.query('DELETE FROM section_process_types WHERE section_id = $1', [sectionId]);
 
     if (processTypes && processTypes.length > 0) {
       for (const pt of processTypes) {
         await db.query(
-          'INSERT INTO department_process_types (department_id, category, process_name) VALUES ($1, $2, $3)',
-          [departmentId, pt.category, pt.process_name]
+          'INSERT INTO section_process_types (section_id, category, process_name) VALUES ($1, $2, $3)',
+          [sectionId, pt.category, pt.process_name]
         );
       }
     }
 
-    // 3. Insert audit log entry
     await db.query(`
       INSERT INTO audit_logs (table_name, record_id, action, changed_by, old_payload, new_payload)
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [
-      'department_process_types',
-      departmentId,
+      'section_process_types',
+      sectionId,
       'UPDATE_PROCESS_MAPPINGS',
       userId,
       JSON.stringify(currentMappings.rows),

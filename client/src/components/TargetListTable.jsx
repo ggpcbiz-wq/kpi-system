@@ -1,4 +1,4 @@
-import { MessageSquare, Layers, PlusCircle, AlertCircle } from 'lucide-react';
+import { MessageSquare, Layers, PlusCircle, AlertCircle, SplitSquareHorizontal } from 'lucide-react';
 
 const TargetListTable = ({ targets, onSelectTarget }) => {
   const getStatusBadge = (status) => {
@@ -26,21 +26,26 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
       </div>
       
       <div className="overflow-x-auto flex-1">
-        <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 table-fixed min-w-[1200px]">
+        <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 table-fixed min-w-[1300px]">
           <thead className="text-xs uppercase bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 tracking-wider transition-colors">
             <tr>
-              <th className="px-6 py-4 font-bold w-[15%]">Metric</th>
-              <th className="px-6 py-4 font-bold w-[10%]">Category</th>
-              <th className="px-6 py-4 font-bold w-[15%]">Process Type</th>
-              <th className="px-6 py-4 font-bold w-[10%]">Frequency</th>
+              <th className="px-6 py-4 font-bold w-[14%]">Metric</th>
+              <th className="px-6 py-4 font-bold w-[8%]">Category</th>
+              <th className="px-6 py-4 font-bold w-[14%]">Process Type</th>
+              <th className="px-6 py-4 font-bold w-[8%]">Freq</th>
               <th className="px-6 py-4 font-bold w-[12%]">
                 <div className="flex items-center">
                   <Layers size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Dept
                 </div>
               </th>
-              <th className="px-6 py-4 font-bold w-[10%]">Target</th>
-              <th className="px-6 py-4 font-bold w-[15%]">Status</th>
-              <th className="px-6 py-4 font-bold w-[15%]">
+              <th className="px-6 py-4 font-bold w-[12%]">
+                <div className="flex items-center">
+                  <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
+                </div>
+              </th>
+              <th className="px-6 py-4 font-bold w-[8%]">Target</th>
+              <th className="px-6 py-4 font-bold w-[12%]">Status</th>
+              <th className="px-6 py-4 font-bold w-[12%]">
                 <div className="flex items-center">
                   <MessageSquare size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Remarks
                 </div>
@@ -81,6 +86,10 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
 
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-300 font-semibold truncate" title={target.dept_name}>
                     {target.dept_name || <span className="text-slate-400 dark:text-slate-500 italic font-normal">Unassigned</span>}
+                  </td>
+
+                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300 font-semibold truncate" title={target.section_name}>
+                    {target.section_name || <span className="text-slate-400 dark:text-slate-500 italic font-normal">--</span>}
                   </td>
                   
                   <td className="px-6 py-4 text-slate-900 dark:text-slate-100 font-black whitespace-nowrap">
@@ -130,7 +139,7 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
             
             {targets.length === 0 && (
               <tr>
-                <td colSpan={onSelectTarget ? "9" : "8"} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">
+                <td colSpan={onSelectTarget ? "10" : "9"} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">
                   No KPI targets proposed or registered for your departments yet.
                 </td>
               </tr>
