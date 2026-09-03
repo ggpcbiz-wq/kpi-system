@@ -6,6 +6,8 @@ const postToKintone = async (data) => {
   if (!KINTONE_DOMAIN || !KPI_APP_ID || !KPI_API_KEY) throw new Error("Missing Kintone .env variables.");
 
   const url = `https://${KINTONE_DOMAIN}/k/v1/record.json`;
+  
+  // ✨ ARCHITECTURAL FIX: Mapped to new Kintone Field Codes ('kpi' and 'objective')
   const payload = {
     app: KPI_APP_ID,
     record: {
@@ -13,7 +15,8 @@ const postToKintone = async (data) => {
       applied_by:      { value: data.applied_by || '' },
       status:          { value: data.status || '' },
       car:             { value: data.car || '' },       
-      metric:          { value: data.metric || '' },
+      kpi:             { value: data.kpi || data.metric_name || data.metric || '' }, // Fallback chain for safety
+      objective:       { value: data.objective || '' }, 
       month:           { value: String(data.month || '') }, 
       year:            { value: String(data.year || '') }, 
       target:          { value: String(data.target || '') },
@@ -30,7 +33,13 @@ const postToKintone = async (data) => {
       body: JSON.stringify(payload)
     });
 
-    if (!response.ok) throw new Error('Failed to post record to Kintone');
+    if (!response.ok) {
+      // Log exact Kintone rejection reason for easier debugging
+      const errorData = await response.json();
+      console.error('Kintone API Rejection:', errorData);
+      throw new Error('Failed to post record to Kintone');
+    }
+    
     const result = await response.json();
     console.log(`Successfully posted to Kintone! Record ID: ${result.id}`);
     return result; 
