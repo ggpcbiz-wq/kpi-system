@@ -152,8 +152,6 @@ const UserManagementPage = () => {
       
       setOriginalDept(finalBaseDept); 
 
-      // ARCHITECTURE FIX: Top Management retains actual department[cite: 20]. 
-      // Only force 'GLOBAL' if it was explicitly granted in the DB.
       const isAlreadyGlobal = emp.assignedDepartments && emp.assignedDepartments.includes('GLOBAL');
       setForceGlobal(isAlreadyGlobal);
 
@@ -175,7 +173,7 @@ const UserManagementPage = () => {
       setIsLookupSuccessful(true);
       
       if (finalRole) {
-        addToast(`Employee found. Role auto-mapped to ${finalRole}. You may override if needed.`, 'success');
+        addToast(`Employee found. Role auto-mapped to ${finalRole}.`, 'success');
       } else {
         addToast('Employee found. Designation not recognized; please assign a role manually.', 'info');
       }
@@ -194,7 +192,7 @@ const UserManagementPage = () => {
     const finalRole = forceAdmin ? 'Administrator' : formData.role;
 
     if (formData.departments.length === 0) {
-      addToast('Cannot save user without a department. Please check Kintone data.', 'error');
+      addToast('Cannot save user without a department jurisdiction.', 'error');
       return;
     }
     if (!finalRole) {
@@ -281,7 +279,6 @@ const UserManagementPage = () => {
     <div className="min-h-screen p-4 bg-slate-50 dark:bg-slate-900 md:p-8 font-sans transition-colors duration-300">
       <div className="max-w-[1600px] mx-auto space-y-8">
         
-        {/* Sleek Enterprise Header */}
         <div className="flex flex-col gap-4 pb-6 border-b md:flex-row md:items-end justify-between border-slate-200 dark:border-slate-800 transition-colors">
           <div>
             <h1 className="text-5xl font-display tracking-tight text-brand-500 dark:text-brand-400 flex items-center uppercase">
@@ -296,7 +293,6 @@ const UserManagementPage = () => {
           </button>
         </div>
 
-        {/* Filter & Search Bar */}
         <div className="flex flex-col gap-5 p-5 bg-white dark:bg-slate-800 border rounded-xl shadow-sm md:flex-row md:items-end border-slate-200 dark:border-slate-700 transition-colors duration-300">
           <div className="w-full md:flex-1">
             <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Search Users</label>
@@ -337,7 +333,6 @@ const UserManagementPage = () => {
           </div>
         </div>
 
-        {/* User Directory Table */}
         <div className="overflow-hidden bg-white dark:bg-slate-800 border rounded-xl shadow-sm border-slate-200 dark:border-slate-700 transition-colors duration-300">
           <div className="flex items-center px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 transition-colors">
             <div className="w-1.5 h-5 bg-brand-600 dark:bg-brand-500 rounded-full mr-3"></div>
@@ -353,7 +348,7 @@ const UserManagementPage = () => {
                   <th className="px-6 py-4 font-bold">Name & Email</th>
                   <th className="px-6 py-4 font-bold">Role</th>
                   <th className="px-6 py-4 font-bold">Plant</th>
-                  <th className="px-6 py-4 font-bold min-w-[200px]">Assigned Department</th>
+                  <th className="px-6 py-4 font-bold min-w-[250px]">Assigned Department(s)</th>
                   <th className="px-6 py-4 font-bold">Status</th>
                   <th className="px-6 py-4 font-bold text-right">Actions</th>
                 </tr>
@@ -469,7 +464,6 @@ const UserManagementPage = () => {
                   </div>
                 </div>
 
-                {/* RBAC Overrides */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className={`p-5 border rounded-xl transition-colors ${forceAdmin ? 'bg-brand-50 dark:bg-brand-900/30 border-brand-200 dark:border-brand-800/50' : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700'}`}>
                     <label className="flex items-start space-x-3 cursor-pointer group">
@@ -496,14 +490,14 @@ const UserManagementPage = () => {
                       />
                       <div>
                         <span className="block text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">Global Data Access</span>
-                        <span className="block text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed transition-colors">Overrides single department. Grants read access to all company dashboards.</span>
+                        <span className="block text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed transition-colors">Overrides specific departments. Grants read access to all company dashboards.</span>
                       </div>
                     </label>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
-               <div>
+                  <div>
                     <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Mapped Portal Role</label>
                     {forceAdmin ? (
                       <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-brand-200 dark:border-brand-800/50 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 transition-colors">
@@ -527,17 +521,39 @@ const UserManagementPage = () => {
                       </div>
                     )}
                   </div>
+                  
+                  {/* ✨ ARCHITECTURAL FIX: Interactive Multi-Select Jurisdiction Array */}
                   <div>
-                    <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Assigned Department</label>
-                    <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 transition-colors">
-                       {formData.departments.length > 0 ? (
-                         <span className={forceGlobal ? 'text-brand-600 dark:text-brand-400' : 'text-slate-800 dark:text-slate-200'}>
-                           {formData.departments.join(', ')}
-                         </span>
-                       ) : (
-                         <span className="text-slate-400 dark:text-slate-500 font-medium">Pending...</span>
-                       )}
-                    </div>
+                    <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
+                      Assigned Department(s)
+                    </label>
+                    {forceGlobal ? (
+                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-brand-200 dark:border-brand-800/50 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 transition-colors cursor-not-allowed">
+                        <ShieldCheck size={16} className="mr-2"/> Global Access (All Departments)
+                      </div>
+                    ) : (
+                      <div className="w-full border rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-1.5 max-h-[140px] overflow-y-auto space-y-0.5 shadow-inner">
+                         {departments.filter(d => d !== 'GLOBAL').map(dept => {
+                            const isSelected = formData.departments.includes(dept);
+                            return (
+                              <label key={dept} className={`flex items-center px-3 py-2 rounded-md cursor-pointer transition-colors ${isSelected ? 'bg-brand-50 dark:bg-brand-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    const newDepts = e.target.checked 
+                                      ? [...formData.departments, dept] 
+                                      : formData.departments.filter(d => d !== dept);
+                                    setFormData({...formData, departments: newDepts});
+                                  }}
+                                  className="w-4 h-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-700 cursor-pointer"
+                                />
+                                <span className={`ml-3 text-sm transition-colors ${isSelected ? 'text-brand-700 dark:text-brand-400 font-bold' : 'text-slate-700 dark:text-slate-300 font-medium'}`}>{dept}</span>
+                              </label>
+                            )
+                         })}
+                      </div>
+                    )}
                   </div>
                 </div>
 
