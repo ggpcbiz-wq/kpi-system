@@ -49,12 +49,10 @@ const createSubmission = async (req, res) => {
 
 const getSubmissions = async (req, res) => {
   try {
-    // ✨ ARCHITECTURAL FIX: Strictly disable caching at the API level to prevent 304 Not Modified
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
 
-    // Retain the RBAC context injection for Top Management visibility
     const accessContext = {
       ...req.user,
       globalActualsAccess: req.user.role === 'Top Management' || req.user.role === 'Administrator'
@@ -126,10 +124,11 @@ const updateSubmissionStatus = async (req, res) => {
     // Kintone sync logic
     if (status === 'Approved' || status === 'CAR Requested') {
       try {
+        // ✨ ARCHITECTURAL FIX: Explicitly SELECT t.objective
         const { rows } = await db.query(`
           SELECT m.report_month, m.report_year, m.actual_value, m.remarks, m.kintone_car_id,
                  m.supporting_data, 
-                 t.metric_name, t.target_value, t.operator, t.unit, d.name as dept_name
+                 t.metric_name, t.objective, t.target_value, t.operator, t.unit, d.name as dept_name
           FROM monthly_actuals m
           JOIN kpi_targets t ON m.target_id = t.id
           JOIN departments d ON t.department_id = d.id
@@ -142,12 +141,14 @@ const updateSubmissionStatus = async (req, res) => {
             driveLink = JSON.parse(driveLink);
           }
 
+          // ✨ ARCHITECTURAL FIX: Map kpi and objective into the Kintone DTO
           const kintoneRes = await kintoneService.postToKintone({
             department: rows[0].dept_name,
             applied_by: req.user?.name || 'System QMR',
             status: status,
             car: rows[0].kintone_car_id || '', 
-            metric: rows[0].metric_name,
+            kpi: rows[0].metric_name,
+            objective: rows[0].objective,
             month: rows[0].report_month,
             year: rows[0].report_year,
             target: `${rows[0].operator} ${rows[0].target_value} ${rows[0].unit}`,
