@@ -225,7 +225,7 @@ const TopManagementPage = () => {
                 Action Required: Target Proposals
               </h3>
             </div>
-            <span className="bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 py-1 px-3 rounded-md text-xs font-bold shadow-sm transition-colors">
+            <span className="bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-slate-800/50 py-1 px-3 rounded-md text-xs font-bold shadow-sm transition-colors">
               {filteredTargets.length} Pending
             </span>
           </div>
@@ -257,14 +257,14 @@ const TopManagementPage = () => {
                   <tr key={target.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
                     <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap align-top">{target.dept}</td>
                     <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap align-top">{target.section || '--'}</td>
-                    
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 align-top">{target.metric}</td>
                     
-                    <td className="px-6 py-4 min-w-[250px] align-top">
+                    {/* ✨ ARCHITECTURAL FIX: Objective rendering as a bounded, scrollable container */}
+                    <td className="px-6 py-4 min-w-[200px] max-w-sm align-top">
                       {target.objective ? (
-                        <span className="text-slate-600 dark:text-slate-300 text-xs whitespace-pre-wrap block leading-relaxed">
+                        <div className="text-slate-600 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-md border border-slate-200 dark:border-slate-700 max-h-24 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none transition-colors">
                           {target.objective}
-                        </span>
+                        </div>
                       ) : (
                         <span className="text-slate-400 dark:text-slate-500 italic text-xs">--</span>
                       )}
@@ -290,7 +290,8 @@ const TopManagementPage = () => {
 
                     <td className="px-6 py-4 text-brand-600 dark:text-brand-400 font-black whitespace-nowrap align-top">{target.value}</td>
                     
-                    <td className="px-6 py-4 align-top">
+                    {/* Remarks matches Objective layout perfectly */}
+                    <td className="px-6 py-4 min-w-[200px] max-w-sm align-top">
                       {target.comment ? (
                         <div className="text-slate-600 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-md border border-slate-200 dark:border-slate-700 max-h-24 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none transition-colors">
                           {target.comment}
@@ -318,6 +319,7 @@ const TopManagementPage = () => {
           </div>
         </div>
 
+        {/* Charts Container Widget */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden mb-8 transition-colors duration-300">
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
             <div className="flex items-center">
