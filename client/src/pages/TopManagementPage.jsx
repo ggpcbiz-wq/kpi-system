@@ -27,7 +27,9 @@ const TopManagementPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All' });
-  const allDepartments = ['GLOBAL', 'DX Driving Force', 'Finance & Accounting', 'Corporate Administration',  'Sales & Purchasing', 'Info. Resources Management', 'Quality Management', 'Laguna Plant', 'Cavite Plant', 'Plant Management', 'Tooling Process Development'];
+  
+  // ✨ ARCHITECTURAL FIX: Dynamically extract the Executive's assigned jurisdiction
+  const executiveDepartments = user?.departments?.length > 0 ? user.departments : [];
 
   const [pendingFinalTargets, setPendingFinalTargets] = useState([]);
   const [recentNotifications, setRecentNotifications] = useState([]); 
@@ -86,7 +88,7 @@ const TopManagementPage = () => {
       }
       
     } catch (error) {
-      console.error("Failed to fetch global data", error);
+      console.error("Failed to fetch executive data", error);
     } finally {
       setIsLoading(false);
     }
@@ -162,7 +164,8 @@ const TopManagementPage = () => {
     return matchesDept && matchesSearch;
   });
   
-  const chartDeptToDisplay = filters.department === 'All' ? 'Production' : filters.department;
+  // ✨ ARCHITECTURAL FIX: Default the chart view to the Executive's first assigned department
+  const chartDeptToDisplay = filters.department === 'All' ? (executiveDepartments[0] || 'Unassigned') : filters.department;
   const departmentMetrics = globalChartData[chartDeptToDisplay] || [];
 
   const handlePrevChart = () => setCurrentChartIndex(prev => (prev > 0 ? prev - 1 : departmentMetrics.length - 1));
@@ -204,8 +207,12 @@ const TopManagementPage = () => {
             </p>
           </div>
           <div className="flex items-center">
-            <span className="bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 uppercase tracking-wide shadow-sm transition-colors">
-              Global Access
+            {/* ✨ ARCHITECTURAL FIX: Badge now displays localized jurisdiction dynamically */}
+            <span 
+              className="bg-brand-50 dark:bg-slate-800 text-brand-700 dark:text-brand-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-brand-200 dark:border-slate-700 uppercase tracking-wide shadow-sm transition-colors cursor-help"
+              title={executiveDepartments.join(', ')}
+            >
+              Jurisdiction: {executiveDepartments.length} Departments
             </span>
           </div>
         </div>
@@ -214,7 +221,7 @@ const TopManagementPage = () => {
           filters={filters} 
           onFilterChange={handleFilterChange} 
           config={{ showSearch: true, showPlant: true, showDate: true, showDept: true }} 
-          departments={allDepartments} 
+          departments={executiveDepartments} 
         />
 
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col w-full mb-8 transition-colors duration-300">
