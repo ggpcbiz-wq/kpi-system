@@ -34,56 +34,47 @@ class SubmissionRepository {
     }
   }
 
-  // GET: Fetch submissions dynamically based on Controller-injected context
   async findAll(userContext) {
+    const { id, role, email, globalActualsAccess } = userContext;
+    
     try {
-      const canViewAll = userContext?.globalActualsAccess || userContext?.role === 'Administrator';
-      const activeUserId = userContext?.userId || userContext?.id;
-      
       let query = `
         SELECT 
-          m.id,
-          m.target_id,
-          m.submitted_by,
-          u.plant,      
-          m.report_month,
-          m.report_year,
-          m.actual_value,
-          m.status,
-          m.remarks,
-          m.supporting_data, -- ✨ FIX: Explicitly added missing attachment column to SQL projection
-          m.created_at,
-          
-          -- CAR Data Columns
-          m.kintone_car_id,
-          m.problem_description,
-          m.problem_cause,
-          m.improvement_plan,
-          m.pic,
-          m.target_completion_date,
-
-          t.metric_name,
-          t.target_value,
-          t.operator,
-          t.unit,
-          d.name as dept_name
+          m.id, m.target_id, m.submitted_by, u.plant,      
+          m.report_month, m.report_year, m.actual_value, m.status, m.remarks,
+          m.supporting_data, m.created_at,
+          m.kintone_car_id, m.problem_description, m.problem_cause,
+          m.improvement_plan, m.pic, m.target_completion_date,
+          t.metric_name, t.target_value, t.operator, t.unit,
+          d.name as dept_name, s.name as section_name
         FROM monthly_actuals m
         LEFT JOIN kpi_targets t ON m.target_id = t.id
         LEFT JOIN departments d ON t.department_id = d.id
+        LEFT JOIN sections s ON t.section_id = s.id
         LEFT JOIN users u ON m.submitted_by = u.id
+        LEFT JOIN users target_owner ON t.proposed_by = target_owner.id
       `;
       
       const params = [];
 
-      // Strictly scope to user's assigned departments via real-time DB relation if not Global Admin/Top Mgmt
-      if (!canViewAll) {
-        query += ` WHERE t.department_id IN (
-          SELECT department_id FROM user_departments WHERE user_id = $1
-        )`;
-        params.push(activeUserId);
+      if (globalActualsAccess && role === 'Administrator') {
+        query += ` ORDER BY m.created_at DESC`;
+      } else if (role === 'Top Management') {
+        // ✨ ARCHITECTURAL FIX: Division Heads strictly view finalized submissions
+        query += ` WHERE (target_owner.div_head_email = $1 
+                   OR t.department_id IN (SELECT department_id FROM user_departments WHERE user_id = $2))
+                   AND m.status IN ('Approved', 'CAR Requested')
+                   ORDER BY m.created_at DESC`;
+        params.push(email, id);
+      } else if (role === 'Supervisor' || role === 'Acting Supervisor') {
+        query += ` WHERE t.section_id IN (SELECT section_id FROM user_sections WHERE user_id = $1)
+                   ORDER BY m.created_at DESC`;
+        params.push(id);
+      } else {
+        query += ` WHERE t.department_id IN (SELECT department_id FROM user_departments WHERE user_id = $1)
+                   ORDER BY m.created_at DESC`;
+        params.push(id);
       }
-
-      query += ` ORDER BY m.created_at DESC`;
 
       const { rows } = await db.query(query, params);
       return rows;
@@ -93,15 +84,11 @@ class SubmissionRepository {
     }
   }
 
-  // UPDATE: Modify Submission Status & Append CAR Details
   async updateStatus(id, status, remarks, carData = {}) {
     try {
       const { 
-        kintone_car_id = null, 
-        problem_description = null, 
-        problem_cause = null, 
-        improvement_plan = null, 
-        pic = null 
+        kintone_car_id = null, problem_description = null, 
+        problem_cause = null, improvement_plan = null, pic = null 
       } = carData;
 
       const { rows } = await db.query(`

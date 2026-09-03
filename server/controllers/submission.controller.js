@@ -39,6 +39,7 @@ const createSubmission = async (req, res) => {
       submitted_by: req.user?.userId || req.body.submitted_by 
     };
     
+    // Auto-defaults to 'Locked - Pending Manager Review' in repository
     const newSubmission = await submissionRepo.create(submissionData);
     res.status(201).json(newSubmission);
   } catch (error) {
@@ -73,8 +74,9 @@ const updateSubmissionStatus = async (req, res) => {
 
     if (!status) return res.status(400).json({ message: 'Status is required' });
 
+    // ✨ ARCHITECTURAL FIX: Strict role boundaries for status transitions
     const allowedRolesByStatus = {
-      'Locked - Pending QMR Sign-Off': ['Supervisor', 'Manager'],
+      'Locked - Pending QMR Sign-Off': ['Manager'], // Removed Supervisor to enforce linear workflow
       'Approved': ['Administrator'],
       'CAR Requested': ['Administrator'],
       'Rejected': ['Manager', 'Administrator']
@@ -123,7 +125,6 @@ const updateSubmissionStatus = async (req, res) => {
 
     if (status === 'Approved' || status === 'CAR Requested') {
       try {
-        // Includes the section join and select statement mapping
         const { rows } = await db.query(`
           SELECT m.report_month, m.report_year, m.actual_value, m.remarks, m.kintone_car_id,
                  m.supporting_data, 
