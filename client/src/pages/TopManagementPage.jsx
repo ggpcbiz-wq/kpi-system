@@ -230,11 +230,9 @@ const TopManagementPage = () => {
             </span>
           </div>
           <div className="overflow-x-auto">
-             {/* ✨ ARCHITECTURAL FIX: Extended min-w to 1400px to force clean horizontal scrolling */}
              <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1400px]">
               <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                 <tr>
-                  {/* ✨ ARCHITECTURAL FIX: Explicit width percentages to enforce geometric baseline */}
                   <th className="px-6 py-4 font-bold w-[12%]">
                     <div className="flex items-center">
                       <Layers size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Dept
@@ -257,15 +255,14 @@ const TopManagementPage = () => {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 bg-white dark:bg-slate-800 transition-colors">
                 {filteredTargets.map(target => (
                   <tr key={target.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
-                    {/* ✨ ARCHITECTURAL FIX: whitespace-nowrap added to prevent vertical breaking */}
-                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{target.dept}</td>
-                    <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">{target.section || '--'}</td>
+                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap align-top">{target.dept}</td>
+                    <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap align-top">{target.section || '--'}</td>
                     
-                    <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">{target.metric}</td>
+                    <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 align-top">{target.metric}</td>
                     
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 min-w-[250px] align-top">
                       {target.objective ? (
-                        <span className="text-slate-600 dark:text-slate-300 text-xs line-clamp-2" title={target.objective}>
+                        <span className="text-slate-600 dark:text-slate-300 text-xs whitespace-pre-wrap block leading-relaxed">
                           {target.objective}
                         </span>
                       ) : (
@@ -273,7 +270,7 @@ const TopManagementPage = () => {
                       )}
                     </td>
                     
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 align-top">
                       {target.processCategory && target.processType ? (
                         <div className="flex items-center">
                           <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-md whitespace-nowrap">
@@ -287,13 +284,13 @@ const TopManagementPage = () => {
                       )}
                     </td>
 
-                    <td className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                    <td className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 whitespace-nowrap align-top">
                       {target.frequency || 'Monthly'}
                     </td>
 
-                    <td className="px-6 py-4 text-brand-600 dark:text-brand-400 font-black whitespace-nowrap">{target.value}</td>
+                    <td className="px-6 py-4 text-brand-600 dark:text-brand-400 font-black whitespace-nowrap align-top">{target.value}</td>
                     
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 align-top">
                       {target.comment ? (
                         <div className="text-slate-600 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-md border border-slate-200 dark:border-slate-700 max-h-24 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none transition-colors">
                           {target.comment}
@@ -303,7 +300,7 @@ const TopManagementPage = () => {
                       )}
                     </td>
 
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 align-top">
                       <div className="flex justify-end space-x-2">
                         <button onClick={() => initiateApprove(target.id, 'Approve Target', `Are you sure you want to grant executive approval for the ${target.metric} target?`, 'Approve Target')} className="p-1.5 transition-colors rounded-lg text-slate-400 dark:text-slate-500 hover:text-jira-success dark:hover:text-jira-success hover:bg-jira-success-bg dark:hover:bg-jira-success/20 border border-transparent hover:border-jira-success/30 dark:hover:border-jira-success/30 shadow-sm" title="Approve">
                           <CheckCircle size={18} />
