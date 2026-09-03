@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Layers, SplitSquareHorizontal } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, SplitSquareHorizontal } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
 import FilterBar from '../components/FilterBar'; 
 import ConfirmModal from '../components/ConfirmModal';
@@ -235,16 +235,11 @@ const TopManagementPage = () => {
                 <tr>
                   <th className="px-6 py-4 font-bold w-[12%]">
                     <div className="flex items-center">
-                      <Layers size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Dept
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 font-bold w-[12%]">
-                    <div className="flex items-center">
                       <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                     </div>
                   </th>
                   <th className="px-6 py-4 font-bold w-[12%]">KPI</th>
-                  <th className="px-6 py-4 font-bold w-[18%]">Objective</th>
+                  <th className="px-6 py-4 font-bold w-[30%]">Objective</th>
                   <th className="px-6 py-4 font-bold w-[14%]">Process Type</th>
                   <th className="px-6 py-4 font-bold w-[7%]">Frequency</th>
                   <th className="px-6 py-4 font-bold w-[9%]">Proposed Target</th>
@@ -255,14 +250,13 @@ const TopManagementPage = () => {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 bg-white dark:bg-slate-800 transition-colors">
                 {filteredTargets.map(target => (
                   <tr key={target.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
-                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap align-top">{target.dept}</td>
                     <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap align-top">{target.section || '--'}</td>
+                    
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 align-top">{target.metric}</td>
                     
-                    {/* ✨ ARCHITECTURAL FIX: Objective rendering as a bounded, scrollable container */}
-                    <td className="px-6 py-4 min-w-[200px] max-w-sm align-top">
+                    <td className="px-6 py-4 min-w-[250px] align-top">
                       {target.objective ? (
-                        <div className="text-slate-600 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-md border border-slate-200 dark:border-slate-700 max-h-24 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none transition-colors">
+                        <div className="text-slate-600 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900/50 p-3 rounded-md border border-slate-200 dark:border-slate-700 whitespace-pre-wrap leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none transition-colors">
                           {target.objective}
                         </div>
                       ) : (
@@ -272,9 +266,9 @@ const TopManagementPage = () => {
                     
                     <td className="px-6 py-4 align-top">
                       {target.processCategory && target.processType ? (
-                        <div className="flex items-center">
+                        <div className="flex flex-col items-start gap-1">
                           <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-md whitespace-nowrap">
-                            [{target.processCategory}] {target.processType}
+                            {target.processType}
                           </span>
                         </div>
                       ) : (
@@ -290,10 +284,9 @@ const TopManagementPage = () => {
 
                     <td className="px-6 py-4 text-brand-600 dark:text-brand-400 font-black whitespace-nowrap align-top">{target.value}</td>
                     
-                    {/* Remarks matches Objective layout perfectly */}
-                    <td className="px-6 py-4 min-w-[200px] max-w-sm align-top">
+                    <td className="px-6 py-4 align-top">
                       {target.comment ? (
-                        <div className="text-slate-600 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-md border border-slate-200 dark:border-slate-700 max-h-24 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none transition-colors">
+                        <div className="text-slate-600 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900/50 p-3 rounded-md border border-slate-200 dark:border-slate-700 whitespace-pre-wrap leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none transition-colors">
                           {target.comment}
                         </div>
                       ) : (
@@ -313,7 +306,7 @@ const TopManagementPage = () => {
                     </td>
                   </tr>
                 ))}
-                {filteredTargets.length === 0 && <tr><td colSpan="9" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending targets match current filters.</td></tr>}
+                {filteredTargets.length === 0 && <tr><td colSpan="8" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending targets match current filters.</td></tr>}
               </tbody>
             </table>
           </div>
