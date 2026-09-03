@@ -30,9 +30,10 @@ const UserManagementPage = () => {
   
   const [originalDept, setOriginalDept] = useState(''); 
 
-  // ✨ ARCHITECTURAL FIX: Added 'section' to the state payload
+  // ✨ ARCHITECTURAL FIX: Appended deptHeadEmail and divHeadEmail to the initial state
   const [formData, setFormData] = useState({ 
-    id: null, name: '', email: '', role: '', departments: [], section: '', plant: '', status: 'Active' 
+    id: null, name: '', email: '', role: '', departments: [], section: '', plant: '', status: 'Active',
+    deptHeadEmail: '', divHeadEmail: ''
   });
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -64,7 +65,8 @@ const UserManagementPage = () => {
     setForceAdmin(false);
     setForceGlobal(false);
     setOriginalDept('');
-    setFormData({ id: null, name: '', email: '', role: '', departments: [], section: '', plant: '', status: 'Active' });
+    // ✨ ARCHITECTURAL FIX: Reset hierarchical state correctly
+    setFormData({ id: null, name: '', email: '', role: '', departments: [], section: '', plant: '', status: 'Active', deptHeadEmail: '', divHeadEmail: '' });
     setIsModalOpen(true);
   };
 
@@ -89,7 +91,9 @@ const UserManagementPage = () => {
     setFormData({ 
       ...targetUser, 
       departments: mappedDepartments,
-      section: targetUser.sections?.[0] || '' 
+      section: targetUser.sections?.[0] || '',
+      deptHeadEmail: targetUser.dept_head_email || '',
+      divHeadEmail: targetUser.div_head_email || ''
     });
     setIsModalOpen(true);
   };
@@ -165,13 +169,15 @@ const UserManagementPage = () => {
         return str.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
       };
 
-      // ✨ ARCHITECTURAL FIX: Extract the synced section into state
+      // ✨ ARCHITECTURAL FIX: Extract the synced hierarchy into state to preserve it for POST
       setFormData({
         id: null,
         email: lookupEmail,
         name: `${toTitleCase(emp.firstName)} ${toTitleCase(emp.lastName)}`.trim(),
         departments: isAlreadyGlobal ? ['GLOBAL'] : (emp.assignedDepartments?.length > 0 ? emp.assignedDepartments : (finalBaseDept ? [finalBaseDept] : [])),
         section: emp.section || '',
+        deptHeadEmail: emp.deptHeadEmail || '',
+        divHeadEmail: emp.divHeadEmail || '',
         plant: emp.plant,
         role: finalRole,
         status: emp.status || 'Active'
@@ -481,7 +487,6 @@ const UserManagementPage = () => {
                       value={formData.plant || 'Awaiting sync...'} 
                     />
                   </div>
-                  {/* ✨ ARCHITECTURAL FIX: Read-only section rendering from Kintone data */}
                   <div>
                     <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                       Execution Section
