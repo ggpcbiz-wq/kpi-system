@@ -46,7 +46,6 @@ const TopManagementPage = () => {
 
   const fetchGlobalQueues = useCallback(async () => {
     try {
-      // ✨ ARCHITECTURAL FIX: Append a cache-busting timestamp to bypass stale 304 browser caches
       const timestamp = new Date().getTime();
       
       const [targetRes, subRes, analyticsRes] = await Promise.all([
@@ -231,37 +230,40 @@ const TopManagementPage = () => {
             </span>
           </div>
           <div className="overflow-x-auto">
-             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1100px]">
+             {/* ✨ ARCHITECTURAL FIX: Extended min-w to 1400px to force clean horizontal scrolling */}
+             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1400px]">
               <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                 <tr>
-                  <th className="px-6 py-4 font-bold">
+                  {/* ✨ ARCHITECTURAL FIX: Explicit width percentages to enforce geometric baseline */}
+                  <th className="px-6 py-4 font-bold w-[12%]">
                     <div className="flex items-center">
                       <Layers size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Dept
                     </div>
                   </th>
-                  <th className="px-6 py-4 font-bold">
+                  <th className="px-6 py-4 font-bold w-[12%]">
                     <div className="flex items-center">
                       <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                     </div>
                   </th>
-                  <th className="px-6 py-4 font-bold">KPI</th>
-                  <th className="px-6 py-4 font-bold">Objective</th>
-                  <th className="px-6 py-4 font-bold">Process Type</th>
-                  <th className="px-6 py-4 font-bold">Frequency</th>
-                  <th className="px-6 py-4 font-bold">Proposed Target</th>
-                  <th className="px-6 py-4 font-bold">Remarks</th>
-                  <th className="px-6 py-4 font-bold text-right">Executive Actions</th>
+                  <th className="px-6 py-4 font-bold w-[12%]">KPI</th>
+                  <th className="px-6 py-4 font-bold w-[18%]">Objective</th>
+                  <th className="px-6 py-4 font-bold w-[14%]">Process Type</th>
+                  <th className="px-6 py-4 font-bold w-[7%]">Frequency</th>
+                  <th className="px-6 py-4 font-bold w-[9%]">Proposed Target</th>
+                  <th className="px-6 py-4 font-bold w-[9%]">Remarks</th>
+                  <th className="px-6 py-4 font-bold text-right w-[7%]">Executive Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 bg-white dark:bg-slate-800 transition-colors">
                 {filteredTargets.map(target => (
                   <tr key={target.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
+                    {/* ✨ ARCHITECTURAL FIX: whitespace-nowrap added to prevent vertical breaking */}
                     <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{target.dept}</td>
-                    <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">{target.section || '--'}</td>
+                    <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">{target.section || '--'}</td>
                     
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">{target.metric}</td>
                     
-                    <td className="px-6 py-4 min-w-[200px] max-w-xs">
+                    <td className="px-6 py-4">
                       {target.objective ? (
                         <span className="text-slate-600 dark:text-slate-300 text-xs line-clamp-2" title={target.objective}>
                           {target.objective}
@@ -285,19 +287,19 @@ const TopManagementPage = () => {
                       )}
                     </td>
 
-                    <td className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    <td className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 whitespace-nowrap">
                       {target.frequency || 'Monthly'}
                     </td>
 
                     <td className="px-6 py-4 text-brand-600 dark:text-brand-400 font-black whitespace-nowrap">{target.value}</td>
                     
-                    <td className="px-6 py-4 min-w-[200px] max-w-md">
+                    <td className="px-6 py-4">
                       {target.comment ? (
                         <div className="text-slate-600 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-md border border-slate-200 dark:border-slate-700 max-h-24 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none transition-colors">
                           {target.comment}
                         </div>
                       ) : (
-                        <span className="text-slate-400 dark:text-slate-500 italic text-xs">No remarks</span>
+                        <span className="text-slate-400 dark:text-slate-500 italic text-xs whitespace-nowrap">No remarks</span>
                       )}
                     </td>
 
