@@ -7,15 +7,16 @@ const postToKintone = async (data) => {
 
   const url = `https://${KINTONE_DOMAIN}/k/v1/record.json`;
   
-  // ✨ ARCHITECTURAL FIX: Mapped to new Kintone Field Codes ('kpi' and 'objective')
+  // Implements the mapped section and objective fields to mirror Kintone architecture
   const payload = {
     app: KPI_APP_ID,
     record: {
       department:      { value: data.department || '' },
+      section:         { value: data.section || '' },
       applied_by:      { value: data.applied_by || '' },
       status:          { value: data.status || '' },
       car:             { value: data.car || '' },       
-      kpi:             { value: data.kpi || data.metric_name || data.metric || '' }, // Fallback chain for safety
+      kpi:             { value: data.kpi || data.metric_name || data.metric || '' },
       objective:       { value: data.objective || '' }, 
       month:           { value: String(data.month || '') }, 
       year:            { value: String(data.year || '') }, 
@@ -34,7 +35,6 @@ const postToKintone = async (data) => {
     });
 
     if (!response.ok) {
-      // Log exact Kintone rejection reason for easier debugging
       const errorData = await response.json();
       console.error('Kintone API Rejection:', errorData);
       throw new Error('Failed to post record to Kintone');

@@ -121,17 +121,18 @@ const updateSubmissionStatus = async (req, res) => {
     const updatedSubmission = await submissionRepo.updateStatus(id, status, formattedRemark, carData);
     if (!updatedSubmission) return res.status(404).json({ message: 'Submission not found' });
 
-    // Kintone sync logic
     if (status === 'Approved' || status === 'CAR Requested') {
       try {
-        // ✨ ARCHITECTURAL FIX: Explicitly SELECT t.objective
+        // Includes the section join and select statement mapping
         const { rows } = await db.query(`
           SELECT m.report_month, m.report_year, m.actual_value, m.remarks, m.kintone_car_id,
                  m.supporting_data, 
-                 t.metric_name, t.objective, t.target_value, t.operator, t.unit, d.name as dept_name
+                 t.metric_name, t.objective, t.target_value, t.operator, t.unit, 
+                 d.name as dept_name, s.name as section_name
           FROM monthly_actuals m
           JOIN kpi_targets t ON m.target_id = t.id
           JOIN departments d ON t.department_id = d.id
+          LEFT JOIN sections s ON t.section_id = s.id
           WHERE m.id = $1
         `, [id]);
 
@@ -141,9 +142,9 @@ const updateSubmissionStatus = async (req, res) => {
             driveLink = JSON.parse(driveLink);
           }
 
-          // ✨ ARCHITECTURAL FIX: Map kpi and objective into the Kintone DTO
           const kintoneRes = await kintoneService.postToKintone({
             department: rows[0].dept_name,
+            section: rows[0].section_name,
             applied_by: req.user?.name || 'System QMR',
             status: status,
             car: rows[0].kintone_car_id || '', 
