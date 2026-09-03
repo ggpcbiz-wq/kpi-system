@@ -44,7 +44,6 @@ const createUser = async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // 1. Insert primary user record with hierarchy
     const insertUserQuery = `
       INSERT INTO users (id, name, email, role, plant, status, dept_head_email, div_head_email, created_at, updated_at) 
       VALUES (gen_random_uuid(), $1, $2, $3, $4, 'Active', $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) 
@@ -55,7 +54,6 @@ const createUser = async (req, res) => {
     ]);
     const newUser = userRes.rows[0];
 
-    // 2. Map chosen departments
     if (departments && Array.isArray(departments) && departments.length > 0) {
       for (const deptName of departments) {
         await client.query(`
@@ -66,7 +64,6 @@ const createUser = async (req, res) => {
       }
     }
 
-    // 3. Map execution section for Supervisors
     if (section) {
       await client.query(`
         INSERT INTO user_sections (user_id, section_id)
@@ -201,14 +198,14 @@ const lookupEmployee = async (req, res) => {
 
     const existingDbUser = dbCheck.rows.length > 0 ? dbCheck.rows[0] : null;
 
-    // ✨ ARCHITECTURAL FIX: Extract hierarchy and section mapping
+    // ✨ ARCHITECTURAL FIX: Use exact Field Codes matching Kintone JSON payload
     const employeeData = {
       firstName: kintoneRecord.First_Name?.value || '',
       lastName: kintoneRecord.Last_Name?.value || '',
       department: kintoneRecord.Department?.value || '',
       section: kintoneRecord.Section?.value || '',
-      deptHeadEmail: kintoneRecord['Department Head E-mail']?.value || '',
-      divHeadEmail: kintoneRecord['Division Head E-mail']?.value || '',
+      deptHeadEmail: kintoneRecord.Department_Head_E_mail?.value || '',
+      divHeadEmail: kintoneRecord.Division_Head_E_mail?.value || '',
       designation: kintoneRecord.Designation?.value || '',
       plant: kintoneRecord.Attribute?.value || '',
       role: existingDbUser ? existingDbUser.role : 'Unassigned',
