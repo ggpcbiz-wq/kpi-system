@@ -2,8 +2,12 @@ const targetRepository = require('../repositories/target.repository');
 const db = require('../config/db'); 
 
 const getDashboardTargets = async (user) => {
-  const activeUserId = user.userId || user.id;
-  return await targetRepository.findAll(activeUserId, user.role);
+  // ✨ ARCHITECTURAL FIX: Construct unified context object to satisfy strict repository destructuring
+  const userContext = {
+    ...user,
+    id: user.userId || user.id
+  };
+  return await targetRepository.findAll(userContext);
 };
 
 const proposeNewTarget = async (data, user) => {
@@ -22,7 +26,7 @@ const proposeNewTarget = async (data, user) => {
     if (secRes.rowCount > 0) secId = secRes.rows[0].id;
   }
 
-  // ✨ Incorporate the Objective field into the DTO
+  // Incorporate the Objective field into the DTO
   const targetData = {
     metric_name: data.metric_name, 
     objective: data.objective,
