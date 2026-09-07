@@ -512,7 +512,7 @@ const UserManagementPage = () => {
                         onChange={(e) => handleAdminToggle(e.target.checked)}
                       />
                       <div>
-                        <span className="block text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">System Administrator</span>
+                        <span className="block text-sm font-bold text-slate-900 dark:text-slate-500 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">System Administrator</span>
                         <span className="block text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed transition-colors">Overrides operational role. Grants read/write access to User & Workflow Control.</span>
                       </div>
                     </label>
