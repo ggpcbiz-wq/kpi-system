@@ -30,7 +30,6 @@ const UserManagementPage = () => {
   
   const [originalDept, setOriginalDept] = useState(''); 
 
-  // ✨ ARCHITECTURAL FIX: Appended deptHeadEmail and divHeadEmail to the initial state
   const [formData, setFormData] = useState({ 
     id: null, name: '', email: '', role: '', departments: [], section: '', plant: '', status: 'Active',
     deptHeadEmail: '', divHeadEmail: ''
@@ -65,7 +64,6 @@ const UserManagementPage = () => {
     setForceAdmin(false);
     setForceGlobal(false);
     setOriginalDept('');
-    // ✨ ARCHITECTURAL FIX: Reset hierarchical state correctly
     setFormData({ id: null, name: '', email: '', role: '', departments: [], section: '', plant: '', status: 'Active', deptHeadEmail: '', divHeadEmail: '' });
     setIsModalOpen(true);
   };
@@ -169,7 +167,6 @@ const UserManagementPage = () => {
         return str.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
       };
 
-      // ✨ ARCHITECTURAL FIX: Extract the synced hierarchy into state to preserve it for POST
       setFormData({
         id: null,
         email: lookupEmail,
@@ -387,7 +384,7 @@ const UserManagementPage = () => {
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1.5">
                           {userDepts.length > 0 ? userDepts.map(d => (
-                            <span key={d} className={`px-2.5 py-1 rounded-md text-xs font-bold border tracking-wide transition-colors ${d === 'GLOBAL' ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 border-brand-200 dark:border-brand-800/50' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 shadow-sm'}`}>
+                            <span key={d} className={`px-2.5 py-1 rounded-md text-xs font-bold border tracking-wide transition-colors ${d === 'GLOBAL' ? 'bg-brand-50 dark:bg-brand-900 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-700' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 shadow-sm'}`}>
                               {d}
                             </span>
                           )) : <span className="italic text-slate-400 dark:text-slate-500 text-xs transition-colors">None Assigned</span>}
@@ -396,7 +393,7 @@ const UserManagementPage = () => {
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1.5">
                           {userSections.length > 0 ? userSections.map(s => (
-                            <span key={s} className="px-2.5 py-1 rounded-md text-xs font-bold border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 tracking-wide shadow-sm transition-colors">
+                            <span key={s} className="px-2.5 py-1 rounded-md text-xs font-bold border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 tracking-wide shadow-sm transition-colors">
                               {s}
                             </span>
                           )) : <span className="italic text-slate-400 dark:text-slate-500 text-xs transition-colors">--</span>}
@@ -409,7 +406,7 @@ const UserManagementPage = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-end space-x-2">
-                          <button onClick={() => handleOpenEdit(u)} className="p-1.5 transition-colors rounded-lg text-slate-400 dark:text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/30 border border-transparent hover:border-brand-200 dark:hover:border-brand-800/50" title="Edit User">
+                          <button onClick={() => handleOpenEdit(u)} className="p-1.5 transition-colors rounded-lg text-slate-400 dark:text-slate-500 hover:text-brand-600 dark:hover:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-900 border border-transparent hover:border-brand-200 dark:hover:border-brand-700" title="Edit User">
                             <Edit size={18} />
                           </button>
                           <button onClick={() => initiateDelete(u)} disabled={u.id === user?.id} className="p-1.5 transition-colors rounded-lg text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 border border-transparent hover:border-rose-200 dark:hover:border-rose-800/50 disabled:opacity-30 disabled:cursor-not-allowed" title="Delete User">
@@ -506,7 +503,7 @@ const UserManagementPage = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className={`p-5 border rounded-xl transition-colors ${forceAdmin ? 'bg-brand-50 dark:bg-brand-900/30 border-brand-200 dark:border-brand-800/50' : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700'}`}>
+                  <div className={`p-5 border rounded-xl transition-colors ${forceAdmin ? 'bg-brand-50 dark:bg-brand-900 border-brand-200 dark:border-brand-700' : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700'}`}>
                     <label className="flex items-start space-x-3 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -521,7 +518,7 @@ const UserManagementPage = () => {
                     </label>
                   </div>
                   
-                  <div className={`p-5 border rounded-xl transition-colors ${forceGlobal ? 'bg-brand-50 dark:bg-brand-900/30 border-brand-200 dark:border-brand-800/50' : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700'}`}>
+                  <div className={`p-5 border rounded-xl transition-colors ${forceGlobal ? 'bg-brand-50 dark:bg-brand-900 border-brand-200 dark:border-brand-700' : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700'}`}>
                     <label className="flex items-start space-x-3 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -541,7 +538,7 @@ const UserManagementPage = () => {
                   <div>
                     <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Mapped Portal Role</label>
                     {forceAdmin ? (
-                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-brand-200 dark:border-brand-800/50 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 transition-colors">
+                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-brand-200 dark:border-brand-700 bg-brand-50 dark:bg-brand-900 text-brand-700 dark:text-brand-300 transition-colors">
                         <ShieldCheck size={18} className="mr-2.5 text-brand-600 dark:text-brand-400"/> Administrator
                       </div>
                     ) : (
@@ -568,7 +565,7 @@ const UserManagementPage = () => {
                       Assigned Department(s)
                     </label>
                     {forceGlobal ? (
-                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-brand-200 dark:border-brand-800/50 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 transition-colors cursor-not-allowed">
+                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-brand-200 dark:border-brand-700 bg-brand-50 dark:bg-brand-900 text-brand-700 dark:text-brand-300 transition-colors cursor-not-allowed">
                         <ShieldCheck size={16} className="mr-2"/> Global Access (All Departments)
                       </div>
                     ) : (
@@ -576,7 +573,7 @@ const UserManagementPage = () => {
                          {departments.filter(d => d !== 'GLOBAL').map(dept => {
                             const isSelected = formData.departments.includes(dept);
                             return (
-                              <label key={dept} className={`flex items-center px-3 py-2 rounded-md cursor-pointer transition-colors ${isSelected ? 'bg-brand-50 dark:bg-brand-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                              <label key={dept} className={`flex items-center px-3 py-2 rounded-md cursor-pointer transition-colors ${isSelected ? 'bg-brand-50 dark:bg-brand-900' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
                                 <input 
                                   type="checkbox" 
                                   checked={isSelected}
@@ -588,7 +585,7 @@ const UserManagementPage = () => {
                                   }}
                                   className="w-4 h-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-700 cursor-pointer"
                                 />
-                                <span className={`ml-3 text-sm transition-colors ${isSelected ? 'text-brand-700 dark:text-brand-400 font-bold' : 'text-slate-700 dark:text-slate-300 font-medium'}`}>{dept}</span>
+                                <span className={`ml-3 text-sm transition-colors ${isSelected ? 'text-brand-700 dark:text-brand-300 font-bold' : 'text-slate-700 dark:text-slate-300 font-medium'}`}>{dept}</span>
                               </label>
                             )
                          })}
