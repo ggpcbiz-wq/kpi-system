@@ -503,7 +503,8 @@ const UserManagementPage = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className={`p-5 border rounded-xl transition-colors ${forceAdmin ? 'bg-brand-50 dark:bg-brand-900 border-brand-200 dark:border-brand-700' : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700'}`}>
+                  {/* ✨ ARCHITECTURAL FIX: Completely removed dynamic background coloring. */}
+                  <div className="p-5 border rounded-xl transition-colors bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700">
                     <label className="flex items-start space-x-3 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -518,7 +519,8 @@ const UserManagementPage = () => {
                     </label>
                   </div>
                   
-                  <div className={`p-5 border rounded-xl transition-colors ${forceGlobal ? 'bg-brand-50 dark:bg-brand-900 border-brand-200 dark:border-brand-700' : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700'}`}>
+                  {/* ✨ ARCHITECTURAL FIX: Completely removed dynamic background coloring. */}
+                  <div className="p-5 border rounded-xl transition-colors bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700">
                     <label className="flex items-start space-x-3 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -537,9 +539,11 @@ const UserManagementPage = () => {
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Mapped Portal Role</label>
+                     {/* ✨ ARCHITECTURAL FIX: Replaced bg-brand with standard disabled look in dark mode */}
                     {forceAdmin ? (
-                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-brand-200 dark:border-brand-700 bg-brand-50 dark:bg-brand-900 text-brand-700 dark:text-brand-300 transition-colors">
-                        <ShieldCheck size={18} className="mr-2.5 text-brand-600 dark:text-brand-400"/> Administrator
+                     
+                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 cursor-not-allowed transition-colors">
+                        <ShieldCheck size={18} className="mr-2.5 text-slate-400 dark:text-slate-500"/> Administrator
                       </div>
                     ) : (
                       <div className="relative">
@@ -565,14 +569,13 @@ const UserManagementPage = () => {
                       Assigned Department(s)
                     </label>
                     {forceGlobal ? (
-                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-brand-200 dark:border-brand-700 bg-brand-50 dark:bg-brand-900 text-brand-700 dark:text-brand-300 transition-colors cursor-not-allowed">
+                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 cursor-not-allowed transition-colors">
                         <ShieldCheck size={16} className="mr-2"/> Global Access (All Departments)
                       </div>
                     ) : (
                       <div className="w-full border rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-1.5 max-h-[140px] overflow-y-auto space-y-0.5 shadow-inner">
                          {departments.filter(d => d !== 'GLOBAL').map(dept => {
                             const isSelected = formData.departments.includes(dept);
-                            {/* ✨ ARCHITECTURAL FIX: Removed dynamic background colors and text changes to rely purely on the checkbox input for selection indication */}
                             return (
                               <label key={dept} className="flex items-center px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
                                 <input 
