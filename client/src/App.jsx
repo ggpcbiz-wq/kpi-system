@@ -15,8 +15,8 @@ import SupervisorPage from './pages/SupervisorPage';
 import ManagerPage from './pages/ManagerPage';
 import TopManagementPage from './pages/TopManagementPage';
 import QuarterlyCarInboxPage from './pages/QuarterlyCarInboxPage';
-// ✨ FIX: Imported the new Department Management component
 import DepartmentManagementPage from './pages/DepartmentManagementPage';
+import AnnualObjectivesPage from './pages/AnnualObjectivesPage';
 
 import LoginPage from './pages/LoginPage';
 
@@ -37,7 +37,6 @@ const RootRedirect = () => {
 };
 
 function App() {
-  // ToastProvider is the outermost wrapper so toasts work everywhere
   return (
     <ToastProvider>
       <AuthProvider>
@@ -50,11 +49,9 @@ function App() {
 
             <Route element={<Layout />}>
               
-              {/* ✨ FIX: Administrator-only routes */}
               <Route element={<ProtectedRoute allowedRoles={['Administrator']} />}>
                 <Route path="/admin" element={<UserManagementPage />} />
                 <Route path="/admin/workflow" element={<WorkflowControlPage />} />
-                {/* ✨ FIX: Registered the Department Management route */}
                 <Route path="/admin/departments" element={<DepartmentManagementPage />} />
               </Route>
 
@@ -79,8 +76,10 @@ function App() {
                 <Route path="/car-tracking" element={<CarTrackingPage />} />
               </Route>
 
+              {/* ✨ ARCHITECTURAL FIX: Registered the Annual Objectives Page for global read access */}
               <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Supervisor', 'Manager', 'Top Management']} />}>
                 <Route path="/overview" element={<CompanyOverviewPage />} />
+                <Route path="/reports/annual-objectives" element={<AnnualObjectivesPage />} />
               </Route>
             </Route>
           </Routes>
