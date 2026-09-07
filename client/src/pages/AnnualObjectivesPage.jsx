@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Printer, Download } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
+import * as XLSX from 'xlsx'; // ✨ NEW: Import SheetJS for client-side Excel generation
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const currentYear = new Date().getFullYear();
@@ -29,7 +30,6 @@ const AnnualObjectivesPage = () => {
           const rawTargets = await targetRes.json();
           const rawSubs = await subRes.json();
           
-          // Filter only active targets and approved data for the compliance report
           setTargets(rawTargets.filter(t => t.status === 'Active'));
           setSubmissions(rawSubs.filter(s => s.status === 'Approved' || s.status === 'CAR Requested'));
         }
@@ -46,7 +46,6 @@ const AnnualObjectivesPage = () => {
   }, [token, addToast]);
 
   const reportData = useMemo(() => {
-    // 1. Merge actuals into targets
     const merged = targets.map((target, index) => {
       const targetSubs = submissions.filter(s => s.target_id === target.id && s.report_year === currentYear);
       
@@ -70,7 +69,6 @@ const AnnualObjectivesPage = () => {
       };
     });
 
-    // 2. Sort by Department -> Process Category -> Process Type
     merged.sort((a, b) => {
       const deptA = a.dept_name || '';
       const deptB = b.dept_name || '';
@@ -83,7 +81,6 @@ const AnnualObjectivesPage = () => {
       return (a.process_type || '').localeCompare(b.process_type || '');
     });
 
-    // 3. Calculate dynamic rowSpans to replicate Excel merging
     for (let i = 0; i < merged.length; i++) {
       merged[i].rowSpan = {
         process_category: 1,
@@ -94,13 +91,11 @@ const AnnualObjectivesPage = () => {
       const fieldsToSpan = ['process_category', 'process_type', 'dept_name'];
       
       fieldsToSpan.forEach(field => {
-        if (merged[i][field] === null) return; // Skip span calculation for nulls
+        if (merged[i][field] === null) return; 
         
-        // If this row is identical to the previous row for this field, hide it (span = 0)
         if (i > 0 && merged[i][field] === merged[i - 1][field]) {
           merged[i].rowSpan[field] = 0;
           
-          // Find the origin row and increment its span
           let originIndex = i - 1;
           while (originIndex > 0 && merged[originIndex].rowSpan[field] === 0) {
             originIndex--;
@@ -112,6 +107,68 @@ const AnnualObjectivesPage = () => {
 
     return merged;
   }, [targets, submissions]);
+
+  // ✨ NEW: Excel Export Handler
+  const handleExportExcel = () => {
+    try {
+      if (reportData.length === 0) {
+        addToast("No data available to export.", "info");
+        return;
+      }
+
+      // Format flat data for Excel (best practice for Pivot Tables/Filtering)
+      const excelData = reportData.map(row => {
+        const rowData = {
+          'No.': row.displayIndex,
+          'QMS Process Category': row.process_category || 'Uncategorized',
+          'Process Type': row.process_type || '-',
+          'Department': row.dept_name || '-',
+          'Section': row.section_name || '-',
+          'Objectives': row.objective || '-',
+          'KPI': row.metric_name,
+          'Target': `${row.operator || ''} ${row.target_value || ''} ${row.unit || ''}`.trim(),
+          'Actual Result (YTD)': row.ytdActual !== '-' ? `${row.ytdActual} ${row.unit}`.trim() : '-',
+          'Process Owner': row.proposer_name || '-'
+        };
+
+        // Append monthly data dynamically
+        months.forEach((month, index) => {
+          const val = row.monthlyData[index + 1];
+          rowData[month] = val ? `${val} ${row.unit === '%' ? '%' : ''}`.trim() : '-';
+        });
+
+        return rowData;
+      });
+
+      // Generate Worksheet and Workbook
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, `Objectives ${currentYear}`);
+
+      // Auto-size columns slightly for better UX
+      const columnWidths = [
+        { wch: 5 },  // No.
+        { wch: 25 }, // Category
+        { wch: 25 }, // Type
+        { wch: 20 }, // Dept
+        { wch: 20 }, // Section
+        { wch: 45 }, // Objectives
+        { wch: 30 }, // KPI
+        { wch: 15 }, // Target
+        { wch: 15 }, // Actual
+        { wch: 20 }, // Owner
+        ...months.map(() => ({ wch: 10 })) // Months
+      ];
+      worksheet['!cols'] = columnWidths;
+
+      // Trigger download
+      XLSX.writeFile(workbook, `GKG_Annual_Objectives_${currentYear}.xlsx`);
+      addToast("Excel export generated successfully.", "success");
+    } catch (error) {
+      console.error("Excel Export Error:", error);
+      addToast("Failed to generate Excel file.", "error");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -143,7 +200,10 @@ const AnnualObjectivesPage = () => {
             <button onClick={() => window.print()} className="flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold border border-slate-300 rounded shadow-sm">
               <Printer size={16} className="mr-2" /> Print
             </button>
-            <button className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded shadow-sm">
+            <button 
+              onClick={handleExportExcel} // ✨ NEW: Bound export handler
+              className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded shadow-sm transition-colors"
+            >
               <Download size={16} className="mr-2" /> Export Excel
             </button>
           </div>
