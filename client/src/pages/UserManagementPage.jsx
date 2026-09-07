@@ -512,7 +512,7 @@ const UserManagementPage = () => {
                         onChange={(e) => handleAdminToggle(e.target.checked)}
                       />
                       <div>
-                        <span className="block text-sm font-bold text-slate-900 dark:text-slate-500 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">System Administrator</span>
+                        <span className="block text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">System Administrator</span>
                         <span className="block text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed transition-colors">Overrides operational role. Grants read/write access to User & Workflow Control.</span>
                       </div>
                     </label>
@@ -572,8 +572,9 @@ const UserManagementPage = () => {
                       <div className="w-full border rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-1.5 max-h-[140px] overflow-y-auto space-y-0.5 shadow-inner">
                          {departments.filter(d => d !== 'GLOBAL').map(dept => {
                             const isSelected = formData.departments.includes(dept);
+                            {/* ✨ ARCHITECTURAL FIX: Removed dynamic background colors and text changes to rely purely on the checkbox input for selection indication */}
                             return (
-                              <label key={dept} className={`flex items-center px-3 py-2 rounded-md cursor-pointer transition-colors ${isSelected ? 'bg-brand-50 dark:bg-brand-900' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                              <label key={dept} className="flex items-center px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
                                 <input 
                                   type="checkbox" 
                                   checked={isSelected}
@@ -585,7 +586,7 @@ const UserManagementPage = () => {
                                   }}
                                   className="w-4 h-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-700 cursor-pointer"
                                 />
-                                <span className={`ml-3 text-sm transition-colors ${isSelected ? 'text-brand-700 dark:text-brand-300 font-bold' : 'text-slate-700 dark:text-slate-300 font-medium'}`}>{dept}</span>
+                                <span className="ml-3 text-sm font-medium text-slate-700 dark:text-slate-300 transition-colors">{dept}</span>
                               </label>
                             )
                          })}
