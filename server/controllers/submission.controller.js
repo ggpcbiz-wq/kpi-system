@@ -54,8 +54,10 @@ const getSubmissions = async (req, res) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
 
+    // ✨ ARCHITECTURAL FIX: Explicitly map the JWT ID to satisfy repository destructuring constraints
     const accessContext = {
       ...req.user,
+      id: req.user?.userId || req.user?.id, 
       globalActualsAccess: req.user.role === 'Top Management' || req.user.role === 'Administrator'
     };
     
@@ -74,9 +76,8 @@ const updateSubmissionStatus = async (req, res) => {
 
     if (!status) return res.status(400).json({ message: 'Status is required' });
 
-    // ✨ ARCHITECTURAL FIX: Strict role boundaries for status transitions
     const allowedRolesByStatus = {
-      'Locked - Pending QMR Sign-Off': ['Manager'], // Removed Supervisor to enforce linear workflow
+      'Locked - Pending QMR Sign-Off': ['Manager'], 
       'Approved': ['Administrator'],
       'CAR Requested': ['Administrator'],
       'Rejected': ['Manager', 'Administrator']
