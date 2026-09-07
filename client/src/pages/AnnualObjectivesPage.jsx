@@ -185,9 +185,9 @@ const AnnualObjectivesPage = () => {
         {/* Report Header */}
         <div className="flex flex-col md:flex-row items-center justify-between border-b-2 border-blue-900 pb-4">
           <div className="flex items-center gap-4">
-            <div className="w-20 h-16 bg-blue-50 border border-blue-900 flex items-center justify-center font-bold text-blue-900 tracking-tighter text-2xl">
+            {/* <div className="w-20 h-16 bg-blue-50 border border-blue-900 flex items-center justify-center font-bold text-blue-900 tracking-tighter text-2xl">
               GKG
-            </div>
+            </div> */}
             <div>
               <h1 className="text-3xl font-black text-blue-700 tracking-tight uppercase">
                 ANNUAL DEPARTMENTAL OBJECTIVES & TARGETS
