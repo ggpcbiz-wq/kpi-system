@@ -105,7 +105,7 @@ const WorkflowControlPage = () => {
               dept: t.dept_name, 
               section: t.section_name, 
               metric: t.metric_name,
-              objective: t.objective, // ✨ Map Objective Dimension
+              objective: t.objective, 
               processCategory: t.process_category,
               processType: t.process_type,
               frequency: t.frequency,
@@ -205,6 +205,14 @@ const WorkflowControlPage = () => {
           body: JSON.stringify({ status: 'Rejected', remarks: rejectReason })
         });
         addToast("Monthly submission rejected and returned to Supervisor.", "success");
+      } else if (rejectPayload.queueName === 'final') {
+        // ✨ ARCHITECTURAL FIX: Support returning targets directly to the Manager
+        await fetch(`${API_BASE_URL}/api/targets/${rejectPayload.id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ status: 'Rejected', remarks: rejectReason })
+        });
+        addToast("Target rejected and returned to Manager.", "success");
       }
       
       setRefreshTrigger(prev => prev + 1);
@@ -267,9 +275,7 @@ const WorkflowControlPage = () => {
                         <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                       </div>
                     </th>
-                    {/* ✨ FIX: Header Renamed to KPI */}
                     <th className="px-6 py-4 font-bold">KPI</th>
-                    {/* ✨ FIX: Added Objective column */}
                     <th className="px-6 py-4 font-bold">Objective</th>
                     <th className="px-6 py-4 font-bold">Category</th>
                     <th className="px-6 py-4 font-bold">Process Type</th>
@@ -289,10 +295,8 @@ const WorkflowControlPage = () => {
                       <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">{target.dept}</td>
                       <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">{target.section || '--'}</td>
                       
-                      {/* ✨ FIX: KPI Render */}
                       <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 truncate" title={target.metric}>{target.metric}</td>
                       
-                      {/* ✨ FIX: Objective Render */}
                       <td className="px-6 py-4 min-w-[200px] max-w-xs">
                         {target.objective ? (
                           <span className="text-slate-600 dark:text-slate-300 text-xs line-clamp-2" title={target.objective}>
@@ -332,13 +336,21 @@ const WorkflowControlPage = () => {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex justify-end">
+                        {/* ✨ ARCHITECTURAL FIX: UI layout updated to support rejection from the QMR portal */}
+                        <div className="flex justify-end space-x-2">
                           <button 
                             onClick={() => initiateApprove(target.id, 'final', 'Activate Target', `Activate the ${target.metric} target in the system? It will go live immediately.`, 'Activate Now')} 
-                            className="flex items-center px-4 py-2 text-xs font-bold text-brand-700 dark:text-brand-400 bg-brand-50 dark:bg-slate-600 border border-brand-200 dark:border-brand-800/50 rounded-lg hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-colors shadow-sm" 
+                            className="p-1.5 transition-colors rounded-lg text-slate-400 dark:text-slate-500 hover:text-jira-success dark:hover:text-jira-success hover:bg-jira-success-bg dark:hover:bg-jira-success/20 border border-transparent hover:border-jira-success/30 dark:hover:border-jira-success/30 shadow-sm" 
                             title="Activate Target"
                           >
-                            <PlayCircle size={16} className="mr-1.5" /> Activate
+                            <PlayCircle size={18} /> 
+                          </button>
+                          <button 
+                            onClick={() => initiateReject(target.id, 'final')} 
+                            className="p-1.5 transition-colors rounded-lg text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 border border-transparent hover:border-rose-200 dark:hover:border-rose-800/50 shadow-sm" 
+                            title="Reject & Return to Manager"
+                          >
+                            <XCircle size={18} />
                           </button>
                         </div>
                       </td>
@@ -379,7 +391,6 @@ const WorkflowControlPage = () => {
                       <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                     </div>
                   </th>
-                  {/* ✨ FIX: Header Renamed to KPI */}
                   <th className="px-6 py-4 font-bold">KPI (Month)</th>
                   <th className="px-6 py-4 font-bold">Monthly Actual</th>
                   <th className="px-6 py-4 font-bold border-l border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 transition-colors">QTD Average</th>
@@ -565,7 +576,7 @@ const WorkflowControlPage = () => {
               </button>
             </div>
             <div className="p-8">
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4 transition-colors">Please provide a detailed reason for returning this submission.</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4 transition-colors">Please provide a detailed reason for returning this data to the proposer.</p>
               <textarea 
                 className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-100 resize-none transition-colors" 
                 placeholder="Enter rejection reason here..." 
