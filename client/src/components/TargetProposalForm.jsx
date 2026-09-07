@@ -247,7 +247,26 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
           </div>
         </div>
       </div>
-
+      
+      {/* ✨ ROW 4: New Objective Field */}
+      <div>
+        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
+          Objective <span className="text-rose-600 dark:text-rose-400">*</span>
+        </label>
+        <div className="relative">
+          <div className="absolute top-3 left-0 pl-3.5 flex items-start pointer-events-none">
+            <BookOpen size={16} className="text-slate-400 dark:text-slate-500 transition-colors" />
+          </div>
+          <textarea 
+            required 
+            rows={3}
+            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 bg-white dark:bg-slate-900/50 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors shadow-sm resize-none"
+            value={formData.objective}
+            onChange={(e) => setFormData({...formData, objective: e.target.value})}
+            placeholder="Describe the objective or goal associated with this KPI..."
+          />
+        </div>
+      </div>
       {/* ROW 3: Metric Thresholds */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
@@ -311,25 +330,6 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
         </div>
       </div>
 
-      {/* ✨ ROW 4: New Objective Field */}
-      <div>
-        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
-          Objective <span className="text-rose-600 dark:text-rose-400">*</span>
-        </label>
-        <div className="relative">
-          <div className="absolute top-3 left-0 pl-3.5 flex items-start pointer-events-none">
-            <BookOpen size={16} className="text-slate-400 dark:text-slate-500 transition-colors" />
-          </div>
-          <textarea 
-            required 
-            rows={3}
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 bg-white dark:bg-slate-900/50 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors shadow-sm resize-none"
-            value={formData.objective}
-            onChange={(e) => setFormData({...formData, objective: e.target.value})}
-            placeholder="Describe the objective or goal associated with this KPI..."
-          />
-        </div>
-      </div>
       
       <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-700/50 mt-8 transition-colors">
         <button 
