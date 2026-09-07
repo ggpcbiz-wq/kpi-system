@@ -14,7 +14,8 @@ import {
   LogOut,
   Moon, 
   Sun,
-  Building2 // ✨ FIX: Imported new icon for Department Management
+  Building2,
+  FileSpreadsheet // ✨ FIX: Imported icon for the Annual Objectives report
 } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 
@@ -34,9 +35,10 @@ const Sidebar = () => {
         return [
           { name: 'Company Scoreboard', path: '/overview', icon: Globe },
           { name: 'User Management', path: '/admin', icon: Users },
-          // ✨ FIX: Added the Department Management route explicitly for Admins
           { name: 'Dept. Management', path: '/admin/departments', icon: Building2 }, 
-          { name: 'Workflow Control', path: '/admin/workflow', icon: Settings } 
+          { name: 'Workflow Control', path: '/admin/workflow', icon: Settings },
+          // ✨ FIX: Appended the new report route specifically for Administrators
+          { name: 'Annual Objectives', path: '/reports/annual-objectives', icon: FileSpreadsheet } 
         ];
       case 'Supervisor':
         return [
@@ -90,7 +92,6 @@ const Sidebar = () => {
           {isCollapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={14} strokeWidth={3} />}
         </button>
 
-        {/* Header Area */}
         <div className={`h-24 flex items-center border-b border-slate-100 dark:border-slate-800 transition-all duration-300 ${isCollapsed ? 'px-0 justify-center' : 'px-6'}`}>
           <div className="w-12 h-12 bg-brand-600 rounded-xl flex items-center justify-center shrink-0 shadow-md shadow-brand-100 dark:shadow-none">
             <span className="text-white font-display text-2xl tracking-wide">KPI</span>
@@ -107,7 +108,6 @@ const Sidebar = () => {
           )}
         </div>
 
-        {/* Navigation Links */}
         <nav className={`flex-1 py-8 space-y-1.5 overflow-y-auto ${isCollapsed ? 'px-2' : 'px-4'}`}>
           {!isCollapsed && (
             <p className="px-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
@@ -143,7 +143,6 @@ const Sidebar = () => {
           })}
         </nav>
 
-        {/* Profile & Utilities Section */}
         <div className={`border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300 flex flex-col ${isCollapsed ? 'p-3 space-y-2' : 'p-5'}`}>
           
           <div className={`flex items-center rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 transition-all ${isCollapsed ? 'justify-center p-2' : 'p-3 mb-3'}`}>
@@ -183,7 +182,6 @@ const Sidebar = () => {
         </div>
       </aside>
 
-      {/* Confirmation Modal */}
       <ConfirmModal 
         isOpen={isLogoutModalOpen}
         onClose={() => setIsLogoutModalOpen(false)}

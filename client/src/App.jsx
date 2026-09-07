@@ -49,10 +49,12 @@ function App() {
 
             <Route element={<Layout />}>
               
+              {/* ✨ ARCHITECTURAL FIX: Annual Objectives report moved strictly to Admin-only wrapper */}
               <Route element={<ProtectedRoute allowedRoles={['Administrator']} />}>
                 <Route path="/admin" element={<UserManagementPage />} />
                 <Route path="/admin/workflow" element={<WorkflowControlPage />} />
                 <Route path="/admin/departments" element={<DepartmentManagementPage />} />
+                <Route path="/reports/annual-objectives" element={<AnnualObjectivesPage />} />
               </Route>
 
               <Route element={<ProtectedRoute allowedRoles={['Supervisor', 'Manager']} />}>
@@ -76,10 +78,8 @@ function App() {
                 <Route path="/car-tracking" element={<CarTrackingPage />} />
               </Route>
 
-              {/* ✨ ARCHITECTURAL FIX: Registered the Annual Objectives Page for global read access */}
               <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Supervisor', 'Manager', 'Top Management']} />}>
                 <Route path="/overview" element={<CompanyOverviewPage />} />
-                <Route path="/reports/annual-objectives" element={<AnnualObjectivesPage />} />
               </Route>
             </Route>
           </Routes>
