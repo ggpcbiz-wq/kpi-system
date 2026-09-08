@@ -94,7 +94,9 @@ const AnnualObjectivesPage = () => {
         ytdActual,
         monthlyData,
         history,
-        achievedLastYear
+        achievedLastYear,
+        // ✨ ARCHITECTURAL FIX: Create a composite key for accurate HTML table rowSpans
+        dept_section_key: `${target.dept_name || ''}|${target.section_name || ''}`
       };
     });
 
@@ -102,16 +104,24 @@ const AnnualObjectivesPage = () => {
       const deptA = a.dept_name || '';
       const deptB = b.dept_name || '';
       if (deptA !== deptB) return deptA.localeCompare(deptB);
+
+      // ✨ Sort by Section second, to group identical sections together before processes
+      const secA = a.section_name || '';
+      const secB = b.section_name || '';
+      if (secA !== secB) return secA.localeCompare(secB);
+
       const catA = a.process_category || '';
       const catB = b.process_category || '';
       if (catA !== catB) return catA.localeCompare(catB);
+      
       return (a.process_type || '').localeCompare(b.process_type || '');
     });
 
     for (let i = 0; i < merged.length; i++) {
-      merged[i].rowSpan = { process_category: 1, process_type: 1, dept_name: 1 };
-      ['process_category', 'process_type', 'dept_name'].forEach(field => {
-        if (merged[i][field] === null) return; 
+      // ✨ Evaluate rowSpan against the new composite dept_section_key
+      merged[i].rowSpan = { process_category: 1, process_type: 1, dept_section_key: 1 };
+      ['process_category', 'process_type', 'dept_section_key'].forEach(field => {
+        if (!merged[i][field]) return; 
         if (i > 0 && merged[i][field] === merged[i - 1][field]) {
           merged[i].rowSpan[field] = 0;
           let originIndex = i - 1;
@@ -129,7 +139,6 @@ const AnnualObjectivesPage = () => {
       if (reportData.length === 0) return addToast("No data available to export.", "info");
 
       const excelData = reportData.map(row => {
-        // ✨ ARCHITECTURAL FIX: Conditionally merge Department and Section for Excel output
         const deptSectionDisplay = row.section_name 
           ? `${row.dept_name} / ${row.section_name}` 
           : (row.dept_name || '-');
@@ -268,9 +277,9 @@ const AnnualObjectivesPage = () => {
                       </td>
                     )}
                     
-                    {row.rowSpan.dept_name > 0 && (
-                      <td className="border border-slate-800 p-2 bg-teal-50/50 text-left" rowSpan={row.rowSpan.dept_name}>
-                        {/* ✨ ARCHITECTURAL FIX: Conditional rendering for nullable sections */}
+                    {/* ✨ Map rendering to the new dept_section_key rowSpan */ }
+                    {row.rowSpan.dept_section_key > 0 && (
+                      <td className="border border-slate-800 p-2 bg-teal-50/50 text-left" rowSpan={row.rowSpan.dept_section_key}>
                         {row.section_name ? (
                           <>
                             <span className="block font-bold text-slate-700">{row.dept_name}</span>
