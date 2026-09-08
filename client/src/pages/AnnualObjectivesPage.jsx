@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import {  Printer, Download, History, EyeOff } from 'lucide-react';
+import { Printer, Download, History, EyeOff } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 import * as XLSX from 'xlsx';
 
@@ -29,7 +29,7 @@ const AnnualObjectivesPage = () => {
   
   const [targets, setTargets] = useState([]);
   const [submissions, setSubmissions] = useState([]);
-  const [showHistorical, setShowHistorical] = useState(false); // ✨ NEW: Toggle State
+  const [showHistorical, setShowHistorical] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -62,7 +62,6 @@ const AnnualObjectivesPage = () => {
 
   const reportData = useMemo(() => {
     const merged = targets.map((target, index) => {
-      // Current Year Processing
       const currentSubs = submissions.filter(s => s.target_id === target.id && s.report_year === currentYear);
       const monthlyData = {};
       let ytdSum = 0, ytdCount = 0;
@@ -73,7 +72,6 @@ const AnnualObjectivesPage = () => {
       });
       const ytdActual = ytdCount > 0 ? (ytdSum / ytdCount).toFixed(2) : '-';
 
-      // ✨ NEW: Historical Processing
       const history = {};
       let lastYearActual = '-';
       historicalYears.forEach(year => {
@@ -131,17 +129,20 @@ const AnnualObjectivesPage = () => {
       if (reportData.length === 0) return addToast("No data available to export.", "info");
 
       const excelData = reportData.map(row => {
+        // ✨ ARCHITECTURAL FIX: Conditionally merge Department and Section for Excel output
+        const deptSectionDisplay = row.section_name 
+          ? `${row.dept_name} / ${row.section_name}` 
+          : (row.dept_name || '-');
+
         const rowData = {
           'No.': row.displayIndex,
           'QMS Process Category': row.process_category || 'Uncategorized',
           'Process Type': row.process_type || '-',
-          'Department': row.dept_name || '-',
-          'Section': row.section_name || '-',
+          'Department / Section': deptSectionDisplay,
           'Objectives': row.objective || '-',
           'KPI': row.metric_name,
         };
 
-        // Inject Historical Columns if visible
         if (showHistorical) {
           historicalYears.forEach(year => {
             rowData[`Target (${year})`] = `${row.operator || ''} ${row.target_value || ''} ${row.unit || ''}`.trim();
@@ -151,7 +152,6 @@ const AnnualObjectivesPage = () => {
           rowData['Achieved? (Prev Year)'] = row.achievedLastYear || '-';
         }
 
-        // Current Year Data
         rowData[`Target (${currentYear})`] = `${row.operator || ''} ${row.target_value || ''} ${row.unit || ''}`.trim();
         rowData[`Actual (${currentYear})`] = row.ytdActual !== '-' ? `${row.ytdActual} ${row.unit}`.trim() : '-';
         rowData['Process Owner'] = row.proposer_name || '-';
@@ -187,17 +187,12 @@ const AnnualObjectivesPage = () => {
     <div className="min-h-screen bg-white p-4 md:p-8 font-sans text-slate-900">
       <div className={`${showHistorical ? 'max-w-[2400px]' : 'max-w-[1800px]'} mx-auto space-y-6 transition-all duration-500`}>
         
-        {/* Report Header */}
         <div className="flex flex-col md:flex-row items-center justify-between border-b-2 border-blue-900 pb-4">
           <div className="flex items-center gap-4">
-            {/* <div className="w-20 h-16 bg-blue-50 border border-blue-900 flex items-center justify-center font-bold text-blue-900 tracking-tighter text-2xl">
-              GKG
-            </div> */}
             <div>
               <h1 className="text-3xl font-black text-blue-700 tracking-tight uppercase">
                 ANNUAL DEPARTMENTAL OBJECTIVES & TARGETS
               </h1>
-              {/* <p className="text-xs font-bold text-blue-900 uppercase">Gunma Gohkin Phils. Corp.</p> */}
             </div>
           </div>
           
@@ -218,7 +213,6 @@ const AnnualObjectivesPage = () => {
           </div>
         </div>
 
-        {/* Master Data Grid */}
         <div className="overflow-x-auto border-2 border-slate-800">
           <table className="w-full text-sm text-center border-collapse">
             <thead className="bg-slate-100 font-bold text-slate-900">
@@ -230,7 +224,6 @@ const AnnualObjectivesPage = () => {
                 <th className="border border-slate-800 p-2 min-w-[250px]" rowSpan={2}>Objectives</th>
                 <th className="border border-slate-800 p-2 min-w-[150px]" rowSpan={2}>KPI</th>
                 
-                {/* Historical Headers */}
                 {showHistorical && historicalYears.map(year => (
                   <th key={`h-${year}`} className="border border-slate-800 p-1" colSpan={2}>{year}</th>
                 ))}
@@ -245,7 +238,6 @@ const AnnualObjectivesPage = () => {
                 ))}
               </tr>
               <tr>
-                {/* Historical Sub-Headers */}
                 {showHistorical && historicalYears.map(year => (
                   <Fragment key={`sub-${year}`}>
                     <th className="border border-slate-800 p-1 min-w-[80px] text-xs">Target</th>
@@ -278,15 +270,21 @@ const AnnualObjectivesPage = () => {
                     
                     {row.rowSpan.dept_name > 0 && (
                       <td className="border border-slate-800 p-2 bg-teal-50/50 text-left" rowSpan={row.rowSpan.dept_name}>
-                        <span className="block font-bold">{row.dept_name || '-'}</span>
-                        <span className="text-[10px] text-slate-500">{row.section_name || ''}</span>
+                        {/* ✨ ARCHITECTURAL FIX: Conditional rendering for nullable sections */}
+                        {row.section_name ? (
+                          <>
+                            <span className="block font-bold text-slate-700">{row.dept_name}</span>
+                            <span className="block text-[10px] font-semibold text-blue-700 uppercase mt-0.5">{row.section_name}</span>
+                          </>
+                        ) : (
+                          <span className="block font-bold text-blue-700">{row.dept_name || '-'}</span>
+                        )}
                       </td>
                     )}
 
                     <td className="border border-slate-800 p-2 text-left">{row.objective || '-'}</td>
                     <td className="border border-slate-800 p-2 text-left font-semibold">{row.metric_name}</td>
                     
-                    {/* Historical Data Cells */}
                     {showHistorical && historicalYears.map(year => {
                       const hVal = row.history[year];
                       const isMissed = hVal !== '-' ? checkIsMissed(hVal, row.target_value, row.operator) : false;
@@ -316,7 +314,6 @@ const AnnualObjectivesPage = () => {
                     
                     <td className="border border-slate-800 p-2 text-[10px] leading-tight text-left font-medium">{row.proposer_name || '-'}</td>
 
-                    {/* Monthly Data Columns */}
                     {months.map((m, i) => {
                       const monthValue = row.monthlyData[i + 1];
                       const isMissing = !monthValue && i < new Date().getMonth();
@@ -343,8 +340,5 @@ const AnnualObjectivesPage = () => {
     </div>
   );
 };
-
-// Required for the inline Fragment rendering in table loops
-import { Fragment } from 'react';
 
 export default AnnualObjectivesPage;
