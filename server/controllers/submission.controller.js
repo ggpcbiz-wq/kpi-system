@@ -39,6 +39,7 @@ const createSubmission = async (req, res) => {
       submitted_by: req.user?.userId || req.body.submitted_by 
     };
     
+    // Auto-defaults to 'Locked - Pending Manager Review' in repository
     const newSubmission = await submissionRepo.create(submissionData);
     res.status(201).json(newSubmission);
   } catch (error) {
@@ -49,14 +50,14 @@ const createSubmission = async (req, res) => {
 
 const getSubmissions = async (req, res) => {
   try {
-    // ✨ ARCHITECTURAL FIX: Strictly disable caching at the API level to prevent 304 Not Modified
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
 
-    // Retain the RBAC context injection for Top Management visibility
+    // ✨ ARCHITECTURAL FIX: Explicitly map the JWT ID to satisfy repository destructuring constraints
     const accessContext = {
       ...req.user,
+      id: req.user?.userId || req.user?.id, 
       globalActualsAccess: req.user.role === 'Top Management' || req.user.role === 'Administrator'
     };
     
@@ -76,7 +77,7 @@ const updateSubmissionStatus = async (req, res) => {
     if (!status) return res.status(400).json({ message: 'Status is required' });
 
     const allowedRolesByStatus = {
-      'Locked - Pending QMR Sign-Off': ['Supervisor', 'Manager'],
+      'Locked - Pending QMR Sign-Off': ['Manager'], 
       'Approved': ['Administrator'],
       'CAR Requested': ['Administrator'],
       'Rejected': ['Manager', 'Administrator']
@@ -123,16 +124,17 @@ const updateSubmissionStatus = async (req, res) => {
     const updatedSubmission = await submissionRepo.updateStatus(id, status, formattedRemark, carData);
     if (!updatedSubmission) return res.status(404).json({ message: 'Submission not found' });
 
-    // Kintone sync logic
     if (status === 'Approved' || status === 'CAR Requested') {
       try {
         const { rows } = await db.query(`
           SELECT m.report_month, m.report_year, m.actual_value, m.remarks, m.kintone_car_id,
                  m.supporting_data, 
-                 t.metric_name, t.target_value, t.operator, t.unit, d.name as dept_name
+                 t.metric_name, t.objective, t.target_value, t.operator, t.unit, 
+                 d.name as dept_name, s.name as section_name
           FROM monthly_actuals m
           JOIN kpi_targets t ON m.target_id = t.id
           JOIN departments d ON t.department_id = d.id
+          LEFT JOIN sections s ON t.section_id = s.id
           WHERE m.id = $1
         `, [id]);
 
@@ -144,10 +146,12 @@ const updateSubmissionStatus = async (req, res) => {
 
           const kintoneRes = await kintoneService.postToKintone({
             department: rows[0].dept_name,
+            section: rows[0].section_name,
             applied_by: req.user?.name || 'System QMR',
             status: status,
             car: rows[0].kintone_car_id || '', 
-            metric: rows[0].metric_name,
+            kpi: rows[0].metric_name,
+            objective: rows[0].objective,
             month: rows[0].report_month,
             year: rows[0].report_year,
             target: `${rows[0].operator} ${rows[0].target_value} ${rows[0].unit}`,

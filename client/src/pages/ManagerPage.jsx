@@ -19,12 +19,23 @@ const getMonthName = (monthNumber) => {
 const checkIsMissed = (actual, target, operator) => {
   const act = parseFloat(actual);
   const tgt = parseFloat(target);
-  if (operator === '≤' || operator === '<=') return act > tgt;
-  if (operator === '<') return act >= tgt;
-  if (operator === '=' || operator === '==') return act !== tgt;
+  
+  const op = String(operator).trim();
+
+  // Less-Than constraints (including UTF-8 mangled '‚â§')
+  if (op === '≤' || op === '<=' || op === '‚â§') return act > tgt;
+  if (op === '<') return act >= tgt;
+  
+  // Exact Match
+  if (op === '=' || op === '==') return act !== tgt;
+  
+  // Greater-Than constraints (including UTF-8 mangled '‚â•')
+  if (op === '≥' || op === '>=' || op === '‚â•') return act < tgt;
+  if (op === '>') return act <= tgt;
+  
+  // Default fail-safe (assumes higher is better)
   return act < tgt; 
 };
-
 const ManagerPage = () => {
   const { user, token } = useAuth();
   const { addToast } = useToast();
@@ -145,8 +156,10 @@ const ManagerPage = () => {
   const handleProposeTarget = async (formData) => {
     setIsSubmittingTarget(true);
     try {
+      // ✨ ARCHITECTURAL FIX: Explicitly include 'objective' in the outbound JSON payload
       const payload = {
         metric_name: formData.metric_name, 
+        objective: formData.objective,
         target_value: parseFloat(formData.target_value),
         operator: formData.operator, 
         unit: formData.unit,
@@ -309,7 +322,7 @@ const ManagerPage = () => {
                       <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                     </div>
                   </th>
-                  <th className="px-6 py-4 font-bold">Metric (Month)</th>
+                  <th className="px-6 py-4 font-bold">KPI (Month)</th>
                   <th className="px-6 py-4 font-bold">Target</th>
                   <th className="px-6 py-4 font-bold">Actual</th>
                   <th className="px-6 py-4 font-bold">Status</th>

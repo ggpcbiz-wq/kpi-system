@@ -3,10 +3,10 @@ const db = require('../config/db');
 class AnalyticsRepository {
   async getYearlyPerformance(userContext) {
     try {
-      // Top Management and Administrators get global analytic views
       const canViewAll = userContext?.role === 'Administrator' || userContext?.role === 'Top Management';
       const activeUserId = userContext?.userId || userContext?.id;
 
+      // ✨ ARCHITECTURAL FIX: Enforce strict WHERE clause for approved data ONLY
       let query = `
         SELECT 
           d.name as dept_name, 
@@ -17,13 +17,14 @@ class AnalyticsRepository {
         FROM monthly_actuals m
         JOIN kpi_targets t ON m.target_id = t.id
         JOIN departments d ON t.department_id = d.id
+        WHERE m.status IN ('Approved', 'CAR Requested')
       `;
 
       const params = [];
 
-      // ✨ STRICT RLS: Scope charts to user's authorized departments
+      // Ensure RLS uses AND instead of WHERE since we added the status filter above
       if (!canViewAll) {
-        query += ` WHERE t.department_id IN (
+        query += ` AND t.department_id IN (
           SELECT department_id FROM user_departments WHERE user_id = $1
         )`;
         params.push(activeUserId);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { UserPlus, Search, Edit, Trash2, ShieldCheck, SearchCode, X } from 'lucide-react';
+import { UserPlus, Search, Edit, Trash2, ShieldCheck, SearchCode, X, SplitSquareHorizontal } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 import { API_BASE_URL } from '../services/api';
 
@@ -31,7 +31,8 @@ const UserManagementPage = () => {
   const [originalDept, setOriginalDept] = useState(''); 
 
   const [formData, setFormData] = useState({ 
-    id: null, name: '', email: '', role: '', departments: [], plant: '', status: 'Active' 
+    id: null, name: '', email: '', role: '', departments: [], section: '', plant: '', status: 'Active',
+    deptHeadEmail: '', divHeadEmail: ''
   });
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -63,7 +64,7 @@ const UserManagementPage = () => {
     setForceAdmin(false);
     setForceGlobal(false);
     setOriginalDept('');
-    setFormData({ id: null, name: '', email: '', role: '', departments: [], plant: '', status: 'Active' });
+    setFormData({ id: null, name: '', email: '', role: '', departments: [], section: '', plant: '', status: 'Active', deptHeadEmail: '', divHeadEmail: '' });
     setIsModalOpen(true);
   };
 
@@ -85,7 +86,13 @@ const UserManagementPage = () => {
       setOriginalDept('');
     }
 
-    setFormData({ ...targetUser, departments: mappedDepartments });
+    setFormData({ 
+      ...targetUser, 
+      departments: mappedDepartments,
+      section: targetUser.sections?.[0] || '',
+      deptHeadEmail: targetUser.dept_head_email || '',
+      divHeadEmail: targetUser.div_head_email || ''
+    });
     setIsModalOpen(true);
   };
 
@@ -132,8 +139,8 @@ const UserManagementPage = () => {
         'Assistant Manager': 'Assistant Manager',
         'Acting Assistant Managers': 'Acting Assistant Managers',
         'Senior Supervisor': 'Senior Supervisor',
-        'Acting Supervisor': 'Acting Supervisor',
-        'Supervisor': 'Supervisor'
+        'Supervisor': 'Supervisor',
+        'Acting Supervisor': 'Acting Supervisor'
       };
 
       let finalRole = '';
@@ -152,8 +159,6 @@ const UserManagementPage = () => {
       
       setOriginalDept(finalBaseDept); 
 
-      // ARCHITECTURE FIX: Top Management retains actual department[cite: 20]. 
-      // Only force 'GLOBAL' if it was explicitly granted in the DB.
       const isAlreadyGlobal = emp.assignedDepartments && emp.assignedDepartments.includes('GLOBAL');
       setForceGlobal(isAlreadyGlobal);
 
@@ -167,6 +172,9 @@ const UserManagementPage = () => {
         email: lookupEmail,
         name: `${toTitleCase(emp.firstName)} ${toTitleCase(emp.lastName)}`.trim(),
         departments: isAlreadyGlobal ? ['GLOBAL'] : (emp.assignedDepartments?.length > 0 ? emp.assignedDepartments : (finalBaseDept ? [finalBaseDept] : [])),
+        section: emp.section || '',
+        deptHeadEmail: emp.deptHeadEmail || '',
+        divHeadEmail: emp.divHeadEmail || '',
         plant: emp.plant,
         role: finalRole,
         status: emp.status || 'Active'
@@ -175,7 +183,7 @@ const UserManagementPage = () => {
       setIsLookupSuccessful(true);
       
       if (finalRole) {
-        addToast(`Employee found. Role auto-mapped to ${finalRole}. You may override if needed.`, 'success');
+        addToast(`Employee found. Role auto-mapped to ${finalRole}.`, 'success');
       } else {
         addToast('Employee found. Designation not recognized; please assign a role manually.', 'info');
       }
@@ -194,7 +202,7 @@ const UserManagementPage = () => {
     const finalRole = forceAdmin ? 'Administrator' : formData.role;
 
     if (formData.departments.length === 0) {
-      addToast('Cannot save user without a department. Please check Kintone data.', 'error');
+      addToast('Cannot save user without a department jurisdiction.', 'error');
       return;
     }
     if (!finalRole) {
@@ -281,7 +289,6 @@ const UserManagementPage = () => {
     <div className="min-h-screen p-4 bg-slate-50 dark:bg-slate-900 md:p-8 font-sans transition-colors duration-300">
       <div className="max-w-[1600px] mx-auto space-y-8">
         
-        {/* Sleek Enterprise Header */}
         <div className="flex flex-col gap-4 pb-6 border-b md:flex-row md:items-end justify-between border-slate-200 dark:border-slate-800 transition-colors">
           <div>
             <h1 className="text-5xl font-display tracking-tight text-brand-500 dark:text-brand-400 flex items-center uppercase">
@@ -296,7 +303,6 @@ const UserManagementPage = () => {
           </button>
         </div>
 
-        {/* Filter & Search Bar */}
         <div className="flex flex-col gap-5 p-5 bg-white dark:bg-slate-800 border rounded-xl shadow-sm md:flex-row md:items-end border-slate-200 dark:border-slate-700 transition-colors duration-300">
           <div className="w-full md:flex-1">
             <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Search Users</label>
@@ -337,7 +343,6 @@ const UserManagementPage = () => {
           </div>
         </div>
 
-        {/* User Directory Table */}
         <div className="overflow-hidden bg-white dark:bg-slate-800 border rounded-xl shadow-sm border-slate-200 dark:border-slate-700 transition-colors duration-300">
           <div className="flex items-center px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 transition-colors">
             <div className="w-1.5 h-5 bg-brand-600 dark:bg-brand-500 rounded-full mr-3"></div>
@@ -347,20 +352,23 @@ const UserManagementPage = () => {
             </span>
           </div>
           <div className="overflow-x-auto">
-             <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300 min-w-[1000px]">
+             <table className="w-full text-sm text-left text-slate-600 dark:text-slate-300 min-w-[1100px]">
               <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                 <tr>
                   <th className="px-6 py-4 font-bold">Name & Email</th>
                   <th className="px-6 py-4 font-bold">Role</th>
                   <th className="px-6 py-4 font-bold">Plant</th>
-                  <th className="px-6 py-4 font-bold min-w-[200px]">Assigned Department</th>
+                  <th className="px-6 py-4 font-bold min-w-[200px]">Assigned Department(s)</th>
+                  <th className="px-6 py-4 font-bold min-w-[150px]">Execution Section</th>
                   <th className="px-6 py-4 font-bold">Status</th>
                   <th className="px-6 py-4 font-bold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 transition-colors">
                 {filteredUsers.map(u => {
-                  const userDepts = u.departments || (u.department ? [u.department] : []);
+                  const userDepts = u.departments || [];
+                  const userSections = u.sections || [];
+                  
                   return (
                     <tr key={u.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
                       <td className="px-6 py-4">
@@ -376,10 +384,19 @@ const UserManagementPage = () => {
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1.5">
                           {userDepts.length > 0 ? userDepts.map(d => (
-                            <span key={d} className={`px-2.5 py-1 rounded-md text-xs font-bold border tracking-wide transition-colors ${d === 'GLOBAL' ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 border-brand-200 dark:border-brand-800/50' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 shadow-sm'}`}>
+                            <span key={d} className={`px-2.5 py-1 rounded-md text-xs font-bold border tracking-wide transition-colors ${d === 'GLOBAL' ? 'bg-brand-50 dark:bg-brand-900 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-700' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 shadow-sm'}`}>
                               {d}
                             </span>
                           )) : <span className="italic text-slate-400 dark:text-slate-500 text-xs transition-colors">None Assigned</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1.5">
+                          {userSections.length > 0 ? userSections.map(s => (
+                            <span key={s} className="px-2.5 py-1 rounded-md text-xs font-bold border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 tracking-wide shadow-sm transition-colors">
+                              {s}
+                            </span>
+                          )) : <span className="italic text-slate-400 dark:text-slate-500 text-xs transition-colors">--</span>}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -389,7 +406,7 @@ const UserManagementPage = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-end space-x-2">
-                          <button onClick={() => handleOpenEdit(u)} className="p-1.5 transition-colors rounded-lg text-slate-400 dark:text-slate-500 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/30 border border-transparent hover:border-brand-200 dark:hover:border-brand-800/50" title="Edit User">
+                          <button onClick={() => handleOpenEdit(u)} className="p-1.5 transition-colors rounded-lg text-slate-400 dark:text-slate-500 hover:text-brand-600 dark:hover:text-brand-300 hover:bg-brand-50 dark:hover:bg-brand-900 border border-transparent hover:border-brand-200 dark:hover:border-brand-700" title="Edit User">
                             <Edit size={18} />
                           </button>
                           <button onClick={() => initiateDelete(u)} disabled={u.id === user?.id} className="p-1.5 transition-colors rounded-lg text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 border border-transparent hover:border-rose-200 dark:hover:border-rose-800/50 disabled:opacity-30 disabled:cursor-not-allowed" title="Delete User">
@@ -401,7 +418,7 @@ const UserManagementPage = () => {
                   )
                 })}
                 {filteredUsers.length === 0 && (
-                  <tr><td colSpan="6" className="px-6 py-16 font-medium text-center text-slate-500 dark:text-slate-400 bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No users found matching your search criteria.</td></tr>
+                  <tr><td colSpan="7" className="px-6 py-16 font-medium text-center text-slate-500 dark:text-slate-400 bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No users found matching your search criteria.</td></tr>
                 )}
               </tbody>
             </table>
@@ -424,7 +441,7 @@ const UserManagementPage = () => {
               </button>
             </div>
             
-            <div className="p-8">
+            <div className="p-8 max-h-[75vh] overflow-y-auto">
               {!isEditing && (
                 <div className="flex gap-3 mb-8">
                   <div className="flex-1">
@@ -450,13 +467,13 @@ const UserManagementPage = () => {
 
               <form onSubmit={handleSubmitForm} className={`space-y-6 ${!isLookupSuccessful && !isEditing ? 'opacity-40 pointer-events-none grayscale-[50%]' : 'opacity-100 transition-all duration-300'}`}>
                 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Full Name</label>
                     <input 
                       type="text" disabled
                       className="w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-300 cursor-not-allowed transition-colors"
-                      value={formData.name || 'Awaiting synchronization...'} 
+                      value={formData.name || 'Awaiting sync...'} 
                     />
                   </div>
                   <div>
@@ -464,14 +481,30 @@ const UserManagementPage = () => {
                     <input 
                       type="text" disabled
                       className="w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-300 cursor-not-allowed transition-colors"
-                      value={formData.plant || 'Awaiting synchronization...'} 
+                      value={formData.plant || 'Awaiting sync...'} 
                     />
+                  </div>
+                  <div>
+                    <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
+                      Execution Section
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <SplitSquareHorizontal size={14} className="text-slate-400" />
+                      </div>
+                      <input 
+                        type="text" disabled
+                        className="w-full pl-9 pr-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-300 cursor-not-allowed transition-colors"
+                        value={formData.section || '--'} 
+                        placeholder="N/A"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* RBAC Overrides */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className={`p-5 border rounded-xl transition-colors ${forceAdmin ? 'bg-brand-50 dark:bg-brand-900/30 border-brand-200 dark:border-brand-800/50' : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700'}`}>
+                  {/* ✨ ARCHITECTURAL FIX: Completely removed dynamic background coloring. */}
+                  <div className="p-5 border rounded-xl transition-colors bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700">
                     <label className="flex items-start space-x-3 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -486,7 +519,8 @@ const UserManagementPage = () => {
                     </label>
                   </div>
                   
-                  <div className={`p-5 border rounded-xl transition-colors ${forceGlobal ? 'bg-brand-50 dark:bg-brand-900/30 border-brand-200 dark:border-brand-800/50' : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700'}`}>
+                  {/* ✨ ARCHITECTURAL FIX: Completely removed dynamic background coloring. */}
+                  <div className="p-5 border rounded-xl transition-colors bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700">
                     <label className="flex items-start space-x-3 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -496,18 +530,20 @@ const UserManagementPage = () => {
                       />
                       <div>
                         <span className="block text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">Global Data Access</span>
-                        <span className="block text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed transition-colors">Overrides single department. Grants read access to all company dashboards.</span>
+                        <span className="block text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed transition-colors">Overrides specific departments. Grants read access to all company dashboards.</span>
                       </div>
                     </label>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
-               <div>
+                  <div>
                     <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Mapped Portal Role</label>
+                     {/* ✨ ARCHITECTURAL FIX: Replaced bg-brand with standard disabled look in dark mode */}
                     {forceAdmin ? (
-                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-brand-200 dark:border-brand-800/50 bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-400 transition-colors">
-                        <ShieldCheck size={18} className="mr-2.5 text-brand-600 dark:text-brand-400"/> Administrator
+                     
+                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 cursor-not-allowed transition-colors">
+                        <ShieldCheck size={18} className="mr-2.5 text-slate-400 dark:text-slate-500"/> Administrator
                       </div>
                     ) : (
                       <div className="relative">
@@ -527,17 +563,38 @@ const UserManagementPage = () => {
                       </div>
                     )}
                   </div>
+                  
                   <div>
-                    <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Assigned Department</label>
-                    <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 transition-colors">
-                       {formData.departments.length > 0 ? (
-                         <span className={forceGlobal ? 'text-brand-600 dark:text-brand-400' : 'text-slate-800 dark:text-slate-200'}>
-                           {formData.departments.join(', ')}
-                         </span>
-                       ) : (
-                         <span className="text-slate-400 dark:text-slate-500 font-medium">Pending...</span>
-                       )}
-                    </div>
+                    <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
+                      Assigned Department(s)
+                    </label>
+                    {forceGlobal ? (
+                      <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 cursor-not-allowed transition-colors">
+                        <ShieldCheck size={16} className="mr-2"/> Global Access (All Departments)
+                      </div>
+                    ) : (
+                      <div className="w-full border rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 p-1.5 max-h-[140px] overflow-y-auto space-y-0.5 shadow-inner">
+                         {departments.filter(d => d !== 'GLOBAL').map(dept => {
+                            const isSelected = formData.departments.includes(dept);
+                            return (
+                              <label key={dept} className="flex items-center px-3 py-2 rounded-md cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
+                                <input 
+                                  type="checkbox" 
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    const newDepts = e.target.checked 
+                                      ? [...formData.departments, dept] 
+                                      : formData.departments.filter(d => d !== dept);
+                                    setFormData({...formData, departments: newDepts});
+                                  }}
+                                  className="w-4 h-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-700 cursor-pointer"
+                                />
+                                <span className="ml-3 text-sm font-medium text-slate-700 dark:text-slate-300 transition-colors">{dept}</span>
+                              </label>
+                            )
+                         })}
+                      </div>
+                    )}
                   </div>
                 </div>
 

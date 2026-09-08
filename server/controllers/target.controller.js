@@ -34,17 +34,18 @@ const updateTargetStatus = async (req, res) => {
   const { id } = req.params;
   const { status, remarks } = req.body;
 
+  // ✨ ARCHITECTURAL FIX: Array-based RBAC mapping for multi-tier rejections
   const allowedRoleByStatus = {
-    'Active': 'Administrator',
-    'Pending Final Activation': 'Top Management',
-    'Rejected': 'Top Management'
+    'Active': ['Administrator'],
+    'Pending Final Activation': ['Top Management'],
+    'Rejected': ['Top Management', 'Administrator'] 
   };
 
   if (!allowedRoleByStatus[status]) {
     return res.status(400).json({ message: 'Invalid target state transition requested.' });
   }
 
-  if (req.user?.role !== allowedRoleByStatus[status]) {
+  if (!allowedRoleByStatus[status].includes(req.user?.role)) {
     return res.status(403).json({ message: `Forbidden. Role [${req.user?.role}] cannot authorize state [${status}].` });
   }
 

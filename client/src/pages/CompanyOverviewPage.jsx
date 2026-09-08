@@ -9,9 +9,21 @@ import { API_BASE_URL } from '../services/api';
 const checkIsMissed = (actual, target, operator) => {
   const act = parseFloat(actual);
   const tgt = parseFloat(target);
-  if (operator === '≤' || operator === '<=') return act > tgt;
-  if (operator === '<') return act >= tgt;
-  if (operator === '=' || operator === '==') return act !== tgt;
+  
+  const op = String(operator).trim();
+
+  // Less-Than constraints (including UTF-8 mangled '‚â§')
+  if (op === '≤' || op === '<=' || op === '‚â§') return act > tgt;
+  if (op === '<') return act >= tgt;
+  
+  // Exact Match
+  if (op === '=' || op === '==') return act !== tgt;
+  
+  // Greater-Than constraints (including UTF-8 mangled '‚â•')
+  if (op === '≥' || op === '>=' || op === '‚â•') return act < tgt;
+  if (op === '>') return act <= tgt;
+  
+  // Default fail-safe (assumes higher is better)
   return act < tgt; 
 };
 

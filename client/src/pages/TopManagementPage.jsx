@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Layers, SplitSquareHorizontal } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, SplitSquareHorizontal } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
 import FilterBar from '../components/FilterBar'; 
 import ConfirmModal from '../components/ConfirmModal';
@@ -16,9 +16,21 @@ const getMonthName = (monthNumber) => {
 const checkIsMissed = (actual, target, operator) => {
   const act = parseFloat(actual);
   const tgt = parseFloat(target);
-  if (operator === '≤' || operator === '<=') return act > tgt;
-  if (operator === '<') return act >= tgt;
-  if (operator === '=' || operator === '==') return act !== tgt;
+  
+  const op = String(operator).trim();
+
+  // Less-Than constraints (including UTF-8 mangled '‚â§')
+  if (op === '≤' || op === '<=' || op === '‚â§') return act > tgt;
+  if (op === '<') return act >= tgt;
+  
+  // Exact Match
+  if (op === '=' || op === '==') return act !== tgt;
+  
+  // Greater-Than constraints (including UTF-8 mangled '‚â•')
+  if (op === '≥' || op === '>=' || op === '‚â•') return act < tgt;
+  if (op === '>') return act <= tgt;
+  
+  // Default fail-safe (assumes higher is better)
   return act < tgt; 
 };
 
@@ -27,7 +39,9 @@ const TopManagementPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All' });
-  const allDepartments = ['GLOBAL', 'DX Driving Force', 'Finance & Accounting', 'Corporate Administration',  'Sales & Purchasing', 'Info. Resources Management', 'Quality Management', 'Laguna Plant', 'Cavite Plant', 'Plant Management', 'Tooling Process Development'];
+  
+  // ✨ ARCHITECTURAL FIX: Dynamically extract the Executive's assigned jurisdiction
+  const executiveDepartments = user?.departments?.length > 0 ? user.departments : [];
 
   const [pendingFinalTargets, setPendingFinalTargets] = useState([]);
   const [recentNotifications, setRecentNotifications] = useState([]); 
@@ -46,10 +60,12 @@ const TopManagementPage = () => {
 
   const fetchGlobalQueues = useCallback(async () => {
     try {
+      const timestamp = new Date().getTime();
+      
       const [targetRes, subRes, analyticsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/targets`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_BASE_URL}/api/submissions`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_BASE_URL}/api/analytics`, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/api/analytics?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
       
       if (targetRes.ok) {
@@ -59,8 +75,9 @@ const TopManagementPage = () => {
           .map(t => ({
             id: t.id, 
             dept: t.dept_name, 
-            section: t.section_name, // ✨ Map Section Dimension
+            section: t.section_name,
             metric: t.metric_name,
+            objective: t.objective, 
             processCategory: t.process_category,
             processType: t.process_type,
             frequency: t.frequency,
@@ -83,7 +100,7 @@ const TopManagementPage = () => {
       }
       
     } catch (error) {
-      console.error("Failed to fetch global data", error);
+      console.error("Failed to fetch executive data", error);
     } finally {
       setIsLoading(false);
     }
@@ -159,7 +176,8 @@ const TopManagementPage = () => {
     return matchesDept && matchesSearch;
   });
   
-  const chartDeptToDisplay = filters.department === 'All' ? 'Production' : filters.department;
+  // ✨ ARCHITECTURAL FIX: Default the chart view to the Executive's first assigned department
+  const chartDeptToDisplay = filters.department === 'All' ? (executiveDepartments[0] || 'Unassigned') : filters.department;
   const departmentMetrics = globalChartData[chartDeptToDisplay] || [];
 
   const handlePrevChart = () => setCurrentChartIndex(prev => (prev > 0 ? prev - 1 : departmentMetrics.length - 1));
@@ -191,7 +209,6 @@ const TopManagementPage = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 relative font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
       <div className="max-w-[1600px] mx-auto space-y-8">
         
-        {/* Sleek Enterprise Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6 transition-colors">
           <div>
             <h1 className="text-5xl font-display tracking-tight text-brand-500 dark:text-brand-400 uppercase transition-colors">
@@ -202,8 +219,12 @@ const TopManagementPage = () => {
             </p>
           </div>
           <div className="flex items-center">
-            <span className="bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700 uppercase tracking-wide shadow-sm transition-colors">
-              Global Access
+            {/* ✨ ARCHITECTURAL FIX: Badge now displays localized jurisdiction dynamically */}
+            <span 
+              className="bg-brand-50 dark:bg-slate-800 text-brand-700 dark:text-brand-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-brand-200 dark:border-slate-700 uppercase tracking-wide shadow-sm transition-colors cursor-help"
+              title={executiveDepartments.join(', ')}
+            >
+              Jurisdiction: {executiveDepartments.length} Departments
             </span>
           </div>
         </div>
@@ -212,10 +233,9 @@ const TopManagementPage = () => {
           filters={filters} 
           onFilterChange={handleFilterChange} 
           config={{ showSearch: true, showPlant: true, showDate: true, showDept: true }} 
-          departments={allDepartments} 
+          departments={executiveDepartments} 
         />
 
-        {/* Action Required: Target Proposals */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col w-full mb-8 transition-colors duration-300">
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between shrink-0 transition-colors">
             <div className="flex items-center">
@@ -224,44 +244,50 @@ const TopManagementPage = () => {
                 Action Required: Target Proposals
               </h3>
             </div>
-            <span className="bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 py-1 px-3 rounded-md text-xs font-bold shadow-sm transition-colors">
+            <span className="bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-slate-800/50 py-1 px-3 rounded-md text-xs font-bold shadow-sm transition-colors">
               {filteredTargets.length} Pending
             </span>
           </div>
           <div className="overflow-x-auto">
-             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1100px]">
+             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1400px]">
               <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                 <tr>
-                  <th className="px-6 py-4 font-bold">
-                    <div className="flex items-center">
-                      <Layers size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Dept
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 font-bold">
+                  <th className="px-6 py-4 font-bold w-[12%]">
                     <div className="flex items-center">
                       <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                     </div>
                   </th>
-                  <th className="px-6 py-4 font-bold">Metric</th>
-                  <th className="px-6 py-4 font-bold">Process Type</th>
-                  <th className="px-6 py-4 font-bold">Frequency</th>
-                  <th className="px-6 py-4 font-bold">Proposed Target</th>
-                  <th className="px-6 py-4 font-bold">Remarks</th>
-                  <th className="px-6 py-4 font-bold text-right">Executive Actions</th>
+                  <th className="px-6 py-4 font-bold w-[12%]">KPI</th>
+                  <th className="px-6 py-4 font-bold w-[30%]">Objective</th>
+                  <th className="px-6 py-4 font-bold w-[14%]">Process Type</th>
+                  <th className="px-6 py-4 font-bold w-[7%]">Frequency</th>
+                  <th className="px-6 py-4 font-bold w-[9%]">Proposed Target</th>
+                  <th className="px-6 py-4 font-bold w-[9%]">Remarks</th>
+                  <th className="px-6 py-4 font-bold text-right w-[7%]">Executive Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 bg-white dark:bg-slate-800 transition-colors">
                 {filteredTargets.map(target => (
                   <tr key={target.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
-                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{target.dept}</td>
-                    <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">{target.section || '--'}</td>
-                    <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">{target.metric}</td>
+                    <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap align-top">{target.section || '--'}</td>
                     
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 align-top">{target.metric}</td>
+                    
+                    <td className="px-6 py-4 min-w-[250px] align-top">
+                      {target.objective ? (
+                        <div className="text-slate-600 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900/50 p-3 rounded-md border border-slate-200 dark:border-slate-700 whitespace-pre-wrap leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none transition-colors">
+                          {target.objective}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 dark:text-slate-500 italic text-xs">--</span>
+                      )}
+                    </td>
+                    
+                    <td className="px-6 py-4 align-top">
                       {target.processCategory && target.processType ? (
-                        <div className="flex items-center">
+                        <div className="flex flex-col items-start gap-1">
                           <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-md whitespace-nowrap">
-                            [{target.processCategory}] {target.processType}
+                            {target.processType}
                           </span>
                         </div>
                       ) : (
@@ -271,23 +297,23 @@ const TopManagementPage = () => {
                       )}
                     </td>
 
-                    <td className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    <td className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 whitespace-nowrap align-top">
                       {target.frequency || 'Monthly'}
                     </td>
 
-                    <td className="px-6 py-4 text-brand-600 dark:text-brand-400 font-black whitespace-nowrap">{target.value}</td>
+                    <td className="px-6 py-4 text-brand-600 dark:text-brand-400 font-black whitespace-nowrap align-top">{target.value}</td>
                     
-                    <td className="px-6 py-4 min-w-[200px] max-w-md">
+                    <td className="px-6 py-4 align-top">
                       {target.comment ? (
-                        <div className="text-slate-600 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-md border border-slate-200 dark:border-slate-700 max-h-24 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none transition-colors">
+                        <div className="text-slate-600 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900/50 p-3 rounded-md border border-slate-200 dark:border-slate-700 whitespace-pre-wrap leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none transition-colors">
                           {target.comment}
                         </div>
                       ) : (
-                        <span className="text-slate-400 dark:text-slate-500 italic text-xs">No remarks</span>
+                        <span className="text-slate-400 dark:text-slate-500 italic text-xs whitespace-nowrap">No remarks</span>
                       )}
                     </td>
 
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 align-top">
                       <div className="flex justify-end space-x-2">
                         <button onClick={() => initiateApprove(target.id, 'Approve Target', `Are you sure you want to grant executive approval for the ${target.metric} target?`, 'Approve Target')} className="p-1.5 transition-colors rounded-lg text-slate-400 dark:text-slate-500 hover:text-jira-success dark:hover:text-jira-success hover:bg-jira-success-bg dark:hover:bg-jira-success/20 border border-transparent hover:border-jira-success/30 dark:hover:border-jira-success/30 shadow-sm" title="Approve">
                           <CheckCircle size={18} />
