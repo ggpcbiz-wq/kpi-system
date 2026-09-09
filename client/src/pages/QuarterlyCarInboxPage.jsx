@@ -228,7 +228,7 @@ const QuarterlyCarInboxPage = () => {
 
   return (
     <div className="p-4 md:p-8 min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-      <div className="max-w-[1600px] mx-auto space-y-6">
+      <div className="w-full space-y-6">
         
         <div className="border-b border-slate-200 dark:border-slate-800 pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4 transition-colors duration-300">
           <div>

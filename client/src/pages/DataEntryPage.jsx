@@ -42,7 +42,7 @@ const DataEntryPage = () => {
   return (
     <div className="p-4 md:p-8 min-h-screen bg-jira-bg">
       {/* MAXIMIZED CONTAINER WIDTH */}
-      <div className="max-w-[1600px] mx-auto space-y-6">
+      <div className="w-full space-y-6">
         
         {/* Page Header */}
         <div className="border-b border-jira-border pb-4">
