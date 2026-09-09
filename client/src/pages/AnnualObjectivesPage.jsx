@@ -61,23 +61,34 @@ const AnnualObjectivesPage = () => {
   }, [token, addToast]);
 
   const reportData = useMemo(() => {
+    // Defines units requiring cumulative SUM instead of AVG
+    const cumulativeUnits = ['$', '₱', 'Php', 'Count', 'count', 'Days', 'days', 'pcs'];
+
     const merged = targets.map((target, index) => {
+      const isCumulative = cumulativeUnits.includes(target.unit?.trim());
       const currentSubs = submissions.filter(s => s.target_id === target.id && s.report_year === currentYear);
+      
       const monthlyData = {};
       let ytdSum = 0, ytdCount = 0;
+      
       currentSubs.forEach(sub => {
         monthlyData[sub.report_month] = sub.actual_value;
         ytdSum += parseFloat(sub.actual_value) || 0;
         ytdCount++;
       });
-      const ytdActual = ytdCount > 0 ? (ytdSum / ytdCount).toFixed(2) : '-';
+      
+      // Route math logic based on unit type
+      const ytdActual = ytdCount > 0 
+        ? (isCumulative ? ytdSum : (ytdSum / ytdCount)).toFixed(2) 
+        : '-';
 
       const history = {};
       let lastYearActual = '-';
+      
       historicalYears.forEach(year => {
         const hSubs = submissions.filter(s => s.target_id === target.id && s.report_year === year);
         const hYtd = hSubs.length > 0 
-          ? (hSubs.reduce((acc, s) => acc + parseFloat(s.actual_value || 0), 0) / hSubs.length).toFixed(2) 
+          ? (hSubs.reduce((acc, s) => acc + parseFloat(s.actual_value || 0), 0) / (isCumulative ? 1 : hSubs.length)).toFixed(2) 
           : '-';
         history[year] = hYtd;
         if (year === currentYear - 1) lastYearActual = hYtd;
@@ -181,7 +192,6 @@ const AnnualObjectivesPage = () => {
     }
   };
 
-  // Matched SupervisorPage loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors duration-300">
@@ -194,12 +204,9 @@ const AnnualObjectivesPage = () => {
   }
 
   return (
-    // Unified Wrapper
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 relative font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
-      {/* Replaced fixed max-width with w-full to maximize monitor space */}
       <div className="w-full space-y-8 transition-all duration-500">
         
-        {/* Sleek Enterprise Header matching SupervisorPage */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6 transition-colors duration-300">
           <div>
             <h1 className="text-5xl font-display tracking-tight text-brand-500 dark:text-brand-400 uppercase">
@@ -227,7 +234,6 @@ const AnnualObjectivesPage = () => {
           </div>
         </div>
 
-        {/* Softened Table Container matching DataGrid styling */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors duration-300">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-center border-collapse text-slate-600 dark:text-slate-300">
