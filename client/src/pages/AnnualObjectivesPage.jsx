@@ -61,10 +61,9 @@ const AnnualObjectivesPage = () => {
   }, [token, addToast]);
 
   const reportData = useMemo(() => {
-    // Defines units requiring cumulative SUM instead of AVG
     const cumulativeUnits = ['$', '₱', 'Php', 'Count', 'count', 'Days', 'days', 'pcs'];
 
-    const merged = targets.map((target, index) => {
+    const merged = targets.map((target) => {
       const isCumulative = cumulativeUnits.includes(target.unit?.trim());
       const currentSubs = submissions.filter(s => s.target_id === target.id && s.report_year === currentYear);
       
@@ -77,7 +76,6 @@ const AnnualObjectivesPage = () => {
         ytdCount++;
       });
       
-      // Route math logic based on unit type
       const ytdActual = ytdCount > 0 
         ? (isCumulative ? ytdSum : (ytdSum / ytdCount)).toFixed(2) 
         : '-';
@@ -101,7 +99,6 @@ const AnnualObjectivesPage = () => {
 
       return {
         ...target,
-        displayIndex: index + 1,
         ytdActual,
         monthlyData,
         history,
@@ -152,7 +149,6 @@ const AnnualObjectivesPage = () => {
           : (row.dept_name || '-');
 
         const rowData = {
-          'No.': row.displayIndex,
           'QMS Process Category': row.process_category || 'Uncategorized',
           'Process Type': row.process_type || '-',
           'Department / Section': deptSectionDisplay,
@@ -239,7 +235,6 @@ const AnnualObjectivesPage = () => {
             <table className="w-full text-sm text-center border-collapse text-slate-600 dark:text-slate-300">
               <thead className="bg-slate-50 dark:bg-slate-900/50 font-bold text-slate-700 dark:text-slate-200 transition-colors">
                 <tr>
-                  <th className="border border-slate-200 dark:border-slate-700 p-3 w-10" rowSpan={2}>No.</th>
                   <th className="border border-slate-200 dark:border-slate-700 p-3 w-16 uppercase tracking-wider" rowSpan={2}>Type</th>
                   <th className="border border-slate-200 dark:border-slate-700 p-3 min-w-[150px] uppercase tracking-wider" rowSpan={2}>QMS Process</th>
                   <th className="border border-slate-200 dark:border-slate-700 p-3 min-w-[150px] uppercase tracking-wider" rowSpan={2}>Department / Section</th>
@@ -276,8 +271,6 @@ const AnnualObjectivesPage = () => {
                   const targetDisplay = `${row.operator} ${row.target_value}${row.unit}`;
                   return (
                     <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors">
-                      <td className="border border-slate-200 dark:border-slate-700 p-3 font-medium">{row.displayIndex}</td>
-                      
                       {row.rowSpan.process_category > 0 && (
                         <td className="border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-800/80" rowSpan={row.rowSpan.process_category}>
                           <span className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">{row.process_category || '-'}</span>
@@ -349,7 +342,7 @@ const AnnualObjectivesPage = () => {
                 })}
                 {reportData.length === 0 && (
                   <tr>
-                    <td colSpan={showHistorical ? 21 + (historicalYears.length * 2) + 1 : 21} className="border border-slate-200 dark:border-slate-700 p-12 text-center text-slate-500 dark:text-slate-400 italic bg-slate-50/30 dark:bg-slate-800/30">
+                    <td colSpan={showHistorical ? 20 + (historicalYears.length * 2) + 1 : 20} className="border border-slate-200 dark:border-slate-700 p-12 text-center text-slate-500 dark:text-slate-400 italic bg-slate-50/30 dark:bg-slate-800/30">
                       No approved targets available for the current reporting year.
                     </td>
                   </tr>
