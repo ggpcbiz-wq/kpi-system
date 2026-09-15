@@ -61,10 +61,10 @@ const AnnualObjectivesPage = () => {
   }, [token, addToast]);
 
   const reportData = useMemo(() => {
-    const cumulativeUnits = ['$', '₱', 'Php', 'Count', 'count', 'Days', 'days', 'pcs'];
-
-    const merged = targets.map((target) => {
-      const isCumulative = cumulativeUnits.includes(target.unit?.trim());
+    const merged = targets.map((target, index) => {
+      // ✨ ARCHITECTURAL FIX: Default to SUM for everything unless it's strictly a percentage
+      const isCumulative = target.unit?.trim() !== '%';
+      
       const currentSubs = submissions.filter(s => s.target_id === target.id && s.report_year === currentYear);
       
       const monthlyData = {};
@@ -76,6 +76,7 @@ const AnnualObjectivesPage = () => {
         ytdCount++;
       });
       
+      // Route math logic based on the isCumulative flag
       const ytdActual = ytdCount > 0 
         ? (isCumulative ? ytdSum : (ytdSum / ytdCount)).toFixed(2) 
         : '-';
@@ -99,6 +100,7 @@ const AnnualObjectivesPage = () => {
 
       return {
         ...target,
+        displayIndex: index + 1,
         ytdActual,
         monthlyData,
         history,
