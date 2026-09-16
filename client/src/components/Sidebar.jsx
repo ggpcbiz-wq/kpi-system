@@ -34,10 +34,10 @@ const Sidebar = () => {
       case 'Administrator':
         return [
           { name: 'Company Scoreboard', path: '/overview', icon: Globe },
+          { name: 'Department Dashboard', path: '/supervisor', icon: LayoutDashboard }, // <-- Added this line
           { name: 'User Management', path: '/admin', icon: Users },
           { name: 'Dept. Management', path: '/admin/departments', icon: Building2 }, 
           { name: 'Workflow Control', path: '/admin/workflow', icon: Settings },
-          // ✨ FIX: Appended the new report route specifically for Administrators
           { name: 'Annual Objectives', path: '/reports/annual-objectives', icon: FileSpreadsheet } 
         ];
       case 'Supervisor':

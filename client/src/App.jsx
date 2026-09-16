@@ -61,10 +61,10 @@ function App() {
                  <Route path="/inbox" element={<QuarterlyCarInboxPage />} />
               </Route>
               
-              <Route element={<ProtectedRoute allowedRoles={['Supervisor']} />}>
-                <Route path="/supervisor" element={<SupervisorPage />} />
-                <Route path="/supervisor/data-entry" element={<DataEntryPage />} />
-              </Route>
+             <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Supervisor']} />}>
+             <Route path="/supervisor" element={<SupervisorPage />} />
+              <Route path="/supervisor/data-entry" element={<DataEntryPage />} />
+            </Route>
 
               <Route element={<ProtectedRoute allowedRoles={['Manager']} />}>
                 <Route path="/manager" element={<ManagerPage />} />
