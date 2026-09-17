@@ -1,7 +1,26 @@
 // src/components/TargetListTable.jsx
-import { MessageSquare, PlusCircle, AlertCircle, SplitSquareHorizontal } from 'lucide-react';
+import { useState } from 'react';
+import { MessageSquare, PlusCircle, AlertCircle, SplitSquareHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const TargetListTable = ({ targets, onSelectTarget }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [prevTargets, setPrevTargets] = useState(targets);
+  const ITEMS_PER_PAGE = 10;
+
+  // ✨ ARCHITECTURAL FIX: Render-phase state update. 
+  // Eliminates the cascading render caused by useEffect.
+  if (targets !== prevTargets) {
+    setPrevTargets(targets);
+    setCurrentPage(1);
+  }
+
+  const totalPages = Math.ceil(targets.length / ITEMS_PER_PAGE) || 1;
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedTargets = targets.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const handlePrev = () => setCurrentPage((prev) => Math.max(1, prev - 1));
+  const handleNext = () => setCurrentPage((prev) => Math.min(totalPages, prev + 1));
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Active':
@@ -21,9 +40,14 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden h-full flex flex-col transition-colors duration-300">
-      <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center shrink-0 transition-colors">
-        <div className="w-1.5 h-5 bg-brand-500 rounded-full mr-3"></div>
-        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Department KPI Targets</h3>
+      <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between shrink-0 transition-colors">
+        <div className="flex items-center">
+          <div className="w-1.5 h-5 bg-brand-500 rounded-full mr-3"></div>
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Department KPI Targets</h3>
+        </div>
+        <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          Showing {targets.length > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + ITEMS_PER_PAGE, targets.length)} of {targets.length}
+        </div>
       </div>
       
       <div className="overflow-x-auto flex-1">
@@ -35,7 +59,6 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
                   <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                 </div>
               </th>
-              {/* Redistributed widths for better readability */}
               <th className="px-6 py-4 font-bold w-[18%]">KPI</th>
               <th className="px-6 py-4 font-bold w-[22%]">Objective</th>
               <th className="px-6 py-4 font-bold w-[8%]">Category</th>
@@ -55,7 +78,7 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 bg-white dark:bg-slate-800 transition-colors">
-            {targets.map(target => {
+            {paginatedTargets.map(target => {
               const isActive = target.status === 'Active';
               
               return (
@@ -143,7 +166,6 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
             
             {targets.length === 0 && (
               <tr>
-                {/* Updated colSpan from 11/10 to 10/9 to match new column count */}
                 <td colSpan={onSelectTarget ? "10" : "9"} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">
                   No KPI targets proposed or registered for your departments yet.
                 </td>
@@ -152,6 +174,31 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Footer */}
+      {targets.length > ITEMS_PER_PAGE && (
+        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between transition-colors">
+          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            Page {currentPage} of {totalPages}
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handlePrev}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              onClick={handleNext}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
