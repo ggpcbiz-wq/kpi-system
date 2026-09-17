@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Target, Send, Building2, Briefcase, CalendarClock, Layers, SplitSquareHorizontal, BookOpen } from 'lucide-react';
+import { Target, Send, Briefcase, CalendarClock, Layers, SplitSquareHorizontal, BookOpen } from 'lucide-react';
 import { useToast } from '../context/ToastContext'; 
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../services/api';
@@ -18,14 +18,14 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
   const [deptMappings, setDeptMappings] = useState([]);
 
   const [formData, setFormData] = useState({ 
-    plant: user?.plant || 'Laguna Plant',
+    plant: user?.plant || 'Laguna Plant', // Retained for API compatibility
     department: managerDepartments[0], 
     section: '',
     frequency: 'Monthly',
     process_category: '',
     process_type: '',
-    metric_name: '', // Retained internally to prevent systemic breaks
-    objective: '',   // ✨ New Objective Field
+    metric_name: '',
+    objective: '',
     operator: '≥', 
     target_value: '',
     unit: '%'      
@@ -122,25 +122,8 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       
-      {/* ROW 1: Context Setup */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
-            Plant Location
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Building2 size={16} className="text-slate-400 dark:text-slate-500 transition-colors" />
-            </div>
-            <input 
-              type="text" 
-              readOnly
-              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 cursor-not-allowed transition-colors"
-              value={formData.plant}
-            />
-          </div>
-        </div>
-
+      {/* ROW 1: Context Setup - Changed to md:grid-cols-2 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
             Department <span className="text-rose-600 dark:text-rose-400">*</span>
@@ -248,7 +231,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
         </div>
       </div>
       
-      {/* ✨ ROW 4: New Objective Field */}
+      {/* ROW 3: New Objective Field */}
       <div>
         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
           Objective <span className="text-rose-600 dark:text-rose-400">*</span>
@@ -267,7 +250,8 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
           />
         </div>
       </div>
-      {/* ROW 3: Metric Thresholds */}
+
+      {/* ROW 4: Metric Thresholds */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
@@ -330,7 +314,6 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
         </div>
       </div>
 
-      
       <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-700/50 mt-8 transition-colors">
         <button 
           type="submit" 

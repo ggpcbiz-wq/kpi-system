@@ -1,9 +1,9 @@
-import { Search, Filter, MapPin, Calendar, Briefcase } from 'lucide-react';
+import { Search, Filter, Calendar, Briefcase } from 'lucide-react';
 
 const FilterBar = ({ 
   filters, 
   onFilterChange, 
-  config = { showPlant: false, showDept: false, showDate: true, showSearch: true },
+  config = { showDept: false, showDate: true, showSearch: true },
   departments = [] 
 }) => {
 
@@ -12,10 +12,12 @@ const FilterBar = ({
   };
 
   const handleClear = () => {
-    onFilterChange({ search: '', plant: 'All', period: '', department: 'All' });
+    // Removed plant from the state reset
+    onFilterChange({ search: '', period: '', department: 'All' });
   };
 
-  const isFiltered = filters.search || filters.plant !== 'All' || filters.period || filters.department !== 'All';
+  // Removed plant from the active filter check
+  const isFiltered = filters.search || filters.period || filters.department !== 'All';
 
   return (
     <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4 items-end mb-8 transition-colors duration-300">
@@ -35,27 +37,6 @@ const FilterBar = ({
               value={filters.search || ''}
               onChange={(e) => handleChange('search', e.target.value)}
             />
-          </div>
-        </div>
-      )}
-
-      {/* Plant Filter */}
-      {config.showPlant && (
-        <div className="w-full md:w-48 shrink-0">
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">Plant Location</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MapPin size={16} className="text-slate-400 dark:text-slate-500" />
-            </div>
-            <select
-              className="w-full pl-9 pr-8 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-600 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 appearance-none transition-all"
-              value={filters.plant || 'All'}
-              onChange={(e) => handleChange('plant', e.target.value)}
-            >
-              <option value="All">All Plants</option>
-              <option value="Laguna">Laguna</option>
-              <option value="Cavite">Cavite</option>
-            </select>
           </div>
         </div>
       )}
@@ -111,7 +92,6 @@ const FilterBar = ({
           Clear
         </button>
       </div>
-
     </div>
   );
 };
