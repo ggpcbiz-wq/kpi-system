@@ -12,11 +12,11 @@ const FilterBar = ({
   };
 
   const handleClear = () => {
-    // Removed plant from the state reset
+    
     onFilterChange({ search: '', period: '', department: 'All' });
   };
 
-  // Removed plant from the active filter check
+
   const isFiltered = filters.search || filters.period || filters.department !== 'All';
 
   return (

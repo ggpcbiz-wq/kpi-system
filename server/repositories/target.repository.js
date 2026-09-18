@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 class TargetRepository {
   
-  // ✨ ARCHITECTURAL FIX: Expects full user context to route by email and ID
+ 
   async findAll(userContext) {
     const { id, role, email } = userContext;
 
@@ -22,7 +22,7 @@ class TargetRepository {
         return rows;
       }
 
-      // Route targets to Top Management if they are mapped globally OR are the explicit Division Head
+     
       if (role === 'Top Management') {
         const { rows } = await db.query(`
           SELECT 
@@ -40,7 +40,7 @@ class TargetRepository {
         return rows;
       }
 
-      // Route Active execution targets to Supervisors based on their assigned section
+    
       if (role === 'Supervisor' || role === 'Acting Supervisor') {
         const { rows } = await db.query(`
           SELECT 
@@ -58,7 +58,7 @@ class TargetRepository {
         return rows;
       }
 
-      // Default Manager Query: View targets proposed by them or mapped to their departments
+   
       const { rows } = await db.query(`
         SELECT 
           t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,

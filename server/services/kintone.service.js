@@ -7,7 +7,7 @@ const postToKintone = async (data) => {
 
   const url = `https://${KINTONE_DOMAIN}/k/v1/record.json`;
   
-  // Implements the mapped section and objective fields to mirror Kintone architecture
+  
   const payload = {
     app: KPI_APP_ID,
     record: {

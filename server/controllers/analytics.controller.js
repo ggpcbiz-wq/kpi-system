@@ -2,12 +2,11 @@ const analyticsRepo = require('../repositories/analytics.repository');
 
 const getChartData = async (req, res) => {
   try {
-    // 1. Enforce strict cache-busting for RBAC-sensitive data
+   
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
 
-    // 2. Pass the secure user context to the data access layer
     const rows = await analyticsRepo.getYearlyPerformance(req.user);
     
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

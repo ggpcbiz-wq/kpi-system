@@ -15,7 +15,7 @@ import {
   Moon, 
   Sun,
   Building2,
-  FileSpreadsheet // ✨ FIX: Imported icon for the Annual Objectives report
+  FileSpreadsheet 
 } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 
@@ -28,13 +28,13 @@ const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-  // RBAC Routing configuration
+  
   const getNavLinks = () => {
     switch (user?.role) {
       case 'Administrator':
         return [
           { name: 'Company Scoreboard', path: '/overview', icon: Globe },
-          { name: 'Department Dashboard', path: '/supervisor', icon: LayoutDashboard }, // <-- Added this line
+          { name: 'Department Dashboard', path: '/supervisor', icon: LayoutDashboard },
           { name: 'User Management', path: '/admin', icon: Users },
           { name: 'Dept. Management', path: '/admin/departments', icon: Building2 }, 
           { name: 'Workflow Control', path: '/admin/workflow', icon: Settings },

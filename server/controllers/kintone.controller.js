@@ -20,7 +20,7 @@ const fetchCarDetails = async (req, res) => {
       return res.status(404).json({ message: 'CAR Record not found in Kintone.' });
     }
 
-    // ✨ DIAGNOSTIC INJECTION: Print the EXACT payload to your VSCode terminal
+    
     console.log("========== KINTONE RAW RECORD ==========");
     console.log(JSON.stringify(kintoneRecord, null, 2));
     console.log("========================================");

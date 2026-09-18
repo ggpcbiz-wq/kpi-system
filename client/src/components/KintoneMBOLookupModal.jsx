@@ -10,19 +10,19 @@ const mockMboDatabase = [
 ];
 
 const KintoneMBOLookupModal = ({ isOpen, onClose, onSelect }) => {
-  // 1. Initialize state with defaults
+ 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState(mockMboDatabase);
 
-  // 2. Reset state when closing the modal
+
   const handleClose = () => {
     setSearchQuery('');
     setResults(mockMboDatabase);
     onClose();
   };
 
-  // 3. Reset state when making a selection
+
   const handleSelect = (mbo) => {
     setSearchQuery('');
     setResults(mockMboDatabase);
@@ -33,7 +33,7 @@ const KintoneMBOLookupModal = ({ isOpen, onClose, onSelect }) => {
     e.preventDefault();
     setIsSearching(true);
     
-    // Simulate Kintone API latency
+   
     await new Promise(resolve => setTimeout(resolve, 800));
     
     const filtered = mockMboDatabase.filter(mbo => 

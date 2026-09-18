@@ -49,7 +49,7 @@ function App() {
 
             <Route element={<Layout />}>
               
-              {/* ✨ ARCHITECTURAL FIX: Annual Objectives report moved strictly to Admin-only wrapper */}
+             
               <Route element={<ProtectedRoute allowedRoles={['Administrator']} />}>
                 <Route path="/admin" element={<UserManagementPage />} />
                 <Route path="/admin/workflow" element={<WorkflowControlPage />} />

@@ -34,7 +34,7 @@ const updateTargetStatus = async (req, res) => {
   const { id } = req.params;
   const { status, remarks } = req.body;
 
-  // ✨ ARCHITECTURAL FIX: Array-based RBAC mapping for multi-tier rejections
+
   const allowedRoleByStatus = {
     'Active': ['Administrator'],
     'Pending Final Activation': ['Top Management'],

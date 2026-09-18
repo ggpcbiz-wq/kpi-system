@@ -39,7 +39,7 @@ const createSubmission = async (req, res) => {
       submitted_by: req.user?.userId || req.body.submitted_by 
     };
     
-    // Auto-defaults to 'Locked - Pending Manager Review' in repository
+   
     const newSubmission = await submissionRepo.create(submissionData);
     res.status(201).json(newSubmission);
   } catch (error) {

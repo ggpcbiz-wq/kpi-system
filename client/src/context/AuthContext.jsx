@@ -8,8 +8,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const { addToast } = useToast();
 
-  // FIX 1: Lazy Initialization. 
-  // React reads localStorage exactly once during the initial load. No useEffect needed!
+
   const [token, setToken] = useState(() => localStorage.getItem('app_token') || null);
   
   const [user, setUser] = useState(() => {
@@ -17,7 +16,7 @@ export const AuthProvider = ({ children }) => {
     return storedUser ? JSON.parse(storedUser) : null;
   });
 
-  // Since we initialize synchronously now, loading is instantly false.
+ 
   const [isLoading, setIsLoading] = useState(false);
 
   const loginWithGoogle = async (googleCredential) => {

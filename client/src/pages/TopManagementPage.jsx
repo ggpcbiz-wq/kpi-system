@@ -19,18 +19,18 @@ const checkIsMissed = (actual, target, operator) => {
   
   const op = String(operator).trim();
 
-  // Less-Than constraints (including UTF-8 mangled '‚â§')
+ 
   if (op === '≤' || op === '<=' || op === '‚â§') return act > tgt;
   if (op === '<') return act >= tgt;
   
-  // Exact Match
+
   if (op === '=' || op === '==') return act !== tgt;
   
-  // Greater-Than constraints (including UTF-8 mangled '‚â•')
+ 
   if (op === '≥' || op === '>=' || op === '‚â•') return act < tgt;
   if (op === '>') return act <= tgt;
   
-  // Default fail-safe (assumes higher is better)
+ 
   return act < tgt; 
 };
 
@@ -40,7 +40,7 @@ const TopManagementPage = () => {
   
   const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All' });
   
-  // ✨ ARCHITECTURAL FIX: Dynamically extract the Executive's assigned jurisdiction
+ 
   const executiveDepartments = user?.departments?.length > 0 ? user.departments : [];
 
   const [pendingFinalTargets, setPendingFinalTargets] = useState([]);
@@ -176,7 +176,7 @@ const TopManagementPage = () => {
     return matchesDept && matchesSearch;
   });
   
-  // ✨ ARCHITECTURAL FIX: Default the chart view to the Executive's first assigned department
+  
   const chartDeptToDisplay = filters.department === 'All' ? (executiveDepartments[0] || 'Unassigned') : filters.department;
   const departmentMetrics = globalChartData[chartDeptToDisplay] || [];
 
@@ -219,7 +219,7 @@ const TopManagementPage = () => {
             </p>
           </div>
           <div className="flex items-center">
-            {/* ✨ ARCHITECTURAL FIX: Badge now displays localized jurisdiction dynamically */}
+         
             <span 
               className="bg-brand-50 dark:bg-slate-800 text-brand-700 dark:text-brand-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-brand-200 dark:border-slate-700 uppercase tracking-wide shadow-sm transition-colors cursor-help"
               title={executiveDepartments.join(', ')}

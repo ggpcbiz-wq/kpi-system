@@ -218,7 +218,7 @@ const WorkflowControlPage = () => {
         });
         addToast("Monthly submission rejected and returned to Supervisor.", "success");
       } else if (rejectPayload.queueName === 'final') {
-        // ✨ ARCHITECTURAL FIX: Support returning targets directly to the Manager
+      
         await fetch(`${API_BASE_URL}/api/targets/${rejectPayload.id}/status`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

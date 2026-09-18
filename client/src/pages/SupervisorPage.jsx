@@ -19,18 +19,18 @@ const checkIsMissed = (actual, target, operator) => {
   
   const op = String(operator).trim();
 
-  // Less-Than constraints (including UTF-8 mangled '‚â§')
+  
   if (op === '≤' || op === '<=' || op === '‚â§') return act > tgt;
   if (op === '<') return act >= tgt;
   
-  // Exact Match
+
   if (op === '=' || op === '==') return act !== tgt;
   
-  // Greater-Than constraints (including UTF-8 mangled '‚â•')
+ 
   if (op === '≥' || op === '>=' || op === '‚â•') return act < tgt;
   if (op === '>') return act <= tgt;
   
-  // Default fail-safe (assumes higher is better)
+  
   return act < tgt; 
 };
 
@@ -49,10 +49,10 @@ const SupervisorPage = () => {
   const defaultDept = user?.departments?.[0] || 'GLOBAL';
   const [filters, setFilters] = useState({ search: '', plant: user?.plant || 'All', period: '', department: defaultDept });
   
-  // Enforces siloed data access rule for Supervisors
+ 
   const isOwnDepartment = filters.department === 'All' || (user?.departments?.includes(filters.department) || false);
 
-  // TIMING LOGIC
+
   const today = new Date();
   const currentDay = today.getDate();
   let expectedReportMonth = today.getMonth(); 

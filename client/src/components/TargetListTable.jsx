@@ -7,8 +7,7 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
   const [prevTargets, setPrevTargets] = useState(targets);
   const ITEMS_PER_PAGE = 10;
 
-  // ✨ ARCHITECTURAL FIX: Render-phase state update. 
-  // Eliminates the cascading render caused by useEffect.
+
   if (targets !== prevTargets) {
     setPrevTargets(targets);
     setCurrentPage(1);

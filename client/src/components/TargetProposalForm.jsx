@@ -18,7 +18,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
   const [deptMappings, setDeptMappings] = useState([]);
 
   const [formData, setFormData] = useState({ 
-    plant: user?.plant || 'Laguna Plant', // Retained for API compatibility
+    plant: user?.plant || 'Laguna Plant', 
     department: managerDepartments[0], 
     section: '',
     frequency: 'Monthly',
