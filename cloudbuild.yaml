@@ -89,8 +89,10 @@ steps:
         gcloud secrets versions access latest --secret=FIREBASE_SERVICE_ACCOUNT --project=$PROJECT_ID > /tmp/firebase-service-account.json
         export GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-service-account.json
         curl -sL https://firebase.tools | bash
-        firebase use --add $PROJECT_ID
-        firebase deploy --project=$PROJECT_ID --only=hosting --non-interactive
+        
+        # ✨ ARCHITECTURAL FIX: Removed interactive 'firebase use' command.
+        # Added --debug flag to expose exact REST payload issues if any occur.
+        firebase deploy --project=$PROJECT_ID --only=hosting --non-interactive --debug
 
 images:
   - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'
