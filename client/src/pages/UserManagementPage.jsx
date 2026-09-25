@@ -15,7 +15,7 @@ const UserManagementPage = () => {
   const [roleFilter, setRoleFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
 
-  const roles = ['Administrator', 'Top Management', 'Manager', 'Assistant Manager', 'Acting Assistant Managers', 'Senior Supervisor', 'Acting Supervisor'];
+  const roles = ['Administrator', 'Top Management', 'Manager', 'Assistant Manager', 'Acting Assistant Managers', 'Senior Supervisor','Supervisor', 'Acting Supervisor'];
   const departments = ['GLOBAL', 'DX Driving Force', 'Finance & Accounting', 'Corporate Administration',  'Sales & Purchasing', 'Info. Resources Management', 'Quality Management', 'Laguna Plant', 'Cavite Plant', 'Plant Management', 'Tooling Process Development'];  
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -503,7 +503,7 @@ const UserManagementPage = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* ✨ ARCHITECTURAL FIX: Completely removed dynamic background coloring. */}
+                
                   <div className="p-5 border rounded-xl transition-colors bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700">
                     <label className="flex items-start space-x-3 cursor-pointer group">
                       <input
@@ -519,7 +519,7 @@ const UserManagementPage = () => {
                     </label>
                   </div>
                   
-                  {/* ✨ ARCHITECTURAL FIX: Completely removed dynamic background coloring. */}
+                
                   <div className="p-5 border rounded-xl transition-colors bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 hover:border-brand-200 dark:hover:border-brand-700">
                     <label className="flex items-start space-x-3 cursor-pointer group">
                       <input
@@ -539,7 +539,7 @@ const UserManagementPage = () => {
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">Mapped Portal Role</label>
-                     {/* ✨ ARCHITECTURAL FIX: Replaced bg-brand with standard disabled look in dark mode */}
+                 
                     {forceAdmin ? (
                      
                       <div className="flex items-center w-full px-4 py-2.5 text-sm font-bold border rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 cursor-not-allowed transition-colors">

@@ -26,14 +26,14 @@ const uploadToDrive = async (fileObject) => {
         parents: [FOLDER_ID],
       },
       fields: 'id, webViewLink',
-      supportsAllDrives: true, // ✨ FIX: Tells Google to allow Shared Drive uploads
+      supportsAllDrives: true, 
     });
 
-    // Make the file accessible to anyone with the link
+    
     await driveService.permissions.create({
       fileId: data.id,
       requestBody: { role: 'reader', type: 'anyone' },
-      supportsAllDrives: true, // ✨ FIX: Required for permissions on Shared Drives too
+      supportsAllDrives: true, 
     });
 
     return data.webViewLink; 

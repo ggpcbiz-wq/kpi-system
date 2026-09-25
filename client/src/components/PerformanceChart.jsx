@@ -16,16 +16,16 @@ const PerformanceChart = ({ data, metricName, unit = '' }) => {
   const [viewMode, setViewMode] = useState('monthly'); 
   const { isDarkMode } = useTheme(); 
 
-  // ✨ FIX: Statically bound the actualBar to your primary brand purple (#7933ff)
+ 
   const colors = {
-    targetLine: '#4cc45e',                           // Static neon green
-    actualBar: '#7933ff',                            // Static brand-600 purple (Does not change in dark mode)
-    gridLines: isDarkMode ? '#334155' : '#E2E8F0',   // Slate-700 vs Slate-200
-    text: isDarkMode ? '#94A3B8' : '#64748B',        // Slate-400 vs Slate-500
-    tooltipBg: isDarkMode ? '#1E293B' : '#FFFFFF',   // Slate-800 vs White
+    targetLine: '#4cc45e',                         
+    actualBar: '#7933ff',                          
+    gridLines: isDarkMode ? '#334155' : '#E2E8F0',  
+    text: isDarkMode ? '#94A3B8' : '#64748B',      
+    tooltipBg: isDarkMode ? '#1E293B' : '#FFFFFF',   
     tooltipBorder: isDarkMode ? '#334155' : '#E2E8F0',
     tooltipText: isDarkMode ? '#F1F5F9' : '#0F172A',
-    cursorFill: isDarkMode ? '#334155' : '#F8FAFC'   // Slate-700 vs Slate-50
+    cursorFill: isDarkMode ? '#334155' : '#F8FAFC'  
   };
 
   const chartData = useMemo(() => {

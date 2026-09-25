@@ -8,13 +8,13 @@ const DataEntryPage = () => {
   const [selectedTargetId, setSelectedTargetId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Enforce the Business Rule: Fetch ONLY targets marked as 'Active' 
+ 
   useEffect(() => {
     const fetchActiveTargets = async () => {
       try {
         await new Promise(resolve => setTimeout(resolve, 600)); // Mock network delay
         
-        // Mock payload representing Active targets for DEPT-001
+        
         setActiveTargets([
           { id: '1', metric_name: 'Production Yield', target_value: '95.5', status: 'Active' },
           { id: '3', metric_name: '100% On-time delivery', target_value: '100', status: 'Active' }

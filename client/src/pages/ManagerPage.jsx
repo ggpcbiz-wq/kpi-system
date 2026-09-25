@@ -22,18 +22,18 @@ const checkIsMissed = (actual, target, operator) => {
   
   const op = String(operator).trim();
 
-  // Less-Than constraints (including UTF-8 mangled '‚â§')
+ 
   if (op === '≤' || op === '<=' || op === '‚â§') return act > tgt;
   if (op === '<') return act >= tgt;
   
-  // Exact Match
+ 
   if (op === '=' || op === '==') return act !== tgt;
   
-  // Greater-Than constraints (including UTF-8 mangled '‚â•')
+
   if (op === '≥' || op === '>=' || op === '‚â•') return act < tgt;
   if (op === '>') return act <= tgt;
   
-  // Default fail-safe (assumes higher is better)
+  
   return act < tgt; 
 };
 const ManagerPage = () => {
@@ -156,7 +156,7 @@ const ManagerPage = () => {
   const handleProposeTarget = async (formData) => {
     setIsSubmittingTarget(true);
     try {
-      // ✨ ARCHITECTURAL FIX: Explicitly include 'objective' in the outbound JSON payload
+      
       const payload = {
         metric_name: formData.metric_name, 
         objective: formData.objective,

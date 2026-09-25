@@ -11,7 +11,7 @@ const CarTrackingPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [carLedger, setCarLedger] = useState([]);
   
-  // Unified Filter State
+
   const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All' });
 
   useEffect(() => {
@@ -30,7 +30,7 @@ const CarTrackingPage = () => {
         if (isMounted) {
           const allSubmissions = await response.json();
           
-          // ✨ ARCHITECTURAL FIX: Filter to include only submissions with a linked Kintone CAR or pending request
+        
           const actualCars = allSubmissions
             .filter(sub => sub.kintone_car_id || sub.status === 'CAR Requested')
             .map(sub => ({

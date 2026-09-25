@@ -26,11 +26,11 @@ const getDepartments = async (req, res) => {
   }
 };
 
-// ✨ ARCHITECTURAL FIX: Target Section ID mapping
+
 const updateProcessMappings = async (req, res) => {
   if (!verifyAdmin(req, res)) return;
 
-  const { id } = req.params; // This is now the Section ID
+  const { id } = req.params;  
   const { processTypes } = req.body;
 
   try {

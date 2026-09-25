@@ -8,9 +8,6 @@ const { Connector } = require('@google-cloud/cloud-sql-connector');
 
 let pool;
 
-/**
- * Initializes PostgreSQL Pool targeting specified DB_NAME
- */
 const initPool = async () => {
   if (pool) return pool;
 
@@ -54,7 +51,7 @@ module.exports = {
     return currentPool.query(text, params);
   },
   
-  // Use for multi-statement ACID Transactions (Requires manual client.release() in a finally block)
+  
   getClient: async () => {
     const currentPool = await initPool();
     return currentPool.connect(); 

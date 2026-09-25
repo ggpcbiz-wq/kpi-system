@@ -1,7 +1,3 @@
-/**
- * User Controller
- * Handles CRUD operations for system users and integrates with Kintone Master Worker App.
- */
 
 const db = require('../config/db');
 const kintoneService = require('../services/kintone.service');
@@ -198,7 +194,7 @@ const lookupEmployee = async (req, res) => {
 
     const existingDbUser = dbCheck.rows.length > 0 ? dbCheck.rows[0] : null;
 
-    // ✨ ARCHITECTURAL FIX: Use exact Field Codes matching Kintone JSON payload
+
     const employeeData = {
       firstName: kintoneRecord.First_Name?.value || '',
       lastName: kintoneRecord.Last_Name?.value || '',

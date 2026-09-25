@@ -16,13 +16,13 @@ const ConfirmModal = ({
   if (!isOpen) return null;
 
   const handleClose = () => {
-    setComment(''); // Reset state on close
+    setComment('');
     onClose();
   };
 
   const handleConfirm = () => {
-    onConfirm(comment); // Pass the comment string back to the parent
-    setComment(''); // Reset state on confirm
+    onConfirm(comment); 
+    setComment(''); 
     onClose();
   };
 

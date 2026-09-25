@@ -13,9 +13,7 @@ const googleLogin = async (req, res) => {
 
   let email;
 
-  // ==========================================
-  // 1. Authentication Layer (Google)
-  // ==========================================
+  
   try {
     const ticket = await client.verifyIdToken({
       idToken: credential,
@@ -29,9 +27,7 @@ const googleLogin = async (req, res) => {
     return res.status(401).json({ message: 'Invalid or expired Google Token.' });
   }
 
-  // ==========================================
-  // 2. Data Layer (Cloud SQL Database)
-  // ==========================================
+
   try {
     const { rows } = await db.query(`
       SELECT 
@@ -60,9 +56,7 @@ const googleLogin = async (req, res) => {
       return res.status(403).json({ message: 'Access denied. Your account has been deactivated.' });
     }
 
-    // ==========================================
-    // 3. Application Layer (RBAC JWT)
-    // ==========================================
+ 
     const token = jwt.sign(
       { 
         userId: dbUser.id, 
@@ -79,7 +73,7 @@ const googleLogin = async (req, res) => {
 
   } catch (error) {
     console.error('[Database Error] Failed to execute user lookup query:', error.message);
-    // Explicit 500 error if Cloud SQL connection/schema fails
+  
     return res.status(500).json({ message: 'Internal server error during database lookup.' });
   }
 };

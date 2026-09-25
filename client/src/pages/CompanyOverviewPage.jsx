@@ -12,18 +12,18 @@ const checkIsMissed = (actual, target, operator) => {
   
   const op = String(operator).trim();
 
-  // Less-Than constraints (including UTF-8 mangled '‚â§')
+
   if (op === '≤' || op === '<=' || op === '‚â§') return act > tgt;
   if (op === '<') return act >= tgt;
   
-  // Exact Match
+
   if (op === '=' || op === '==') return act !== tgt;
   
-  // Greater-Than constraints (including UTF-8 mangled '‚â•')
+  
   if (op === '≥' || op === '>=' || op === '‚â•') return act < tgt;
   if (op === '>') return act <= tgt;
   
-  // Default fail-safe (assumes higher is better)
+
   return act < tgt; 
 };
 
@@ -43,7 +43,7 @@ const CompanyOverviewPage = () => {
 
     const fetchOverviewData = async () => {
       try {
-        // ✨ FIX 1: Implemented timestamp cache-busting to prevent 304 Not Modified stale data
+    
         const timestamp = new Date().getTime();
         const [targetRes, subRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
@@ -54,7 +54,7 @@ const CompanyOverviewPage = () => {
           setRawTargets(await targetRes.json());
           const submissions = await subRes.json();
           
-          // ✨ FIX 2: Expanded visibility to include pending submissions so charts reflect real-time data
+         
           setRawSubmissions(submissions.filter(s => 
             ['Approved', 'CAR Requested', 'Locked - Pending Manager Review', 'Locked - Pending QMR Sign-Off'].includes(s.status)
           ));

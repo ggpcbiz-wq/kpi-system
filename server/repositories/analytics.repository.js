@@ -6,7 +6,7 @@ class AnalyticsRepository {
       const canViewAll = userContext?.role === 'Administrator' || userContext?.role === 'Top Management';
       const activeUserId = userContext?.userId || userContext?.id;
 
-      // ✨ ARCHITECTURAL FIX: Enforce strict WHERE clause for approved data ONLY
+  
       let query = `
         SELECT 
           d.name as dept_name, 
@@ -22,7 +22,7 @@ class AnalyticsRepository {
 
       const params = [];
 
-      // Ensure RLS uses AND instead of WHERE since we added the status filter above
+    
       if (!canViewAll) {
         query += ` AND t.department_id IN (
           SELECT department_id FROM user_departments WHERE user_id = $1

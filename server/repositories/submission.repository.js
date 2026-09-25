@@ -1,8 +1,3 @@
-/**
- * Submission Repository
- * Handles all database interactions for Monthly Actuals and CAR data.
- */
-
 const db = require('../config/db');
 
 class SubmissionRepository {
@@ -60,7 +55,7 @@ class SubmissionRepository {
       if (globalActualsAccess && role === 'Administrator') {
         query += ` ORDER BY m.created_at DESC`;
       } else if (role === 'Top Management') {
-        // ✨ ARCHITECTURAL FIX: Division Heads strictly view finalized submissions
+       
         query += ` WHERE (target_owner.div_head_email = $1 
                    OR t.department_id IN (SELECT department_id FROM user_departments WHERE user_id = $2))
                    AND m.status IN ('Approved', 'CAR Requested')

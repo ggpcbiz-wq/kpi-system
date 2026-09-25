@@ -5,7 +5,6 @@ require('dotenv').config();
 const { googleLogin } = require('./controllers/auth.controller');
 const { requireAuth } = require('./middleware/auth.middleware');
 
-// 1. IMPORT YOUR NEW USER ROUTES
 const userRoutes = require('./routes/user.routes'); 
 const targetRoutes = require('./routes/target.routes');
 const submissionRoutes = require('./routes/submission.routes');
@@ -26,10 +25,10 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Public Auth Route
+
 app.post('/api/auth/google', googleLogin);
 
-// 2. MOUNT THE USER ROUTES HERE
+
 app.use('/api/users', userRoutes);
 app.use('/api/targets', targetRoutes);
 app.use('/api/submissions', submissionRoutes);

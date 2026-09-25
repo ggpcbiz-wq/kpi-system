@@ -76,7 +76,7 @@ const AnnualObjectivesPage = () => {
         ytdCount++;
       });
       
-      // Route math logic based on the isCumulative flag
+      
       const ytdActual = ytdCount > 0 
         ? (isCumulative ? ytdSum : (ytdSum / ytdCount)).toFixed(2) 
         : '-';

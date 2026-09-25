@@ -79,7 +79,7 @@ steps:
         npm ci
         npm run build
 
-  # 6. Deploy Client to Firebase Hosting Target ($PROJECT_ID)
+# 6. Deploy Client to Firebase Hosting Target ($PROJECT_ID)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -88,9 +88,13 @@ steps:
         set -e
         gcloud secrets versions access latest --secret=FIREBASE_SERVICE_ACCOUNT --project=$PROJECT_ID > /tmp/firebase-service-account.json
         export GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-service-account.json
-        curl -sL https://firebase.tools | bash
-        firebase use --add $PROJECT_ID
-        firebase deploy --project=$PROJECT_ID --only=hosting --non-interactive
+        
+        # ✨ ARCHITECTURAL FIX: Direct download of a stable standalone binary.
+        # Bypasses the broken v15.31.0 auto-updater and removes the need for 'npm' in this container.
+        curl -sL "https://firebase.tools/bin/linux/v13.11.0" -o /usr/local/bin/firebase
+        chmod +x /usr/local/bin/firebase
+        
+        firebase deploy --project=$PROJECT_ID --only=hosting --non-interactive --debug
 
 images:
   - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'

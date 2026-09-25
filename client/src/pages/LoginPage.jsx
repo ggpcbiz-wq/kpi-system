@@ -13,7 +13,7 @@ const LoginPage = () => {
   
   const isGoogleInitialized = useRef(false);
 
-  // Automatically route the user based on their role the moment they are logged in
+  
   useEffect(() => {
     if (user) {
       switch (user.role) {
