@@ -88,11 +88,12 @@ steps:
         set -e
         gcloud secrets versions access latest --secret=FIREBASE_SERVICE_ACCOUNT --project=$PROJECT_ID > /tmp/firebase-service-account.json
         export GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-service-account.json
-        curl -sL https://firebase.tools | bash
         
-        # ✨ ARCHITECTURAL FIX: Removed interactive 'firebase use' command.
-        # Added --debug flag to expose exact REST payload issues if any occur.
-        firebase deploy --project=$PROJECT_ID --only=hosting --non-interactive --debug
+        # ✨ ARCHITECTURAL FIX: Implement Deterministic Builds.
+        # Bypass the broken curl script and pin a stable, explicit CLI version via NPM.
+        npm install -g firebase-tools@13.11.0
+        
+        firebase deploy --project=$PROJECT_ID --only=hosting --non-interactive
 
 images:
   - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA'
