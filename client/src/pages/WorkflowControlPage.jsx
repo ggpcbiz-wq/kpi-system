@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { CheckCircle, XCircle, AlertTriangle, PlayCircle, MessageSquare, BarChart3, Info, FileSpreadsheet, Layers, SplitSquareHorizontal } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, PlayCircle, MessageSquare, BarChart3, Info, FileSpreadsheet, Layers, SplitSquareHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 import PerformanceChart from '../components/PerformanceChart';
 import { API_BASE_URL } from '../services/api';
@@ -18,14 +18,14 @@ const checkIsMissed = (actual, target, operator) => {
   
   const op = String(operator).trim();
 
-  // Less-Than constraints (including UTF-8 mangled '‚â§')
+  // Less-Than constraints
   if (op === '≤' || op === '<=' || op === '‚â§') return act > tgt;
   if (op === '<') return act >= tgt;
   
   // Exact Match
   if (op === '=' || op === '==') return act !== tgt;
   
-  // Greater-Than constraints (including UTF-8 mangled '‚â•')
+  // Greater-Than constraints
   if (op === '≥' || op === '>=' || op === '‚â•') return act < tgt;
   if (op === '>') return act <= tgt;
   
@@ -96,6 +96,17 @@ const WorkflowControlPage = () => {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [confirmPayload, setConfirmPayload] = useState({ id: null, title: '', message: '', btnText: '', queueName: '' });
 
+  // Chart Pagination State
+  const [chartPage, setChartPage] = useState(1);
+  const [prevChartData, setPrevChartData] = useState(globalChartData);
+  const CHARTS_PER_PAGE = 6;
+
+  // Sync chart pagination on data refresh (Render-Phase Update)
+  if (globalChartData !== prevChartData) {
+    setPrevChartData(globalChartData);
+    setChartPage(1);
+  }
+
   useEffect(() => {
     if (!token) return;
     let isMounted = true;
@@ -156,6 +167,28 @@ const WorkflowControlPage = () => {
     fetchAdminQueues();
     return () => { isMounted = false; };
   }, [token, refreshTrigger, addToast]); 
+
+  // Flatten nested chart data structure for pagination
+  const allCharts = useMemo(() => {
+    return Object.entries(globalChartData).flatMap(([dept, metrics]) =>
+      metrics
+        .filter(m => m.data && m.data.length > 0)
+        .map((metric, index) => ({
+          id: `${dept}-${index}`,
+          dept,
+          metricName: metric.metricName,
+          data: metric.data
+        }))
+    );
+  }, [globalChartData]);
+
+  // Chart Pagination Logic
+  const totalChartPages = Math.ceil(allCharts.length / CHARTS_PER_PAGE) || 1;
+  const chartStartIndex = (chartPage - 1) * CHARTS_PER_PAGE;
+  const paginatedCharts = allCharts.slice(chartStartIndex, chartStartIndex + CHARTS_PER_PAGE);
+
+  const handlePrevChart = () => setChartPage(p => Math.max(1, p - 1));
+  const handleNextChart = () => setChartPage(p => Math.min(totalChartPages, p + 1));
 
   const initiateApprove = (id, queueName, title, message, btnText) => {
     setConfirmPayload({ id, queueName, title, message, btnText });
@@ -348,7 +381,6 @@ const WorkflowControlPage = () => {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        {/* ✨ ARCHITECTURAL FIX: UI layout updated to support rejection from the QMR portal */}
                         <div className="flex justify-end space-x-2">
                           <button 
                             onClick={() => initiateApprove(target.id, 'final', 'Activate Target', `Activate the ${target.metric} target in the system? It will go live immediately.`, 'Activate Now')} 
@@ -534,23 +566,52 @@ const WorkflowControlPage = () => {
                 System Overview: <span className="text-brand-600 dark:text-brand-400">All Departments</span>
               </h3>
             </div>
+            {/* Display total charts count if applicable */}
+            {allCharts.length > 0 && (
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Showing {chartStartIndex + 1}-{Math.min(chartStartIndex + CHARTS_PER_PAGE, allCharts.length)} of {allCharts.length} Charts
+              </span>
+            )}
           </div>
           
           <div className="p-8 bg-white dark:bg-slate-800 transition-colors">
-            {Object.keys(globalChartData).length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 items-start">
-                {Object.entries(globalChartData).flatMap(([dept, metrics]) => 
-                  metrics.map((metric, index) => (
-                    metric.data && metric.data.length > 0 && (
-                      <PerformanceChart 
-                        key={`${dept}-${index}`} 
-                        data={metric.data} 
-                        metricName={`${metric.metricName} (${dept})`} 
-                      />
-                    )
-                  ))
+            {allCharts.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 items-start min-h-[300px]">
+                  {paginatedCharts.map((chartConfig) => (
+                    <PerformanceChart 
+                      key={chartConfig.id} 
+                      data={chartConfig.data} 
+                      metricName={`${chartConfig.metricName} (${chartConfig.dept})`} 
+                    />
+                  ))}
+                </div>
+                
+                {/* Pagination Controls */}
+                {allCharts.length > CHARTS_PER_PAGE && (
+                  <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between transition-colors">
+                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      Page {chartPage} of {totalChartPages}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={handlePrevChart}
+                        disabled={chartPage === 1}
+                        className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button
+                        onClick={handleNextChart}
+                        disabled={chartPage === totalChartPages}
+                        className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
                 )}
-              </div>
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-full border border-slate-100 dark:border-slate-700 mb-4 transition-colors">
