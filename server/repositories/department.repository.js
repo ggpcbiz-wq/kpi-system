@@ -5,13 +5,14 @@ class DepartmentRepository {
     if (!kintoneData || kintoneData.length === 0) return;
 
     for (const dept of kintoneData) {
+      // Upsert department name and code
       const deptRes = await db.query(`
-        INSERT INTO departments (id, name, created_at, updated_at)
-        VALUES (gen_random_uuid(), $1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO departments (id, name, code, created_at, updated_at)
+        VALUES (gen_random_uuid(), $1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT (name) DO UPDATE 
-        SET updated_at = CURRENT_TIMESTAMP
+        SET code = $2, updated_at = CURRENT_TIMESTAMP
         RETURNING id
-      `, [dept.name]);
+      `, [dept.name, dept.code]);
       
       const deptId = deptRes.rows[0].id;
 
@@ -28,12 +29,12 @@ class DepartmentRepository {
     }
   }
 
-  // ✨ ARCHITECTURAL FIX: Deeply nested JSON aggregation (Department -> Sections -> Process Types)
   async findAll() {
     const query = `
       SELECT 
         d.id, 
         d.name, 
+        d.code,
         d.plant,
         COALESCE(
           (SELECT json_agg(
@@ -55,7 +56,6 @@ class DepartmentRepository {
     return rows;
   }
 
-  // ✨ ARCHITECTURAL FIX: Pointing mutations to the section_process_types table
   async updateSectionProcessTypes(sectionId, processTypes, userId) {
     const currentMappings = await db.query(
       'SELECT category, process_name FROM section_process_types WHERE section_id = $1',

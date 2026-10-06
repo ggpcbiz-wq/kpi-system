@@ -2,17 +2,17 @@ const db = require('../config/db');
 
 class TargetRepository {
   
- 
   async findAll(userContext) {
     const { id, role, email } = userContext;
 
     try {
+      // ✨ ARCHITECTURAL FIX: Appended d.code as dept_code to all role-based queries
       if (role === 'Administrator') {
         const { rows } = await db.query(`
           SELECT 
             t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
             t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
-            d.name as dept_name, s.name as section_name, u.name as proposer_name, u.plant       
+            d.name as dept_name, d.code as dept_code, s.name as section_name, u.name as proposer_name, u.plant       
           FROM kpi_targets t
           LEFT JOIN departments d ON t.department_id = d.id
           LEFT JOIN sections s ON t.section_id = s.id
@@ -22,13 +22,12 @@ class TargetRepository {
         return rows;
       }
 
-     
       if (role === 'Top Management') {
         const { rows } = await db.query(`
           SELECT 
             t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
             t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
-            d.name as dept_name, s.name as section_name, u.name as proposer_name, u.plant       
+            d.name as dept_name, d.code as dept_code, s.name as section_name, u.name as proposer_name, u.plant       
           FROM kpi_targets t
           LEFT JOIN departments d ON t.department_id = d.id
           LEFT JOIN sections s ON t.section_id = s.id
@@ -40,13 +39,12 @@ class TargetRepository {
         return rows;
       }
 
-    
       if (role === 'Supervisor' || role === 'Acting Supervisor') {
         const { rows } = await db.query(`
           SELECT 
             t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
             t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
-            d.name as dept_name, s.name as section_name, u.name as proposer_name, u.plant       
+            d.name as dept_name, d.code as dept_code, s.name as section_name, u.name as proposer_name, u.plant       
           FROM kpi_targets t
           LEFT JOIN departments d ON t.department_id = d.id
           LEFT JOIN sections s ON t.section_id = s.id
@@ -58,12 +56,12 @@ class TargetRepository {
         return rows;
       }
 
-   
+      // Default Standard User Query
       const { rows } = await db.query(`
         SELECT 
           t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
           t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
-          d.name as dept_name, s.name as section_name, u.name as proposer_name, u.plant       
+          d.name as dept_name, d.code as dept_code, s.name as section_name, u.name as proposer_name, u.plant       
         FROM kpi_targets t
         LEFT JOIN departments d ON t.department_id = d.id
         LEFT JOIN sections s ON t.section_id = s.id

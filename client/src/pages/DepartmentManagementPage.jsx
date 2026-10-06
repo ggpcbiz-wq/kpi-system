@@ -109,7 +109,6 @@ const DepartmentManagementPage = () => {
 
     setIsSubmitting(true);
     try {
-      // ✨ ARCHITECTURAL FIX: Align fetch URL with the Express router prefix hierarchy
       const res = await fetch(`${API_BASE_URL}/api/departments/sections/${selectedSection.id}/process-types`, {
         method: 'PUT',
         headers: { 
@@ -193,6 +192,7 @@ const DepartmentManagementPage = () => {
                 <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                   <tr>
                     <th className="px-6 py-4 font-bold w-10"></th>
+                    <th className="px-6 py-4 font-bold w-32">Dept Code</th>
                     <th className="px-6 py-4 font-bold">Kintone Department Name</th>
                     <th className="px-6 py-4 font-bold">Plant Location</th>
                     <th className="px-6 py-4 font-bold text-right">Child Structure</th>
@@ -208,6 +208,9 @@ const DepartmentManagementPage = () => {
                         <td className="px-6 py-4 text-slate-400">
                           {expandedRows[dept.id] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                         </td>
+                        <td className="px-6 py-4 font-mono text-xs font-bold text-brand-600 dark:text-brand-400">
+                          {dept.code || 'N/A'}
+                        </td>
                         <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">
                           {dept.name}
                         </td>
@@ -220,7 +223,7 @@ const DepartmentManagementPage = () => {
                       </tr>
                       {expandedRows[dept.id] && (
                         <tr className="bg-slate-50/50 dark:bg-slate-900/30">
-                          <td colSpan="4" className="p-0 border-b border-slate-200 dark:border-slate-700">
+                          <td colSpan="5" className="p-0 border-b border-slate-200 dark:border-slate-700">
                             <div className="px-16 py-6">
                               <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center">
                                 <SplitSquareHorizontal size={14} className="mr-2" /> Organizational Sections under {dept.name}
@@ -274,7 +277,7 @@ const DepartmentManagementPage = () => {
                   ))}
                   {departments.length === 0 && (
                     <tr>
-                      <td colSpan="4" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 bg-slate-50/30 dark:bg-slate-800/30 font-medium">
+                      <td colSpan="5" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 bg-slate-50/30 dark:bg-slate-800/30 font-medium">
                         No departments retrieved from Kintone. Check Kintone API connectivity.
                       </td>
                     </tr>

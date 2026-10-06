@@ -62,7 +62,6 @@ const AnnualObjectivesPage = () => {
 
   const reportData = useMemo(() => {
     const merged = targets.map((target, index) => {
-      // ✨ ARCHITECTURAL FIX: Default to SUM for everything unless it's strictly a percentage
       const isCumulative = target.unit?.trim() !== '%';
       
       const currentSubs = submissions.filter(s => s.target_id === target.id && s.report_year === currentYear);
@@ -75,7 +74,6 @@ const AnnualObjectivesPage = () => {
         ytdSum += parseFloat(sub.actual_value) || 0;
         ytdCount++;
       });
-      
       
       const ytdActual = ytdCount > 0 
         ? (isCumulative ? ytdSum : (ytdSum / ytdCount)).toFixed(2) 
@@ -146,9 +144,8 @@ const AnnualObjectivesPage = () => {
       if (reportData.length === 0) return addToast("No data available to export.", "info");
 
       const excelData = reportData.map(row => {
-        const deptSectionDisplay = row.section_name 
-          ? `${row.dept_name} / ${row.section_name}` 
-          : (row.dept_name || '-');
+        const deptDisplay = row.dept_code ? `[${row.dept_code}] ${row.dept_name}` : (row.dept_name || '-');
+        const deptSectionDisplay = row.section_name ? `${deptDisplay} / ${row.section_name}` : deptDisplay;
 
         const rowData = {
           'QMS Process Category': row.process_category || 'Uncategorized',
@@ -289,11 +286,15 @@ const AnnualObjectivesPage = () => {
                         <td className="border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-800/80 text-left" rowSpan={row.rowSpan.dept_section_key}>
                           {row.section_name ? (
                             <>
-                              <span className="block font-bold text-slate-800 dark:text-slate-200">{row.dept_name}</span>
+                              <span className="block font-bold text-slate-800 dark:text-slate-200">
+                                {row.dept_code ? `[${row.dept_code}] ` : ''}{row.dept_name}
+                              </span>
                               <span className="block text-[10px] font-black text-brand-600 dark:text-brand-400 uppercase mt-1 tracking-wider">{row.section_name}</span>
                             </>
                           ) : (
-                            <span className="block font-bold text-brand-600 dark:text-brand-400">{row.dept_name || '-'}</span>
+                            <span className="block font-bold text-brand-600 dark:text-brand-400">
+                              {row.dept_code ? `[${row.dept_code}] ` : ''}{row.dept_name || '-'}
+                            </span>
                           )}
                         </td>
                       )}

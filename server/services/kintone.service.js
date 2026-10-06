@@ -120,7 +120,8 @@ const getUniqueDepartments = async () => {
     throw new Error("Missing Kintone Organization App .env variables.");
   }
 
-  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department&fields[1]=Section&fields[2]=Segment`;
+  // ✨ ARCHITECTURAL FIX: Appended fields[3]=Code to the URL query string
+  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department&fields[1]=Section&fields[2]=Segment&fields[3]=Code`;
 
   try {
     const response = await fetch(url, {
@@ -137,11 +138,13 @@ const getUniqueDepartments = async () => {
       const deptName = record.Department?.value?.trim();
       const secName = record.Section?.value?.trim();
       const segName = record.Segment?.value?.trim();
+      const deptCode = record.Code?.value?.trim() || null; // Extract new Code field
 
       if (!deptName) return;
 
       if (!deptMap[deptName]) {
-        deptMap[deptName] = { name: deptName, sections: [] };
+        // Embed the code into the initial map construction
+        deptMap[deptName] = { name: deptName, code: deptCode, sections: [] };
       }
 
       if (secName) {
@@ -157,7 +160,6 @@ const getUniqueDepartments = async () => {
     throw error;
   }
 };
-
 const getCarByControlNumber = async (controlNo) => {
   const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
   const CAR_APP_ID = process.env.KINTONE_CAR_APP_ID;
