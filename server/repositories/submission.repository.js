@@ -9,13 +9,16 @@ class SubmissionRepository {
     } = data;
     
     try {
+      // ✨ ARCHITECTURAL FIX: Subquery extracts and locks the section_code from the parent KPI target
       const { rows } = await db.query(`
         INSERT INTO monthly_actuals (
           id, target_id, submitted_by, report_month, report_year, 
-          actual_value, status, remarks, supporting_data, created_at
+          actual_value, status, remarks, supporting_data, section_code, created_at
         ) VALUES (
           gen_random_uuid(), $1, $2, $3, $4, 
-          $5, 'Locked - Pending Manager Review', $6, $7, CURRENT_TIMESTAMP
+          $5, 'Locked - Pending Manager Review', $6, $7, 
+          (SELECT section_code FROM kpi_targets WHERE id = $1),
+          CURRENT_TIMESTAMP
         ) RETURNING *
       `, [
         target_id, submitted_by, report_month, report_year, 
@@ -33,14 +36,15 @@ class SubmissionRepository {
     const { id, role, email, globalActualsAccess } = userContext;
     
     try {
+      // ✨ ARCHITECTURAL FIX: Selected t.section_code to expose to the frontend
       let query = `
         SELECT 
           m.id, m.target_id, m.submitted_by, u.plant,      
           m.report_month, m.report_year, m.actual_value, m.status, m.remarks,
-          m.supporting_data, m.created_at,
+          m.supporting_data, m.created_at, m.section_code,
           m.kintone_car_id, m.problem_description, m.problem_cause,
           m.improvement_plan, m.pic, m.target_completion_date,
-          t.metric_name, t.target_value, t.operator, t.unit,
+          t.metric_name, t.target_value, t.operator, t.unit, t.section_code as target_section_code,
           d.name as dept_name, s.name as section_name
         FROM monthly_actuals m
         LEFT JOIN kpi_targets t ON m.target_id = t.id
@@ -55,7 +59,6 @@ class SubmissionRepository {
       if (globalActualsAccess && role === 'Administrator') {
         query += ` ORDER BY m.created_at DESC`;
       } else if (role === 'Top Management') {
-       
         query += ` WHERE (target_owner.div_head_email = $1 
                    OR t.department_id IN (SELECT department_id FROM user_departments WHERE user_id = $2))
                    AND m.status IN ('Approved', 'CAR Requested')
