@@ -144,8 +144,10 @@ const AnnualObjectivesPage = () => {
       if (reportData.length === 0) return addToast("No data available to export.", "info");
 
       const excelData = reportData.map(row => {
-        const deptDisplay = row.dept_code ? `[${row.dept_code}] ${row.dept_name}` : (row.dept_name || '-');
-        const deptSectionDisplay = row.section_name ? `${deptDisplay} / ${row.section_name}` : deptDisplay;
+        const deptDisplay = row.dept_name || '-';
+        // ✨ ARCHITECTURAL FIX: Export code explicitly associated with the Section
+        const sectionDisplay = row.section_code ? `[${row.section_code}] ${row.section_name}` : row.section_name;
+        const deptSectionDisplay = sectionDisplay ? `${deptDisplay} / ${sectionDisplay}` : deptDisplay;
 
         const rowData = {
           'QMS Process Category': row.process_category || 'Uncategorized',
@@ -287,13 +289,16 @@ const AnnualObjectivesPage = () => {
                           {row.section_name ? (
                             <>
                               <span className="block font-bold text-slate-800 dark:text-slate-200">
-                                {row.dept_code ? `[${row.dept_code}] ` : ''}{row.dept_name}
+                                {row.dept_name}
                               </span>
-                              <span className="block text-[10px] font-black text-brand-600 dark:text-brand-400 uppercase mt-1 tracking-wider">{row.section_name}</span>
+                              <span className="block text-[10px] font-black text-brand-600 dark:text-brand-400 uppercase mt-1 tracking-wider">
+                                {/* ✨ ARCHITECTURAL FIX: Badge applied to section name */}
+                                {row.section_code ? `[${row.section_code}] ` : ''}{row.section_name}
+                              </span>
                             </>
                           ) : (
                             <span className="block font-bold text-brand-600 dark:text-brand-400">
-                              {row.dept_code ? `[${row.dept_code}] ` : ''}{row.dept_name || '-'}
+                              {row.dept_name || '-'}
                             </span>
                           )}
                         </td>

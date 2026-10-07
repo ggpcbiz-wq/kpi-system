@@ -192,7 +192,6 @@ const DepartmentManagementPage = () => {
                 <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                   <tr>
                     <th className="px-6 py-4 font-bold w-10"></th>
-                    <th className="px-6 py-4 font-bold w-32">Dept Code</th>
                     <th className="px-6 py-4 font-bold">Kintone Department Name</th>
                     <th className="px-6 py-4 font-bold">Plant Location</th>
                     <th className="px-6 py-4 font-bold text-right">Child Structure</th>
@@ -208,9 +207,6 @@ const DepartmentManagementPage = () => {
                         <td className="px-6 py-4 text-slate-400">
                           {expandedRows[dept.id] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                         </td>
-                        <td className="px-6 py-4 font-mono text-xs font-bold text-brand-600 dark:text-brand-400">
-                          {dept.code || 'N/A'}
-                        </td>
                         <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">
                           {dept.name}
                         </td>
@@ -223,7 +219,7 @@ const DepartmentManagementPage = () => {
                       </tr>
                       {expandedRows[dept.id] && (
                         <tr className="bg-slate-50/50 dark:bg-slate-900/30">
-                          <td colSpan="5" className="p-0 border-b border-slate-200 dark:border-slate-700">
+                          <td colSpan="4" className="p-0 border-b border-slate-200 dark:border-slate-700">
                             <div className="px-16 py-6">
                               <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center">
                                 <SplitSquareHorizontal size={14} className="mr-2" /> Organizational Sections under {dept.name}
@@ -234,7 +230,15 @@ const DepartmentManagementPage = () => {
                                     <div key={sec.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
                                       <div className="flex items-start justify-between mb-4">
                                         <div>
-                                          <span className="block font-bold text-slate-900 dark:text-slate-100 text-base mb-1">{sec.name}</span>
+                                          {/* ✨ ARCHITECTURAL FIX: Appended code badge cleanly inside the Section card */}
+                                          <div className="flex items-center gap-2 mb-1">
+                                            {sec.code && (
+                                              <span className="font-mono text-[10px] font-bold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-slate-700 px-1.5 py-0.5 rounded border border-brand-200 dark:border-slate-600">
+                                                {sec.code}
+                                              </span>
+                                            )}
+                                            <span className="block font-bold text-slate-900 dark:text-slate-100 text-base">{sec.name}</span>
+                                          </div>
                                           <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-400 rounded uppercase tracking-wider">
                                             Segment: {sec.segment}
                                           </span>
@@ -277,7 +281,7 @@ const DepartmentManagementPage = () => {
                   ))}
                   {departments.length === 0 && (
                     <tr>
-                      <td colSpan="5" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 bg-slate-50/30 dark:bg-slate-800/30 font-medium">
+                      <td colSpan="4" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 bg-slate-50/30 dark:bg-slate-800/30 font-medium">
                         No departments retrieved from Kintone. Check Kintone API connectivity.
                       </td>
                     </tr>

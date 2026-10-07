@@ -5,25 +5,25 @@ class DepartmentRepository {
     if (!kintoneData || kintoneData.length === 0) return;
 
     for (const dept of kintoneData) {
-      // Upsert department name and code
       const deptRes = await db.query(`
-        INSERT INTO departments (id, name, code, created_at, updated_at)
-        VALUES (gen_random_uuid(), $1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO departments (id, name, created_at, updated_at)
+        VALUES (gen_random_uuid(), $1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT (name) DO UPDATE 
-        SET code = $2, updated_at = CURRENT_TIMESTAMP
+        SET updated_at = CURRENT_TIMESTAMP
         RETURNING id
-      `, [dept.name, dept.code]);
+      `, [dept.name]);
       
       const deptId = deptRes.rows[0].id;
 
       if (dept.sections && dept.sections.length > 0) {
         for (const sec of dept.sections) {
+          // ✨ ARCHITECTURAL FIX: Apply the 'code' property to the Section UPSERT
           await db.query(`
-            INSERT INTO sections (id, department_id, name, segment, created_at, updated_at)
-            VALUES (gen_random_uuid(), $1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            INSERT INTO sections (id, department_id, name, segment, code, created_at, updated_at)
+            VALUES (gen_random_uuid(), $1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON CONFLICT (department_id, name) DO UPDATE 
-            SET segment = $3, updated_at = CURRENT_TIMESTAMP
-          `, [deptId, sec.name, sec.segment]);
+            SET segment = $3, code = $4, updated_at = CURRENT_TIMESTAMP
+          `, [deptId, sec.name, sec.segment, sec.code]);
         }
       }
     }
@@ -34,7 +34,6 @@ class DepartmentRepository {
       SELECT 
         d.id, 
         d.name, 
-        d.code,
         d.plant,
         COALESCE(
           (SELECT json_agg(
@@ -42,6 +41,7 @@ class DepartmentRepository {
                'id', s.id, 
                'name', s.name, 
                'segment', s.segment,
+               'code', s.code, -- Expose the section code to the API payload
                'processTypes', COALESCE(
                  (SELECT json_agg(json_build_object('category', spt.category, 'process_name', spt.process_name))
                   FROM section_process_types spt WHERE spt.section_id = s.id), '[]'::json

@@ -5,33 +5,29 @@ class TargetRepository {
   async findAll(userContext) {
     const { id, role, email } = userContext;
 
+    // Standardized base query with section code extraction
+    const baseSelect = `
+      SELECT 
+        t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
+        t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
+        d.name as dept_name, s.name as section_name, s.code as section_code, u.name as proposer_name, u.plant       
+      FROM kpi_targets t
+      LEFT JOIN departments d ON t.department_id = d.id
+      LEFT JOIN sections s ON t.section_id = s.id
+      LEFT JOIN users u ON t.proposed_by = u.id
+    `;
+
     try {
-      // ✨ ARCHITECTURAL FIX: Appended d.code as dept_code to all role-based queries
+      // Role: Administrator
       if (role === 'Administrator') {
-        const { rows } = await db.query(`
-          SELECT 
-            t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
-            t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
-            d.name as dept_name, d.code as dept_code, s.name as section_name, u.name as proposer_name, u.plant       
-          FROM kpi_targets t
-          LEFT JOIN departments d ON t.department_id = d.id
-          LEFT JOIN sections s ON t.section_id = s.id
-          LEFT JOIN users u ON t.proposed_by = u.id
-          ORDER BY t.created_at DESC
-        `);
+        const { rows } = await db.query(`${baseSelect} ORDER BY t.created_at DESC`);
         return rows;
       }
 
+      // Role: Top Management
       if (role === 'Top Management') {
         const { rows } = await db.query(`
-          SELECT 
-            t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
-            t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
-            d.name as dept_name, d.code as dept_code, s.name as section_name, u.name as proposer_name, u.plant       
-          FROM kpi_targets t
-          LEFT JOIN departments d ON t.department_id = d.id
-          LEFT JOIN sections s ON t.section_id = s.id
-          LEFT JOIN users u ON t.proposed_by = u.id
+          ${baseSelect}
           WHERE u.div_head_email = $1 
              OR t.department_id IN (SELECT department_id FROM user_departments WHERE user_id = $2)
           ORDER BY t.created_at DESC
@@ -39,16 +35,10 @@ class TargetRepository {
         return rows;
       }
 
+      // Role: Supervisor
       if (role === 'Supervisor' || role === 'Acting Supervisor') {
         const { rows } = await db.query(`
-          SELECT 
-            t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
-            t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
-            d.name as dept_name, d.code as dept_code, s.name as section_name, u.name as proposer_name, u.plant       
-          FROM kpi_targets t
-          LEFT JOIN departments d ON t.department_id = d.id
-          LEFT JOIN sections s ON t.section_id = s.id
-          LEFT JOIN users u ON t.proposed_by = u.id
+          ${baseSelect}
           WHERE t.status = 'Active' 
             AND t.section_id IN (SELECT section_id FROM user_sections WHERE user_id = $1)
           ORDER BY t.created_at DESC
@@ -56,16 +46,9 @@ class TargetRepository {
         return rows;
       }
 
-      // Default Standard User Query
+      // Default: Standard User
       const { rows } = await db.query(`
-        SELECT 
-          t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
-          t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
-          d.name as dept_name, d.code as dept_code, s.name as section_name, u.name as proposer_name, u.plant       
-        FROM kpi_targets t
-        LEFT JOIN departments d ON t.department_id = d.id
-        LEFT JOIN sections s ON t.section_id = s.id
-        LEFT JOIN users u ON t.proposed_by = u.id
+        ${baseSelect}
         WHERE t.department_id IN (SELECT department_id FROM user_departments WHERE user_id = $1)
            OR t.proposed_by = $1
         ORDER BY t.created_at DESC

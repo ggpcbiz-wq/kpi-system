@@ -7,7 +7,6 @@ const postToKintone = async (data) => {
 
   const url = `https://${KINTONE_DOMAIN}/k/v1/record.json`;
   
-  
   const payload = {
     app: KPI_APP_ID,
     record: {
@@ -79,7 +78,6 @@ const updateKintoneRecord = async (kintoneRecordId, carIdString) => {
 };
 
 const getEmployeeByEmail = async (email) => {
-  const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
   const MASTER_APP_ID = process.env.KINTONE_MASTER_APP_ID;
   const MASTER_API_KEY = process.env.KINTONE_MASTER_API_KEY;
 
@@ -112,7 +110,6 @@ const getEmployeeByEmail = async (email) => {
 };
 
 const getUniqueDepartments = async () => {
-  const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
   const ORG_APP_ID = process.env.KINTONE_ORGANIZATION_APP_ID;
   const ORG_API_KEY = process.env.KINTONE_ORGANIZATION_API_KEY;
 
@@ -120,7 +117,7 @@ const getUniqueDepartments = async () => {
     throw new Error("Missing Kintone Organization App .env variables.");
   }
 
-  // ✨ ARCHITECTURAL FIX: Appended fields[3]=Code to the URL query string
+  // ✨ ARCHITECTURAL FIX: Extract Code field to align with Section hierarchy
   const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department&fields[1]=Section&fields[2]=Segment&fields[3]=Code`;
 
   try {
@@ -138,18 +135,18 @@ const getUniqueDepartments = async () => {
       const deptName = record.Department?.value?.trim();
       const secName = record.Section?.value?.trim();
       const segName = record.Segment?.value?.trim();
-      const deptCode = record.Code?.value?.trim() || null; // Extract new Code field
+      const secCode = record.Code?.value?.trim() || null; 
 
       if (!deptName) return;
 
       if (!deptMap[deptName]) {
-        // Embed the code into the initial map construction
-        deptMap[deptName] = { name: deptName, code: deptCode, sections: [] };
+        deptMap[deptName] = { name: deptName, sections: [] };
       }
 
       if (secName) {
         if (!deptMap[deptName].sections.some(s => s.name === secName)) {
-          deptMap[deptName].sections.push({ name: secName, segment: segName || 'Unassigned' });
+          // Bind the extracted code specifically to the section object
+          deptMap[deptName].sections.push({ name: secName, segment: segName || 'Unassigned', code: secCode });
         }
       }
     });
@@ -160,8 +157,8 @@ const getUniqueDepartments = async () => {
     throw error;
   }
 };
+
 const getCarByControlNumber = async (controlNo) => {
-  const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
   const CAR_APP_ID = process.env.KINTONE_CAR_APP_ID;
   const CAR_API_KEY = process.env.KINTONE_CAR_API_KEY;
 
