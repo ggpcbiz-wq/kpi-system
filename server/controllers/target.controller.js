@@ -1,4 +1,7 @@
 const targetService = require('../services/target.service');
+// ✨ ARCHITECTURAL FIX: Import repository and kintone service for the interception
+const targetRepository = require('../repositories/target.repository'); 
+const kintoneService = require('../services/kintone.service');
 
 const getTargets = async (req, res) => {
   try {
@@ -34,7 +37,6 @@ const updateTargetStatus = async (req, res) => {
   const { id } = req.params;
   const { status, remarks } = req.body;
 
-
   const allowedRoleByStatus = {
     'Active': ['Administrator'],
     'Pending Final Activation': ['Top Management'],
@@ -51,6 +53,19 @@ const updateTargetStatus = async (req, res) => {
 
   try {
     const updatedTarget = await targetService.changeTargetStatus(id, status, remarks, req.user);
+
+    // ✨ ARCHITECTURAL FIX: Intercept Final Approval for Master KPI Integration
+    if (status === 'Active') {
+      // Execute asynchronously to avoid blocking the HTTP thread returning the 200 response
+      targetRepository.findById(id).then(fullTargetRecord => {
+        if (fullTargetRecord) {
+          kintoneService.postTargetToMasterKpi(fullTargetRecord).catch(err => {
+            console.error("[Kintone Error] Failed to post to Master KPI app:", err);
+          });
+        }
+      }).catch(err => console.error("Post-Approval DB Fetch Failed:", err));
+    }
+
     res.status(200).json(updatedTarget);
   } catch (error) {
     console.error('[Target Controller Error] Failed status transition:', error);

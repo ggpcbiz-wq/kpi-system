@@ -189,4 +189,71 @@ const getCarByControlNumber = async (controlNo) => {
   }
 };
 
-module.exports = { postToKintone, updateKintoneRecord, getEmployeeByEmail, getUniqueDepartments, getCarByControlNumber };
+const postTargetToMasterKpi = async (targetData) => {
+  const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
+  const MASTER_KPI_APP_ID = process.env.KINTONE_MASTER_KPI_APP_ID;
+  const MASTER_KPI_API_KEY = process.env.KINTONE_MASTER_KPI_API_KEY;
+
+  if (!KINTONE_DOMAIN || !MASTER_KPI_APP_ID || !MASTER_KPI_API_KEY) {
+    throw new Error("Missing Kintone Master KPI App .env variables.");
+  }
+
+  const url = `https://${KINTONE_DOMAIN}/k/v1/record.json`;
+  
+  // Format the Date to YYYY-MM-DD for Kintone's strict Date field type
+  const formattedDate = targetData.created_at 
+    ? new Date(targetData.created_at).toISOString().split('T')[0] 
+    : '';
+
+  // Strict mapping to your provided Field Codes
+  const payload = {
+    app: MASTER_KPI_APP_ID,
+    record: {
+      department:       { value: targetData.dept_name || '' },
+      code:             { value: targetData.section_code || '' },
+      proposed_by:      { value: targetData.proposer_name || '' },
+      proposal_date:    { value: formattedDate },
+      process_category: { value: targetData.process_category || '' },
+      process_type:     { value: targetData.process_type || '' },
+      frequency:        { value: targetData.frequency || '' },
+      objective:        { value: targetData.objective || '' },
+      kpi:              { value: targetData.metric_name || '' },
+      operator:         { value: targetData.operator || '' },
+      target_value:     { value: String(targetData.target_value || '') },
+      unit:             { value: targetData.unit || '' },
+      remarks:          { value: targetData.remarks || '' }
+    }
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-Cybozu-API-Token': MASTER_KPI_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('[Kintone Master KPI Rejection]:', errorData);
+      throw new Error('Failed to post target record to Kintone Master KPI App');
+    }
+    
+    const result = await response.json();
+    console.log(`Successfully posted Target to Master KPI! Record ID: ${result.id}`);
+    return result; 
+  } catch (error) {
+    console.error('[Kintone Sync Error] Master KPI POST failed:', error);
+    throw error; 
+  }
+};
+
+module.exports = { 
+  postToKintone, 
+  updateKintoneRecord, 
+  getEmployeeByEmail, 
+  getUniqueDepartments, 
+  getCarByControlNumber,
+  postTargetToMasterKpi // ✨ Export the new method
+};
+
+module.exports = { postToKintone, updateKintoneRecord, getEmployeeByEmail, getUniqueDepartments, getCarByControlNumber, postTargetToMasterKpi }; 

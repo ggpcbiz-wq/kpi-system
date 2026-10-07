@@ -57,14 +57,34 @@ class TargetRepository {
     }
   }
 
+  // ✨ ARCHITECTURAL FIX: Extract the full record payload including relations for the Kintone push
+  async findById(id) {
+    try {
+      const { rows } = await db.query(`
+        SELECT 
+          t.*,
+          d.name as dept_name, 
+          COALESCE(t.section_code, s.code) as section_code, 
+          u.name as proposer_name
+        FROM kpi_targets t
+        LEFT JOIN departments d ON t.department_id = d.id
+        LEFT JOIN sections s ON t.section_id = s.id
+        LEFT JOIN users u ON t.proposed_by = u.id
+        WHERE t.id = $1
+      `, [id]);
+      return rows[0];
+    } catch (error) {
+      console.error('[TargetRepository] Database error inside findById:', error);
+      throw error;
+    }
+  }
+
   async create(targetData) {
     const { 
       metric_name, objective, target_value, operator, unit, departmentId, sectionId, userId, remarks, 
       process_category, process_type, frequency 
     } = targetData;
     
-    // ✨ ARCHITECTURAL FIX: Subquery `(SELECT code FROM sections WHERE id = $2)` 
-    // automatically pulls and locks the code natively within PostgreSQL.
     const { rows } = await db.query(`
       INSERT INTO kpi_targets (
         id, department_id, section_id, section_code, proposed_by, metric_name, objective, target_value, 

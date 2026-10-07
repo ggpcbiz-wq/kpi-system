@@ -40,7 +40,7 @@ steps:
           USER_SECRET="TEST_DB_USER"
         fi
 
-        # Safely quoted variables to prevent bash pipe execution errors
+        # ✨ ARCHITECTURAL FIX: Injected KINTONE_MASTER_KPI_APP_ID into env-vars and mapped KINTONE_MASTER_KPI_API_KEY from Secret Manager
         gcloud run deploy $$SERVICE_NAME \
           --image=asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA \
           --region=asia-southeast1 \
@@ -48,8 +48,8 @@ steps:
           --allow-unauthenticated \
           --port=8080 \
           --add-cloudsql-instances=ggpc-kpi-test:asia-southeast1:kpi-instance \
-          --set-env-vars="^|^INSTANCE_CONNECTION_NAME=ggpc-kpi-test:asia-southeast1:kpi-instance|DB_NAME=$$DB_NAME|NODE_ENV=production|GOOGLE_CLIENT_ID=$$CLIENT_ID|CORS_ORIGINS=$$CORS|KINTONE_DOMAIN=vez7o26y38rb.cybozu.com|KINTONE_KPI_APP_ID=1910|KINTONE_MASTER_APP_ID=111|KINTONE_ORGANIZATION_APP_ID=204|GOOGLE_DRIVE_FOLDER_ID=1pZWpmM6U32evDmGuzYHn8t5u0BgvzXjS|KINTONE_CAR_APP_ID=1915" \
-          --set-secrets="DB_USER=$$USER_SECRET:latest,DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,KINTONE_KPI_API_KEY=KINTONE_KPI_API_KEY:latest,KINTONE_MASTER_API_KEY=KINTONE_MASTER_API_KEY:latest,KINTONE_ORGANIZATION_API_KEY=KINTONE_ORGANIZATION_API_KEY:latest,KINTONE_CAR_API_KEY=KINTONE_CAR_API_KEY:latest"
+          --set-env-vars="^|^INSTANCE_CONNECTION_NAME=ggpc-kpi-test:asia-southeast1:kpi-instance|DB_NAME=$$DB_NAME|NODE_ENV=production|GOOGLE_CLIENT_ID=$$CLIENT_ID|CORS_ORIGINS=$$CORS|KINTONE_DOMAIN=vez7o26y38rb.cybozu.com|KINTONE_KPI_APP_ID=1910|KINTONE_MASTER_APP_ID=111|KINTONE_ORGANIZATION_APP_ID=204|GOOGLE_DRIVE_FOLDER_ID=1pZWpmM6U32evDmGuzYHn8t5u0BgvzXjS|KINTONE_CAR_APP_ID=1915|KINTONE_MASTER_KPI_APP_ID=1938" \
+          --set-secrets="DB_USER=$$USER_SECRET:latest,DB_PASSWORD=DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,KINTONE_KPI_API_KEY=KINTONE_KPI_API_KEY:latest,KINTONE_MASTER_API_KEY=KINTONE_MASTER_API_KEY:latest,KINTONE_ORGANIZATION_API_KEY=KINTONE_ORGANIZATION_API_KEY:latest,KINTONE_CAR_API_KEY=KINTONE_CAR_API_KEY:latest,KINTONE_MASTER_KPI_API_KEY=KINTONE_MASTER_KPI_API_KEY:latest"
 
   # 4. Inject Dynamic Backend URL into Client Production Environment
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -79,7 +79,7 @@ steps:
         npm ci
         npm run build
 
-# 6. Deploy Client to Firebase Hosting Target ($PROJECT_ID)
+  # 6. Deploy Client to Firebase Hosting Target ($PROJECT_ID)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -89,8 +89,7 @@ steps:
         gcloud secrets versions access latest --secret=FIREBASE_SERVICE_ACCOUNT --project=$PROJECT_ID > /tmp/firebase-service-account.json
         export GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-service-account.json
         
-        # ✨ ARCHITECTURAL FIX: Direct download of a stable standalone binary.
-        # Bypasses the broken v15.31.0 auto-updater and removes the need for 'npm' in this container.
+        # Explicit binary installation to bypass the v15.31.0 ESM bug
         curl -sL "https://firebase.tools/bin/linux/v13.11.0" -o /usr/local/bin/firebase
         chmod +x /usr/local/bin/firebase
         
