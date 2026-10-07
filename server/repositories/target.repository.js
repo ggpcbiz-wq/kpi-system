@@ -5,12 +5,12 @@ class TargetRepository {
   async findAll(userContext) {
     const { id, role, email } = userContext;
 
-    // Standardized base query with section code extraction
     const baseSelect = `
       SELECT 
         t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
         t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
-        d.name as dept_name, s.name as section_name, s.code as section_code, u.name as proposer_name, u.plant       
+        d.name as dept_name, s.name as section_name, COALESCE(t.section_code, s.code) as section_code, 
+        u.name as proposer_name, u.plant       
       FROM kpi_targets t
       LEFT JOIN departments d ON t.department_id = d.id
       LEFT JOIN sections s ON t.section_id = s.id
@@ -18,13 +18,11 @@ class TargetRepository {
     `;
 
     try {
-      // Role: Administrator
       if (role === 'Administrator') {
         const { rows } = await db.query(`${baseSelect} ORDER BY t.created_at DESC`);
         return rows;
       }
 
-      // Role: Top Management
       if (role === 'Top Management') {
         const { rows } = await db.query(`
           ${baseSelect}
@@ -35,7 +33,6 @@ class TargetRepository {
         return rows;
       }
 
-      // Role: Supervisor
       if (role === 'Supervisor' || role === 'Acting Supervisor') {
         const { rows } = await db.query(`
           ${baseSelect}
@@ -46,7 +43,6 @@ class TargetRepository {
         return rows;
       }
 
-      // Default: Standard User
       const { rows } = await db.query(`
         ${baseSelect}
         WHERE t.department_id IN (SELECT department_id FROM user_departments WHERE user_id = $1)
@@ -67,14 +63,16 @@ class TargetRepository {
       process_category, process_type, frequency 
     } = targetData;
     
+    // ✨ ARCHITECTURAL FIX: Subquery `(SELECT code FROM sections WHERE id = $2)` 
+    // automatically pulls and locks the code natively within PostgreSQL.
     const { rows } = await db.query(`
       INSERT INTO kpi_targets (
-        id, department_id, section_id, proposed_by, metric_name, objective, target_value, 
+        id, department_id, section_id, section_code, proposed_by, metric_name, objective, target_value, 
         status, remarks, operator, unit, process_category, process_type, frequency, 
         created_at, updated_at
       )
       VALUES (
-        gen_random_uuid(), $1, $2, $3, $4, $5, $6, 
+        gen_random_uuid(), $1, $2, (SELECT code FROM sections WHERE id = $2), $3, $4, $5, $6, 
         'Pending Top Management Approval', $7, $8, $9, $10, $11, $12, 
         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
       )

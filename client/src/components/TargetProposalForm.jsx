@@ -102,8 +102,10 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
       return;
     }
     
+    // ✨ ARCHITECTURAL FIX: Extract the code dynamically and append it to the submission payload
     const finalData = {
       ...formData,
+      section_code: selectedSectionModel?.code || null, 
       formatted_target: `${formData.operator} ${formData.target_value} ${formData.unit}`
     };
     
@@ -170,7 +172,6 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
             >
               {availableSections.length > 0 ? (
                 availableSections.map(sec => (
-                  /* ✨ ARCHITECTURAL FIX: Exposed section code dynamically in the dropdown */
                   <option key={sec.id} value={sec.name}>
                     {sec.code ? `[${sec.code}] ` : ''}{sec.name} ({sec.segment})
                   </option>
