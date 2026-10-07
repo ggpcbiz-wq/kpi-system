@@ -12,6 +12,7 @@ const postToKintone = async (data) => {
     record: {
       department:      { value: data.department || '' },
       section:         { value: data.section || '' },
+      code:            { value: data.section_code || '' }, 
       applied_by:      { value: data.applied_by || '' },
       status:          { value: data.status || '' },
       car:             { value: data.car || '' },       
