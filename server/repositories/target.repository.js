@@ -7,7 +7,7 @@ class TargetRepository {
 
     const baseSelect = `
       SELECT 
-        t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
+        t.id, t.kpi_no, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
         t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
         d.name as dept_name, s.name as section_name, COALESCE(t.section_code, s.code) as section_code, 
         u.name as proposer_name, u.plant       
@@ -22,7 +22,6 @@ class TargetRepository {
         const { rows } = await db.query(`${baseSelect} ORDER BY t.created_at DESC`);
         return rows;
       }
-
       if (role === 'Top Management') {
         const { rows } = await db.query(`
           ${baseSelect}
@@ -32,7 +31,6 @@ class TargetRepository {
         `, [email, id]);
         return rows;
       }
-
       if (role === 'Supervisor' || role === 'Acting Supervisor') {
         const { rows } = await db.query(`
           ${baseSelect}
@@ -57,7 +55,6 @@ class TargetRepository {
     }
   }
 
-  // ✨ ARCHITECTURAL FIX: Extract the full record payload including relations for the Kintone push
   async findById(id) {
     try {
       const { rows } = await db.query(`
@@ -106,14 +103,58 @@ class TargetRepository {
   }
 
   async updateStatus(id, status, remarks) {
-    const { rows } = await db.query(`
-      UPDATE kpi_targets
-      SET status = $1, remarks = $2, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3
-      RETURNING *
-    `, [status, remarks, id]);
+    // ✨ ARCHITECTURAL FIX: If status is 'Active', trigger atomic sequence generation
+    if (status === 'Active') {
+      const year = new Date().getFullYear();
+      
+      // We must bypass the simple db.query wrapper to use a dedicated client for a Transaction
+      const { Pool } = require('pg');
+      const pool = new Pool(); 
+      const client = await pool.connect();
+      
+      try {
+        await client.query('BEGIN'); // Lock transaction
 
-    return rows[0];
+        // 1. Thread-safe atomic increment
+        const seqRes = await client.query(`
+          INSERT INTO kpi_sequences (year, last_value)
+          VALUES ($1, 1)
+          ON CONFLICT (year) DO UPDATE 
+          SET last_value = kpi_sequences.last_value + 1
+          RETURNING last_value
+        `, [year]);
+
+        const nextVal = seqRes.rows[0].last_value;
+        const paddedVal = String(nextVal).padStart(4, '0');
+        const kpiNo = `KPI-${year}-${paddedVal}`;
+
+        // 2. Update target with new KPI No
+        const updateRes = await client.query(`
+          UPDATE kpi_targets
+          SET status = $1, remarks = $2, kpi_no = $3, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $4
+          RETURNING *
+        `, [status, remarks, kpiNo, id]);
+
+        await client.query('COMMIT');
+        return updateRes.rows[0];
+      } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Transaction Failed, Rollback executed:', error);
+        throw error;
+      } finally {
+        client.release();
+      }
+    } else {
+      // Standard update for Non-Active statuses (Rejected, Pending)
+      const { rows } = await db.query(`
+        UPDATE kpi_targets
+        SET status = $1, remarks = $2, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $3
+        RETURNING *
+      `, [status, remarks, id]);
+      return rows[0];
+    }
   }
 }
 

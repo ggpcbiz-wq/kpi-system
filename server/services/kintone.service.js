@@ -188,7 +188,6 @@ const getCarByControlNumber = async (controlNo) => {
     throw error;
   }
 };
-
 const postTargetToMasterKpi = async (targetData) => {
   const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
   const MASTER_KPI_APP_ID = process.env.KINTONE_MASTER_KPI_APP_ID;
@@ -200,15 +199,14 @@ const postTargetToMasterKpi = async (targetData) => {
 
   const url = `https://${KINTONE_DOMAIN}/k/v1/record.json`;
   
-  // Format the Date to YYYY-MM-DD for Kintone's strict Date field type
   const formattedDate = targetData.created_at 
     ? new Date(targetData.created_at).toISOString().split('T')[0] 
     : '';
 
-  // Strict mapping to your provided Field Codes
   const payload = {
     app: MASTER_KPI_APP_ID,
     record: {
+      kpi_no:           { value: targetData.kpi_no || '' }, // ✨ New Unique ID Field
       department:       { value: targetData.dept_name || '' },
       code:             { value: targetData.section_code || '' },
       proposed_by:      { value: targetData.proposer_name || '' },
@@ -245,15 +243,6 @@ const postTargetToMasterKpi = async (targetData) => {
     console.error('[Kintone Sync Error] Master KPI POST failed:', error);
     throw error; 
   }
-};
-
-module.exports = { 
-  postToKintone, 
-  updateKintoneRecord, 
-  getEmployeeByEmail, 
-  getUniqueDepartments, 
-  getCarByControlNumber,
-  postTargetToMasterKpi // ✨ Export the new method
 };
 
 module.exports = { postToKintone, updateKintoneRecord, getEmployeeByEmail, getUniqueDepartments, getCarByControlNumber, postTargetToMasterKpi }; 

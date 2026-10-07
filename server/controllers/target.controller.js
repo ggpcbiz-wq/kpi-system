@@ -1,23 +1,16 @@
 const targetService = require('../services/target.service');
-// ✨ ARCHITECTURAL FIX: Import repository and kintone service for the interception
 const targetRepository = require('../repositories/target.repository'); 
 const kintoneService = require('../services/kintone.service');
 
 const getTargets = async (req, res) => {
   try {
     const activeUserId = req.user?.userId || req.user?.id;
-    
-    if (!req.user || !activeUserId) {
-      return res.status(401).json({ message: 'Unauthorized. Invalid user context.' });
-    }
-
+    if (!req.user || !activeUserId) return res.status(401).json({ message: 'Unauthorized. Invalid user context.' });
     const targets = await targetService.getDashboardTargets(req.user);
     return res.status(200).json(targets);
   } catch (error) {
     console.error('[Target Controller Error] Failed to fetch targets:', error.message, error.stack);
-    return res.status(500).json({ 
-      message: 'Failed to fetch KPI targets. Check backend logs for SQL exceptions.' 
-    });
+    return res.status(500).json({ message: 'Failed to fetch KPI targets.' });
   }
 };
 
@@ -26,7 +19,6 @@ const createTarget = async (req, res) => {
     const newTarget = await targetService.proposeNewTarget(req.body, req.user);
     res.status(201).json(newTarget);
   } catch (error) {
-    console.error('[Target Controller Error] Failed to propose target:', error);
     if (error.message.includes('required')) return res.status(400).json({ message: error.message });
     if (error.message.includes('Unauthorized')) return res.status(403).json({ message: error.message });
     res.status(500).json({ message: 'Internal server error while processing target proposal.' });
@@ -43,20 +35,13 @@ const updateTargetStatus = async (req, res) => {
     'Rejected': ['Top Management', 'Administrator'] 
   };
 
-  if (!allowedRoleByStatus[status]) {
-    return res.status(400).json({ message: 'Invalid target state transition requested.' });
-  }
-
-  if (!allowedRoleByStatus[status].includes(req.user?.role)) {
-    return res.status(403).json({ message: `Forbidden. Role [${req.user?.role}] cannot authorize state [${status}].` });
-  }
+  if (!allowedRoleByStatus[status]) return res.status(400).json({ message: 'Invalid target state transition requested.' });
+  if (!allowedRoleByStatus[status].includes(req.user?.role)) return res.status(403).json({ message: `Forbidden.` });
 
   try {
     const updatedTarget = await targetService.changeTargetStatus(id, status, remarks, req.user);
 
-    // ✨ ARCHITECTURAL FIX: Intercept Final Approval for Master KPI Integration
     if (status === 'Active') {
-      // Execute asynchronously to avoid blocking the HTTP thread returning the 200 response
       targetRepository.findById(id).then(fullTargetRecord => {
         if (fullTargetRecord) {
           kintoneService.postTargetToMasterKpi(fullTargetRecord).catch(err => {
