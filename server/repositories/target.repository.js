@@ -103,57 +103,47 @@ class TargetRepository {
   }
 
   async updateStatus(id, status, remarks) {
-    // ✨ ARCHITECTURAL FIX: If status is 'Active', trigger atomic sequence generation
-    if (status === 'Active') {
-      const year = new Date().getFullYear();
-      
-      // We must bypass the simple db.query wrapper to use a dedicated client for a Transaction
-      const { Pool } = require('pg');
-      const pool = new Pool(); 
-      const client = await pool.connect();
-      
-      try {
-        await client.query('BEGIN'); // Lock transaction
-
-        // 1. Thread-safe atomic increment
-        const seqRes = await client.query(`
-          INSERT INTO kpi_sequences (year, last_value)
-          VALUES ($1, 1)
-          ON CONFLICT (year) DO UPDATE 
-          SET last_value = kpi_sequences.last_value + 1
-          RETURNING last_value
-        `, [year]);
-
-        const nextVal = seqRes.rows[0].last_value;
-        const paddedVal = String(nextVal).padStart(4, '0');
-        const kpiNo = `KPI-${year}-${paddedVal}`;
-
-        // 2. Update target with new KPI No
-        const updateRes = await client.query(`
+    try {
+      // ✨ ARCHITECTURAL FIX: Use an atomic PostgreSQL CTE (WITH clause) to execute 
+      // the sequence generation and the target update safely in a single, locked query.
+      if (status === 'Active') {
+        const year = new Date().getFullYear();
+        
+        const { rows } = await db.query(`
+          WITH seq_update AS (
+            INSERT INTO kpi_sequences (year, last_value)
+            VALUES ($1, 1)
+            ON CONFLICT (year) DO UPDATE 
+            SET last_value = kpi_sequences.last_value + 1
+            RETURNING last_value
+          ),
+          target_update AS (
+            UPDATE kpi_targets
+            SET 
+              status = $2, 
+              remarks = $3, 
+              kpi_no = 'KPI-' || $1 || '-' || LPAD((SELECT last_value FROM seq_update)::text, 4, '0'), 
+              updated_at = CURRENT_TIMESTAMP
+            WHERE id = $4
+            RETURNING *
+          )
+          SELECT * FROM target_update;
+        `, [year, status, remarks, id]);
+        
+        return rows[0];
+      } else {
+        // Standard update for Non-Active statuses
+        const { rows } = await db.query(`
           UPDATE kpi_targets
-          SET status = $1, remarks = $2, kpi_no = $3, updated_at = CURRENT_TIMESTAMP
-          WHERE id = $4
+          SET status = $1, remarks = $2, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $3
           RETURNING *
-        `, [status, remarks, kpiNo, id]);
-
-        await client.query('COMMIT');
-        return updateRes.rows[0];
-      } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('Transaction Failed, Rollback executed:', error);
-        throw error;
-      } finally {
-        client.release();
+        `, [status, remarks, id]);
+        return rows[0];
       }
-    } else {
-      // Standard update for Non-Active statuses (Rejected, Pending)
-      const { rows } = await db.query(`
-        UPDATE kpi_targets
-        SET status = $1, remarks = $2, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $3
-        RETURNING *
-      `, [status, remarks, id]);
-      return rows[0];
+    } catch (error) {
+      console.error('[TargetRepository] Database error inside updateStatus:', error);
+      throw error;
     }
   }
 }
