@@ -7,12 +7,12 @@ const postToKintone = async (data) => {
 
   const url = `https://${KINTONE_DOMAIN}/k/v1/record.json`;
   
-  
   const payload = {
     app: KPI_APP_ID,
     record: {
       department:      { value: data.department || '' },
       section:         { value: data.section || '' },
+      code:            { value: data.section_code || '' }, 
       applied_by:      { value: data.applied_by || '' },
       status:          { value: data.status || '' },
       car:             { value: data.car || '' },       
@@ -79,7 +79,6 @@ const updateKintoneRecord = async (kintoneRecordId, carIdString) => {
 };
 
 const getEmployeeByEmail = async (email) => {
-  const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
   const MASTER_APP_ID = process.env.KINTONE_MASTER_APP_ID;
   const MASTER_API_KEY = process.env.KINTONE_MASTER_API_KEY;
 
@@ -112,7 +111,6 @@ const getEmployeeByEmail = async (email) => {
 };
 
 const getUniqueDepartments = async () => {
-  const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
   const ORG_APP_ID = process.env.KINTONE_ORGANIZATION_APP_ID;
   const ORG_API_KEY = process.env.KINTONE_ORGANIZATION_API_KEY;
 
@@ -120,7 +118,8 @@ const getUniqueDepartments = async () => {
     throw new Error("Missing Kintone Organization App .env variables.");
   }
 
-  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department&fields[1]=Section&fields[2]=Segment`;
+  // ✨ ARCHITECTURAL FIX: Extract Code field to align with Section hierarchy
+  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department&fields[1]=Section&fields[2]=Segment&fields[3]=Code`;
 
   try {
     const response = await fetch(url, {
@@ -137,6 +136,7 @@ const getUniqueDepartments = async () => {
       const deptName = record.Department?.value?.trim();
       const secName = record.Section?.value?.trim();
       const segName = record.Segment?.value?.trim();
+      const secCode = record.Code?.value?.trim() || null; 
 
       if (!deptName) return;
 
@@ -146,7 +146,8 @@ const getUniqueDepartments = async () => {
 
       if (secName) {
         if (!deptMap[deptName].sections.some(s => s.name === secName)) {
-          deptMap[deptName].sections.push({ name: secName, segment: segName || 'Unassigned' });
+          // Bind the extracted code specifically to the section object
+          deptMap[deptName].sections.push({ name: secName, segment: segName || 'Unassigned', code: secCode });
         }
       }
     });
@@ -159,7 +160,6 @@ const getUniqueDepartments = async () => {
 };
 
 const getCarByControlNumber = async (controlNo) => {
-  const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
   const CAR_APP_ID = process.env.KINTONE_CAR_APP_ID;
   const CAR_API_KEY = process.env.KINTONE_CAR_API_KEY;
 
@@ -188,5 +188,61 @@ const getCarByControlNumber = async (controlNo) => {
     throw error;
   }
 };
+const postTargetToMasterKpi = async (targetData) => {
+  const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
+  const MASTER_KPI_APP_ID = process.env.KINTONE_MASTER_KPI_APP_ID;
+  const MASTER_KPI_API_KEY = process.env.KINTONE_MASTER_KPI_API_KEY;
 
-module.exports = { postToKintone, updateKintoneRecord, getEmployeeByEmail, getUniqueDepartments, getCarByControlNumber };
+  if (!KINTONE_DOMAIN || !MASTER_KPI_APP_ID || !MASTER_KPI_API_KEY) {
+    throw new Error("Missing Kintone Master KPI App .env variables.");
+  }
+
+  const url = `https://${KINTONE_DOMAIN}/k/v1/record.json`;
+  
+  const formattedDate = targetData.created_at 
+    ? new Date(targetData.created_at).toISOString().split('T')[0] 
+    : '';
+
+  const payload = {
+    app: MASTER_KPI_APP_ID,
+    record: {
+      kpi_no:           { value: targetData.kpi_no || '' }, // ✨ New Unique ID Field
+      department:       { value: targetData.dept_name || '' },
+      code:             { value: targetData.section_code || '' },
+      proposed_by:      { value: targetData.proposer_name || '' },
+      proposal_date:    { value: formattedDate },
+      process_category: { value: targetData.process_category || '' },
+      process_type:     { value: targetData.process_type || '' },
+      frequency:        { value: targetData.frequency || '' },
+      objective:        { value: targetData.objective || '' },
+      kpi:              { value: targetData.metric_name || '' },
+      operator:         { value: targetData.operator || '' },
+      target_value:     { value: String(targetData.target_value || '') },
+      unit:             { value: targetData.unit || '' },
+      remarks:          { value: targetData.remarks || '' }
+    }
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-Cybozu-API-Token': MASTER_KPI_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('[Kintone Master KPI Rejection]:', errorData);
+      throw new Error('Failed to post target record to Kintone Master KPI App');
+    }
+    
+    const result = await response.json();
+    console.log(`Successfully posted Target to Master KPI! Record ID: ${result.id}`);
+    return result; 
+  } catch (error) {
+    console.error('[Kintone Sync Error] Master KPI POST failed:', error);
+    throw error; 
+  }
+};
+
+module.exports = { postToKintone, updateKintoneRecord, getEmployeeByEmail, getUniqueDepartments, getCarByControlNumber, postTargetToMasterKpi }; 

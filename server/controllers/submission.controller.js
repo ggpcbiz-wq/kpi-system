@@ -39,7 +39,6 @@ const createSubmission = async (req, res) => {
       submitted_by: req.user?.userId || req.body.submitted_by 
     };
     
-   
     const newSubmission = await submissionRepo.create(submissionData);
     res.status(201).json(newSubmission);
   } catch (error) {
@@ -54,7 +53,6 @@ const getSubmissions = async (req, res) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
 
-    // ✨ ARCHITECTURAL FIX: Explicitly map the JWT ID to satisfy repository destructuring constraints
     const accessContext = {
       ...req.user,
       id: req.user?.userId || req.user?.id, 
@@ -126,10 +124,11 @@ const updateSubmissionStatus = async (req, res) => {
 
     if (status === 'Approved' || status === 'CAR Requested') {
       try {
+        // ✨ ARCHITECTURAL FIX: Extract t.section_code from the JOIN to push to Kintone
         const { rows } = await db.query(`
           SELECT m.report_month, m.report_year, m.actual_value, m.remarks, m.kintone_car_id,
-                 m.supporting_data, 
-                 t.metric_name, t.objective, t.target_value, t.operator, t.unit, 
+                 m.supporting_data, m.section_code as actuals_section_code,
+                 t.metric_name, t.objective, t.target_value, t.operator, t.unit, t.section_code,
                  d.name as dept_name, s.name as section_name
           FROM monthly_actuals m
           JOIN kpi_targets t ON m.target_id = t.id
@@ -144,9 +143,11 @@ const updateSubmissionStatus = async (req, res) => {
             driveLink = JSON.parse(driveLink);
           }
 
+          // ✨ ARCHITECTURAL FIX: Map the section_code to the kintone payload
           const kintoneRes = await kintoneService.postToKintone({
             department: rows[0].dept_name,
             section: rows[0].section_name,
+            section_code: rows[0].actuals_section_code || rows[0].section_code || '', 
             applied_by: req.user?.name || 'System QMR',
             status: status,
             car: rows[0].kintone_car_id || '', 

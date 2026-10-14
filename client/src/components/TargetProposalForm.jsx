@@ -102,8 +102,10 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
       return;
     }
     
+    // ✨ ARCHITECTURAL FIX: Extract the code dynamically and append it to the submission payload
     const finalData = {
       ...formData,
+      section_code: selectedSectionModel?.code || null, 
       formatted_target: `${formData.operator} ${formData.target_value} ${formData.unit}`
     };
     
@@ -122,7 +124,6 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       
-      {/* ROW 1: Context Setup - Changed to md:grid-cols-2 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
@@ -171,7 +172,9 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
             >
               {availableSections.length > 0 ? (
                 availableSections.map(sec => (
-                  <option key={sec.id} value={sec.name}>{sec.name} ({sec.segment})</option>
+                  <option key={sec.id} value={sec.name}>
+                    {sec.code ? `[${sec.code}] ` : ''}{sec.name} ({sec.segment})
+                  </option>
                 ))
               ) : (
                 <option value="">-- No Sections Found --</option>
@@ -181,7 +184,6 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
         </div>
       </div>
 
-      {/* ROW 2: Analytical Dimensions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
@@ -231,7 +233,6 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
         </div>
       </div>
       
-      {/* ROW 3: New Objective Field */}
       <div>
         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
           Objective <span className="text-rose-600 dark:text-rose-400">*</span>
@@ -251,7 +252,6 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
         </div>
       </div>
 
-      {/* ROW 4: Metric Thresholds */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">

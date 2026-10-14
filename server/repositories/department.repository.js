@@ -17,18 +17,18 @@ class DepartmentRepository {
 
       if (dept.sections && dept.sections.length > 0) {
         for (const sec of dept.sections) {
+          // ✨ ARCHITECTURAL FIX: Apply the 'code' property to the Section UPSERT
           await db.query(`
-            INSERT INTO sections (id, department_id, name, segment, created_at, updated_at)
-            VALUES (gen_random_uuid(), $1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            INSERT INTO sections (id, department_id, name, segment, code, created_at, updated_at)
+            VALUES (gen_random_uuid(), $1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON CONFLICT (department_id, name) DO UPDATE 
-            SET segment = $3, updated_at = CURRENT_TIMESTAMP
-          `, [deptId, sec.name, sec.segment]);
+            SET segment = $3, code = $4, updated_at = CURRENT_TIMESTAMP
+          `, [deptId, sec.name, sec.segment, sec.code]);
         }
       }
     }
   }
 
-  // ✨ ARCHITECTURAL FIX: Deeply nested JSON aggregation (Department -> Sections -> Process Types)
   async findAll() {
     const query = `
       SELECT 
@@ -41,6 +41,7 @@ class DepartmentRepository {
                'id', s.id, 
                'name', s.name, 
                'segment', s.segment,
+               'code', s.code, -- Expose the section code to the API payload
                'processTypes', COALESCE(
                  (SELECT json_agg(json_build_object('category', spt.category, 'process_name', spt.process_name))
                   FROM section_process_types spt WHERE spt.section_id = s.id), '[]'::json
@@ -55,7 +56,6 @@ class DepartmentRepository {
     return rows;
   }
 
-  // ✨ ARCHITECTURAL FIX: Pointing mutations to the section_process_types table
   async updateSectionProcessTypes(sectionId, processTypes, userId) {
     const currentMappings = await db.query(
       'SELECT category, process_name FROM section_process_types WHERE section_id = $1',

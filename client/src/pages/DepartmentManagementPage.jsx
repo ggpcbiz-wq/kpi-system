@@ -109,7 +109,6 @@ const DepartmentManagementPage = () => {
 
     setIsSubmitting(true);
     try {
-      // ✨ ARCHITECTURAL FIX: Align fetch URL with the Express router prefix hierarchy
       const res = await fetch(`${API_BASE_URL}/api/departments/sections/${selectedSection.id}/process-types`, {
         method: 'PUT',
         headers: { 
@@ -231,7 +230,15 @@ const DepartmentManagementPage = () => {
                                     <div key={sec.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
                                       <div className="flex items-start justify-between mb-4">
                                         <div>
-                                          <span className="block font-bold text-slate-900 dark:text-slate-100 text-base mb-1">{sec.name}</span>
+                                          {/* ✨ ARCHITECTURAL FIX: Appended code badge cleanly inside the Section card */}
+                                          <div className="flex items-center gap-2 mb-1">
+                                            {sec.code && (
+                                              <span className="font-mono text-[10px] font-bold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-slate-700 px-1.5 py-0.5 rounded border border-brand-200 dark:border-slate-600">
+                                                {sec.code}
+                                              </span>
+                                            )}
+                                            <span className="block font-bold text-slate-900 dark:text-slate-100 text-base">{sec.name}</span>
+                                          </div>
                                           <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-400 rounded uppercase tracking-wider">
                                             Segment: {sec.segment}
                                           </span>
