@@ -48,6 +48,7 @@ steps:
           --allow-unauthenticated \
           --port=8080 \
           --add-cloudsql-instances=ggpc-kpi-test:asia-southeast1:kpi-instance \
+          --clear-vpc-connector \
           --network=default \
           --subnet=default \
           --vpc-egress=private-ranges-only \
