@@ -43,8 +43,6 @@ steps:
         # Injected KINTONE_MASTER_KPI_APP_ID into env-vars and mapped KINTONE_MASTER_KPI_API_KEY from Secret Manager
         gcloud run deploy $$SERVICE_NAME \
           --image=asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/kpi-backend:$COMMIT_SHA \
-
-
           --region=asia-southeast1 \
           --platform=managed \
           --allow-unauthenticated \
