@@ -330,7 +330,7 @@ const AnnualObjectivesPage = () => {
                         {targetDisplay}
                       </td>
                       
-                      <td className="border border-slate-200 dark:border-slate-700 p-3 font-bold text-rose-600 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-900/10">
+                      <td className={`border border-slate-200 dark:border-slate-700 p-3 font-bold bg-rose-50/50 dark:bg-rose-900/10 ${row.ytdActual === '-' ? '' : (checkIsMissed(row.ytdActual, row.target_value, row.operator) ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400')}`}>
                         {row.ytdActual !== '-' ? `${row.ytdActual}${row.unit}` : '-'}
                       </td>
                       
@@ -338,10 +338,12 @@ const AnnualObjectivesPage = () => {
 
                       {months.map((m, i) => {
                         const monthValue = row.monthlyData[i + 1];
+                        const hasMonthValue = monthValue !== undefined && monthValue !== null && monthValue !== '';
+                        const isMissed = hasMonthValue && checkIsMissed(monthValue, row.target_value, row.operator);
                         const isMissing = !monthValue && i < new Date().getMonth();
                         return (
-                          <td key={m} className={`border border-slate-200 dark:border-slate-700 p-2 ${monthValue ? 'font-bold text-rose-600 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'}`}>
-                            {monthValue ? `${monthValue}${row.unit === '%' ? '%' : ''}` : (isMissing ? 'No data' : '')}
+                          <td key={m} className={`border border-slate-200 dark:border-slate-700 p-2 ${hasMonthValue ? `font-bold ${isMissed ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}` : 'text-slate-400 dark:text-slate-500'}`}>
+                            {hasMonthValue ? `${monthValue}${row.unit === '%' ? '%' : ''}` : (isMissing ? 'No data' : '')}
                           </td>
                         );
                       })}
