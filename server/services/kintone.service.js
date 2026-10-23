@@ -118,8 +118,7 @@ const getUniqueDepartments = async () => {
     throw new Error("Missing Kintone Organization App .env variables.");
   }
 
-  // ✨ ARCHITECTURAL FIX: Extract Code field to align with Section hierarchy
-  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department&fields[1]=Section&fields[2]=Segment&fields[3]=Code`;
+  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department&fields[1]=Section&fields[2]=Segment&fields[3]=Code&fields[4]=Rank`;
 
   try {
     const response = await fetch(url, {
@@ -133,6 +132,9 @@ const getUniqueDepartments = async () => {
     const deptMap = {};
     
     data.records.forEach(record => {
+      const rank = record.Rank?.value?.trim();
+      if (!['3rd', '4th', '5th'].includes(rank)) return;
+
       const deptName = record.Department?.value?.trim();
       const secName = record.Section?.value?.trim();
       const segName = record.Segment?.value?.trim();
