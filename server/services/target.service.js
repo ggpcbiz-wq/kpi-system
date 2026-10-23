@@ -18,11 +18,19 @@ const proposeNewTarget = async (data, user) => {
   const deptId = deptRes.rows[0].id;
 
   let secId = null;
-  if (data.section) {
+  if (data.section_id) {
+    const secRes = await db.query(
+      'SELECT id FROM sections WHERE id = $1 AND department_id = $2',
+      [data.section_id, deptId]
+    );
+    if (secRes.rowCount === 0) throw new Error('Section not found in department');
+    secId = secRes.rows[0].id;
+  } else if (data.section) {
     const secRes = await db.query(
       'SELECT id FROM sections WHERE name = $1 AND department_id = $2', 
       [data.section, deptId]
     );
+    if (secRes.rowCount > 1) throw new Error('Section is ambiguous; select a section by ID');
     if (secRes.rowCount > 0) secId = secRes.rows[0].id;
   }
 

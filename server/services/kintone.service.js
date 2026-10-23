@@ -142,6 +142,7 @@ const getUniqueDepartments = async () => {
       const secName = record.Section?.value?.trim();
       const segName = record.Segment?.value?.trim();
       const secCode = record.Code?.value?.trim() || null; 
+      const segment = segName || 'Unassigned';
 
       if (!deptName) return;
 
@@ -150,9 +151,13 @@ const getUniqueDepartments = async () => {
       }
 
       if (secName) {
-        if (!deptMap[deptName].sections.some(s => s.name === secName)) {
-          // Bind the extracted code specifically to the section object
-          deptMap[deptName].sections.push({ name: secName, segment: segName || 'Unassigned', code: secCode });
+        const sectionExists = deptMap[deptName].sections.some(section =>
+          secCode
+            ? section.code === secCode
+            : section.name === secName && section.segment === segment
+        );
+        if (!sectionExists) {
+          deptMap[deptName].sections.push({ name: secName, segment, code: secCode });
         }
       }
     });
