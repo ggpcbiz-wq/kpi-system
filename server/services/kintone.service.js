@@ -136,7 +136,7 @@ const getUniqueDepartments = async () => {
       if (state !== 'Active') return;
 
       const rank = record.Rank?.value?.trim();
-      if (!['3rd', '4th', '5th'].includes(rank)) return;
+      if (!['3rd', '4th'].includes(rank)) return;
 
       const deptName = record.Department?.value?.trim();
       const secName = record.Section?.value?.trim();
