@@ -118,7 +118,7 @@ const getUniqueDepartments = async () => {
     throw new Error("Missing Kintone Organization App .env variables.");
   }
 
-  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department&fields[1]=Section&fields[2]=Segment&fields[3]=Code&fields[4]=Rank`;
+  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department&fields[1]=Section&fields[2]=Segment&fields[3]=Code&fields[4]=Rank&fields[5]=State`;
 
   try {
     const response = await fetch(url, {
@@ -132,6 +132,9 @@ const getUniqueDepartments = async () => {
     const deptMap = {};
     
     data.records.forEach(record => {
+      const state = record.State?.value?.trim();
+      if (state !== 'Active') return;
+
       const rank = record.Rank?.value?.trim();
       if (!['3rd', '4th', '5th'].includes(rank)) return;
 
