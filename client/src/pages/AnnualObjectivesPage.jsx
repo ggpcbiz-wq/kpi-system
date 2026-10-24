@@ -8,10 +8,30 @@ import * as XLSX from 'xlsx';
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const currentYear = new Date().getFullYear();
 const historicalYears = Array.from({ length: 5 }, (_, i) => currentYear - 5 + i);
+const plantLabels = {
+  Cavite: 'CDPC (Cavite Plant)',
+  Laguna: 'GGPC (Laguna Plant)'
+};
+
+const normalizePlant = (plant) => {
+  const value = String(plant || '').trim();
+  if (/cavite/i.test(value)) return 'Cavite';
+  if (/laguna/i.test(value)) return 'Laguna';
+  return value || 'Unassigned';
+};
+
+const getPlantLabel = (plant) => plantLabels[normalizePlant(plant)] || normalizePlant(plant);
+
+const parseNumericValue = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const numericValue = Number(String(value).replace(/[$,%\s,]/g, ''));
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
 
 const checkIsMissed = (actual, target, operator) => {
-  const act = parseFloat(actual);
-  const tgt = parseFloat(target);
+  const act = parseNumericValue(actual);
+  const tgt = parseNumericValue(target);
+  if (act === null || tgt === null) return false;
   const op = String(operator).trim();
 
   if (op === '≤' || op === '<=' || op === '‚â§') return act > tgt;
@@ -30,23 +50,21 @@ const AnnualObjectivesPage = () => {
   const [targets, setTargets] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [showHistorical, setShowHistorical] = useState(false);
+  const [selectedPlant, setSelectedPlant] = useState('All');
 
   useEffect(() => {
     let isMounted = true;
     const fetchReportData = async () => {
       try {
-        const timestamp = new Date().getTime();
-        const [targetRes, subRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } })
-        ]);
-        
-        if (targetRes.ok && subRes.ok && isMounted) {
-          const rawTargets = await targetRes.json();
-          const rawSubs = await subRes.json();
-          
-          setTargets(rawTargets.filter(t => t.status === 'Active'));
-          setSubmissions(rawSubs.filter(s => s.status === 'Approved' || s.status === 'CAR Requested'));
+        const response = await fetch(`${API_BASE_URL}/api/annual-objectives?_t=${Date.now()}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch annual objectives');
+        const { targets: rawTargets, submissions: rawSubs } = await response.json();
+
+        if (isMounted) {
+          setTargets(rawTargets);
+          setSubmissions(rawSubs);
         }
       } catch (error) {
         console.error("Report Fetch Error:", error);
@@ -60,20 +78,36 @@ const AnnualObjectivesPage = () => {
     return () => { isMounted = false; };
   }, [token, addToast]);
 
+  const plantOptions = useMemo(() => {
+    const otherPlants = [...new Set(targets
+      .map(target => normalizePlant(target.plant))
+      .filter(plant => !['Cavite', 'Laguna'].includes(plant)))];
+    return [
+      { value: 'All', label: 'All Plants' },
+      { value: 'Cavite', label: plantLabels.Cavite },
+      { value: 'Laguna', label: plantLabels.Laguna },
+      ...otherPlants.map(plant => ({ value: plant, label: plant }))
+    ];
+  }, [targets]);
+
   const reportData = useMemo(() => {
-    const merged = targets.map((target, index) => {
+    const visibleTargets = targets.filter(target =>
+      selectedPlant === 'All' || normalizePlant(target.plant) === selectedPlant
+    );
+    const merged = visibleTargets.map((target, index) => {
       const isCumulative = target.unit?.trim() !== '%';
       
       const currentSubs = submissions.filter(s => s.target_id === target.id && s.report_year === currentYear);
       
       const monthlyData = {};
-      let ytdSum = 0, ytdCount = 0;
-      
       currentSubs.forEach(sub => {
         monthlyData[sub.report_month] = sub.actual_value;
-        ytdSum += parseFloat(sub.actual_value) || 0;
-        ytdCount++;
       });
+      const currentNumericValues = currentSubs
+        .map(sub => parseNumericValue(sub.actual_value))
+        .filter(value => value !== null);
+      const ytdSum = currentNumericValues.reduce((sum, value) => sum + value, 0);
+      const ytdCount = currentNumericValues.length;
       
       const ytdActual = ytdCount > 0 
         ? (isCumulative ? ytdSum : (ytdSum / ytdCount)).toFixed(2) 
@@ -84,8 +118,12 @@ const AnnualObjectivesPage = () => {
       
       historicalYears.forEach(year => {
         const hSubs = submissions.filter(s => s.target_id === target.id && s.report_year === year);
-        const hYtd = hSubs.length > 0 
-          ? (hSubs.reduce((acc, s) => acc + parseFloat(s.actual_value || 0), 0) / (isCumulative ? 1 : hSubs.length)).toFixed(2) 
+        const historicalValues = hSubs
+          .map(sub => parseNumericValue(sub.actual_value))
+          .filter(value => value !== null);
+        const historicalSum = historicalValues.reduce((sum, value) => sum + value, 0);
+        const hYtd = historicalValues.length > 0
+          ? (isCumulative ? historicalSum : (historicalSum / historicalValues.length)).toFixed(2)
           : '-';
         history[year] = hYtd;
         if (year === currentYear - 1) lastYearActual = hYtd;
@@ -103,11 +141,15 @@ const AnnualObjectivesPage = () => {
         monthlyData,
         history,
         achievedLastYear,
-        dept_section_key: `${target.dept_name || ''}|${target.section_name || ''}`
+        dept_section_key: `${normalizePlant(target.plant)}|${target.dept_name || ''}|${target.section_name || ''}`
       };
     });
 
     merged.sort((a, b) => {
+      const plantA = normalizePlant(a.plant);
+      const plantB = normalizePlant(b.plant);
+      if (plantA !== plantB) return plantA.localeCompare(plantB);
+
       const deptA = a.dept_name || '';
       const deptB = b.dept_name || '';
       if (deptA !== deptB) return deptA.localeCompare(deptB);
@@ -127,7 +169,9 @@ const AnnualObjectivesPage = () => {
       merged[i].rowSpan = { process_category: 1, process_type: 1, dept_section_key: 1 };
       ['process_category', 'process_type', 'dept_section_key'].forEach(field => {
         if (!merged[i][field]) return; 
-        if (i > 0 && merged[i][field] === merged[i - 1][field]) {
+        if (i > 0
+          && normalizePlant(merged[i].plant) === normalizePlant(merged[i - 1].plant)
+          && merged[i][field] === merged[i - 1][field]) {
           merged[i].rowSpan[field] = 0;
           let originIndex = i - 1;
           while (originIndex > 0 && merged[originIndex].rowSpan[field] === 0) originIndex--;
@@ -137,7 +181,7 @@ const AnnualObjectivesPage = () => {
     }
 
     return merged;
-  }, [targets, submissions]);
+  }, [targets, submissions, selectedPlant]);
 
   const handleExportExcel = () => {
     try {
@@ -150,6 +194,7 @@ const AnnualObjectivesPage = () => {
         const deptSectionDisplay = sectionDisplay ? `${deptDisplay} / ${sectionDisplay}` : deptDisplay;
 
         const rowData = {
+          'Plant': getPlantLabel(row.plant),
           'QMS Process Category': row.process_category || 'Uncategorized',
           'Process Type': row.process_type || '-',
           'Department / Section': deptSectionDisplay,
@@ -172,7 +217,9 @@ const AnnualObjectivesPage = () => {
 
         months.forEach((month, index) => {
           const val = row.monthlyData[index + 1];
-          rowData[month] = val ? `${val} ${row.unit === '%' ? '%' : ''}`.trim() : '-';
+          rowData[month] = val !== undefined && val !== null && val !== ''
+            ? `${val} ${row.unit === '%' && parseNumericValue(val) !== null ? '%' : ''}`.trim()
+            : '-';
         });
 
         return rowData;
@@ -181,7 +228,8 @@ const AnnualObjectivesPage = () => {
       const worksheet = XLSX.utils.json_to_sheet(excelData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, `Objectives ${currentYear}`);
-      XLSX.writeFile(workbook, `GKG_Annual_Objectives_${currentYear}.xlsx`);
+      const plantFilename = selectedPlant === 'All' ? 'All_Plants' : selectedPlant.replace(/\s+/g, '_');
+      XLSX.writeFile(workbook, `Annual_Objectives_${currentYear}_${plantFilename}.xlsx`);
       addToast("Excel export generated successfully.", "success");
     } catch (error) {
       console.error("Excel Export Error:", error);
@@ -215,6 +263,18 @@ const AnnualObjectivesPage = () => {
           </div>
           
           <div className="flex flex-wrap gap-3 mt-4 md:mt-0 print:hidden">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300">
+              Plant
+              <select
+                value={selectedPlant}
+                onChange={event => setSelectedPlant(event.target.value)}
+                className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+              >
+                {plantOptions.map(plant => (
+                  <option key={plant.value} value={plant.value}>{plant.label}</option>
+                ))}
+              </select>
+            </label>
             <button 
               onClick={() => setShowHistorical(!showHistorical)} 
               className={`flex items-center px-4 py-2 text-sm font-bold border rounded-lg shadow-sm transition-colors ${showHistorical ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
@@ -291,15 +351,23 @@ const AnnualObjectivesPage = () => {
                               <span className="block font-bold text-slate-800 dark:text-slate-200">
                                 {row.dept_name}
                               </span>
+                              <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40 text-[9px] font-bold text-violet-700 dark:text-violet-300">
+                                {getPlantLabel(row.plant)}
+                              </span>
                               <span className="block text-[10px] font-black text-brand-600 dark:text-brand-400 uppercase mt-1 tracking-wider">
                                 {/* ✨ ARCHITECTURAL FIX: Badge applied to section name */}
                                 {row.section_code ? `[${row.section_code}] ` : ''}{row.section_name}
                               </span>
                             </>
                           ) : (
-                            <span className="block font-bold text-brand-600 dark:text-brand-400">
-                              {row.dept_name || '-'}
-                            </span>
+                            <>
+                              <span className="block font-bold text-brand-600 dark:text-brand-400">
+                                {row.dept_name || '-'}
+                              </span>
+                              <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/40 text-[9px] font-bold text-violet-700 dark:text-violet-300">
+                                {getPlantLabel(row.plant)}
+                              </span>
+                            </>
                           )}
                         </td>
                       )}
@@ -339,11 +407,17 @@ const AnnualObjectivesPage = () => {
                       {months.map((m, i) => {
                         const monthValue = row.monthlyData[i + 1];
                         const hasMonthValue = monthValue !== undefined && monthValue !== null && monthValue !== '';
-                        const isMissed = hasMonthValue && checkIsMissed(monthValue, row.target_value, row.operator);
-                        const isMissing = !monthValue && i < new Date().getMonth();
+                        const isMissing = !hasMonthValue && i < new Date().getMonth();
+                        const numericMonthValue = parseNumericValue(monthValue);
+                        const isMissed = hasMonthValue && numericMonthValue !== null && checkIsMissed(monthValue, row.target_value, row.operator);
+                        const valueClass = numericMonthValue === null
+                          ? 'text-slate-500 dark:text-slate-400'
+                          : `font-bold ${isMissed ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`;
                         return (
-                          <td key={m} className={`border border-slate-200 dark:border-slate-700 p-2 ${hasMonthValue ? `font-bold ${isMissed ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}` : 'text-slate-400 dark:text-slate-500'}`}>
-                            {hasMonthValue ? `${monthValue}${row.unit === '%' ? '%' : ''}` : (isMissing ? 'No data' : '')}
+                          <td key={m} className={`border border-slate-200 dark:border-slate-700 p-2 ${hasMonthValue ? valueClass : 'text-slate-400 dark:text-slate-500'}`}>
+                            {hasMonthValue
+                              ? `${monthValue}${row.unit === '%' && numericMonthValue !== null ? '%' : ''}`
+                              : (isMissing ? 'No data' : '')}
                           </td>
                         );
                       })}

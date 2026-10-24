@@ -11,6 +11,7 @@ const submissionRoutes = require('./routes/submission.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
 const kintoneRoutes = require('./routes/kintone.routes');
 const departmentRoutes = require('./routes/department.routes');
+const annualObjectivesRoutes = require('./routes/annualObjectives.routes');
 const app = express();
 
 const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
@@ -35,6 +36,7 @@ app.use('/api/submissions', submissionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/kintone', kintoneRoutes);
 app.use('/api/departments', departmentRoutes);
+app.use('/api/annual-objectives', annualObjectivesRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
