@@ -28,6 +28,9 @@ const parseNumericValue = (value) => {
   return Number.isFinite(numericValue) ? numericValue : null;
 };
 
+// UI Helper: Safely renders a spaced unit or an empty string if null
+const renderUnit = (unit) => (unit ? ` ${unit}` : '');
+
 const checkIsMissed = (actual, target, operator) => {
   const act = parseNumericValue(actual);
   const tgt = parseNumericValue(target);
@@ -189,7 +192,6 @@ const AnnualObjectivesPage = () => {
 
       const excelData = reportData.map(row => {
         const deptDisplay = row.dept_name || '-';
-        // ✨ ARCHITECTURAL FIX: Export code explicitly associated with the Section
         const sectionDisplay = row.section_code ? `[${row.section_code}] ${row.section_name}` : row.section_name;
         const deptSectionDisplay = sectionDisplay ? `${deptDisplay} / ${sectionDisplay}` : deptDisplay;
 
@@ -204,21 +206,21 @@ const AnnualObjectivesPage = () => {
 
         if (showHistorical) {
           historicalYears.forEach(year => {
-            rowData[`Target (${year})`] = `${row.operator || ''} ${row.target_value || ''} ${row.unit || ''}`.trim();
+            rowData[`Target (${year})`] = `${row.operator || ''} ${row.target_value || ''}${renderUnit(row.unit)}`.trim();
             const hVal = row.history[year];
-            rowData[`Actual (${year})`] = hVal !== '-' ? `${hVal} ${row.unit}`.trim() : '-';
+            rowData[`Actual (${year})`] = hVal !== '-' ? `${hVal}${renderUnit(row.unit)}`.trim() : '-';
           });
           rowData['Achieved? (Prev Year)'] = row.achievedLastYear || '-';
         }
 
-        rowData[`Target (${currentYear})`] = `${row.operator || ''} ${row.target_value || ''} ${row.unit || ''}`.trim();
-        rowData[`Actual (${currentYear})`] = row.ytdActual !== '-' ? `${row.ytdActual} ${row.unit}`.trim() : '-';
+        rowData[`Target (${currentYear})`] = `${row.operator || ''} ${row.target_value || ''}${renderUnit(row.unit)}`.trim();
+        rowData[`Actual (${currentYear})`] = row.ytdActual !== '-' ? `${row.ytdActual}${renderUnit(row.unit)}`.trim() : '-';
         rowData['Process Owner'] = row.proposer_name || '-';
 
         months.forEach((month, index) => {
           const val = row.monthlyData[index + 1];
           rowData[month] = val !== undefined && val !== null && val !== ''
-            ? `${val} ${row.unit === '%' && parseNumericValue(val) !== null ? '%' : ''}`.trim()
+            ? `${val}${row.unit === '%' && parseNumericValue(val) !== null ? ' %' : ''}`.trim()
             : '-';
         });
 
@@ -329,7 +331,7 @@ const AnnualObjectivesPage = () => {
               </thead>
               <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-700/50">
                 {reportData.map((row) => {
-                  const targetDisplay = `${row.operator} ${row.target_value}${row.unit}`;
+                  const targetDisplay = `${row.operator || '='} ${row.target_value}${renderUnit(row.unit)}`;
                   return (
                     <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors">
                       {row.rowSpan.process_category > 0 && (
@@ -355,7 +357,6 @@ const AnnualObjectivesPage = () => {
                                 {getPlantLabel(row.plant)}
                               </span>
                               <span className="block text-[10px] font-black text-brand-600 dark:text-brand-400 uppercase mt-1 tracking-wider">
-                                {/* ✨ ARCHITECTURAL FIX: Badge applied to section name */}
                                 {row.section_code ? `[${row.section_code}] ` : ''}{row.section_name}
                               </span>
                             </>
@@ -382,7 +383,7 @@ const AnnualObjectivesPage = () => {
                           <Fragment key={`td-${year}`}>
                             <td className="border border-slate-200 dark:border-slate-700 p-2 font-medium">{targetDisplay}</td>
                             <td className={`border border-slate-200 dark:border-slate-700 p-2 font-bold ${isMissed ? 'text-rose-600 dark:text-rose-400' : (hVal !== '-' ? 'text-emerald-600 dark:text-emerald-400' : '')}`}>
-                              {hVal !== '-' ? `${hVal}${row.unit}` : '-'}
+                              {hVal !== '-' ? `${hVal}${renderUnit(row.unit)}` : '-'}
                             </td>
                           </Fragment>
                         );
@@ -399,7 +400,7 @@ const AnnualObjectivesPage = () => {
                       </td>
                       
                       <td className={`border border-slate-200 dark:border-slate-700 p-3 font-bold bg-rose-50/50 dark:bg-rose-900/10 ${row.ytdActual === '-' ? '' : (checkIsMissed(row.ytdActual, row.target_value, row.operator) ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400')}`}>
-                        {row.ytdActual !== '-' ? `${row.ytdActual}${row.unit}` : '-'}
+                        {row.ytdActual !== '-' ? `${row.ytdActual}${renderUnit(row.unit)}` : '-'}
                       </td>
                       
                       <td className="border border-slate-200 dark:border-slate-700 p-3 text-[10px] leading-tight text-left font-medium">{row.proposer_name || '-'}</td>
@@ -416,7 +417,7 @@ const AnnualObjectivesPage = () => {
                         return (
                           <td key={m} className={`border border-slate-200 dark:border-slate-700 p-2 ${hasMonthValue ? valueClass : 'text-slate-400 dark:text-slate-500'}`}>
                             {hasMonthValue
-                              ? `${monthValue}${row.unit === '%' && numericMonthValue !== null ? '%' : ''}`
+                              ? `${monthValue}${row.unit === '%' && numericMonthValue !== null ? ' %' : ''}`
                               : (isMissing ? 'No data' : '')}
                           </td>
                         );
