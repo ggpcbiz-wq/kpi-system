@@ -21,6 +21,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
     plant: user?.plant || 'Laguna Plant', 
     department: managerDepartments[0], 
     section: '',
+    section_id: '',
     frequency: 'Monthly',
     process_category: '',
     process_type: '',
@@ -44,7 +45,11 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
           
           const initialDept = data.find(d => d.name === managerDepartments[0]);
           if (initialDept && initialDept.sections && initialDept.sections.length > 0) {
-            setFormData(prev => ({ ...prev, section: initialDept.sections[0].name }));
+            setFormData(prev => ({
+              ...prev,
+              section: initialDept.sections[0].name,
+              section_id: initialDept.sections[0].id
+            }));
           }
         }
       } catch (error) {
@@ -58,27 +63,30 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
   const selectedDeptModel = deptMappings.find(d => d.name === formData.department);
   const availableSections = selectedDeptModel?.sections || [];
   
-  const selectedSectionModel = availableSections.find(s => s.name === formData.section);
+  const selectedSectionModel = availableSections.find(s => s.id === formData.section_id);
   const availableProcesses = selectedSectionModel?.processTypes || [];
 
   const handleDepartmentChange = (e) => {
     const newDeptName = e.target.value;
     const newDeptModel = deptMappings.find(d => d.name === newDeptName);
-    const firstSection = newDeptModel?.sections?.[0]?.name || '';
+    const firstSection = newDeptModel?.sections?.[0];
 
     setFormData({
       ...formData, 
       department: newDeptName,
-      section: firstSection,
+      section: firstSection?.name || '',
+      section_id: firstSection?.id || '',
       process_category: '',
       process_type: ''
     });
   };
 
   const handleSectionChange = (e) => {
+    const section = availableSections.find(item => item.id === e.target.value);
     setFormData({
       ...formData,
-      section: e.target.value,
+      section: section?.name || '',
+      section_id: section?.id || '',
       process_category: '',
       process_type: ''
     });
@@ -105,6 +113,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
     // ✨ ARCHITECTURAL FIX: Extract the code dynamically and append it to the submission payload
     const finalData = {
       ...formData,
+      section_id: selectedSectionModel?.id || '',
       section_code: selectedSectionModel?.code || null, 
       formatted_target: `${formData.operator} ${formData.target_value} ${formData.unit}`
     };
@@ -167,12 +176,12 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
               required
               disabled={availableSections.length === 0}
               className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 disabled:bg-slate-50 dark:disabled:bg-slate-800/50 appearance-none cursor-pointer transition-colors shadow-sm"
-              value={formData.section}
+              value={formData.section_id}
               onChange={handleSectionChange}
             >
               {availableSections.length > 0 ? (
                 availableSections.map(sec => (
-                  <option key={sec.id} value={sec.name}>
+                  <option key={sec.id} value={sec.id}>
                     {sec.code ? `[${sec.code}] ` : ''}{sec.name} ({sec.segment})
                   </option>
                 ))

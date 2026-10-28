@@ -11,18 +11,33 @@ const verifyAdmin = (req, res) => {
 
 const getDepartments = async (req, res) => {
   try {
-    const kintoneDeptNames = await kintoneService.getUniqueDepartments();
-    await departmentRepository.syncKintoneDepartments(kintoneDeptNames);
-    const departments = await departmentRepository.findAll();
+    const kintoneDepartments = await kintoneService.getUniqueDepartments();
+    await departmentRepository.syncKintoneDepartments(kintoneDepartments);
+
+    const syncedDepartments = await departmentRepository.findAll();
+    const eligibleSectionsByDepartment = new Map(
+      kintoneDepartments.map(department => [
+        department.name,
+        new Set(department.sections.map(section =>
+          section.code ? `code:${section.code}` : `name:${section.name}`
+        ))
+      ])
+    );
+    const departments = syncedDepartments
+      .filter(department => eligibleSectionsByDepartment.has(department.name))
+      .map(department => ({
+        ...department,
+        sections: department.sections.filter(section => {
+          const eligibleSections = eligibleSectionsByDepartment.get(department.name);
+          const sectionKey = section.code ? `code:${section.code}` : `name:${section.name}`;
+          return eligibleSections.has(sectionKey);
+        })
+      }));
+
     res.status(200).json(departments);
   } catch (error) {
     console.error('Error fetching/syncing departments:', error);
-    try {
-      const localDepts = await departmentRepository.findAll();
-      res.status(200).json(localDepts);
-    } catch (dbError) {
-      res.status(500).json({ message: 'Failed to retrieve departments.' });
-    }
+    res.status(500).json({ message: 'Failed to retrieve departments from Kintone.' });
   }
 };
 

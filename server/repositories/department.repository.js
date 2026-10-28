@@ -17,13 +17,34 @@ class DepartmentRepository {
 
       if (dept.sections && dept.sections.length > 0) {
         for (const sec of dept.sections) {
-          // ✨ ARCHITECTURAL FIX: Apply the 'code' property to the Section UPSERT
-          await db.query(`
-            INSERT INTO sections (id, department_id, name, segment, code, created_at, updated_at)
-            VALUES (gen_random_uuid(), $1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            ON CONFLICT (department_id, name) DO UPDATE 
-            SET segment = $3, code = $4, updated_at = CURRENT_TIMESTAMP
-          `, [deptId, sec.name, sec.segment, sec.code]);
+          if (sec.code) {
+            await db.query(`
+              INSERT INTO sections (id, department_id, name, segment, code, created_at, updated_at)
+              VALUES (gen_random_uuid(), $1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+              ON CONFLICT (department_id, code) DO UPDATE
+              SET name = $2, segment = $3, updated_at = CURRENT_TIMESTAMP
+            `, [deptId, sec.name, sec.segment, sec.code]);
+          } else {
+            const existingSection = await db.query(`
+              SELECT id FROM sections
+              WHERE department_id = $1 AND name = $2 AND segment = $3 AND code IS NULL
+              ORDER BY id
+              LIMIT 1
+            `, [deptId, sec.name, sec.segment]);
+
+            if (existingSection.rowCount > 0) {
+              await db.query(`
+                UPDATE sections
+                SET updated_at = CURRENT_TIMESTAMP
+                WHERE id = $1
+              `, [existingSection.rows[0].id]);
+            } else {
+              await db.query(`
+                INSERT INTO sections (id, department_id, name, segment, code, created_at, updated_at)
+                VALUES (gen_random_uuid(), $1, $2, $3, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+              `, [deptId, sec.name, sec.segment]);
+            }
+          }
         }
       }
     }

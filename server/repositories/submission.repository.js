@@ -39,7 +39,8 @@ class SubmissionRepository {
       // ✨ ARCHITECTURAL FIX: Selected t.section_code to expose to the frontend
       let query = `
         SELECT 
-          m.id, m.target_id, m.submitted_by, u.plant,      
+          m.id, m.target_id, m.submitted_by,
+          COALESCE(NULLIF(t.plant, ''), target_owner.plant, u.plant) as plant,
           m.report_month, m.report_year, m.actual_value, m.status, m.remarks,
           m.supporting_data, m.created_at, m.section_code,
           m.kintone_car_id, m.problem_description, m.problem_cause,
@@ -78,6 +79,24 @@ class SubmissionRepository {
       return rows;
     } catch (error) {
       console.error('DB Error in SubmissionRepository.findAll:', error);
+      throw error;
+    }
+  }
+
+  async findApprovedForAnnualObjectives() {
+    try {
+      const { rows } = await db.query(`
+        SELECT
+          m.target_id, m.report_month, m.report_year, m.actual_value, m.status
+        FROM monthly_actuals m
+        JOIN kpi_targets t ON m.target_id = t.id
+        WHERE t.status = 'Active'
+          AND m.status IN ('Approved', 'CAR Requested')
+        ORDER BY m.report_year, m.report_month, m.created_at
+      `);
+      return rows;
+    } catch (error) {
+      console.error('[SubmissionRepository] Database error in findApprovedForAnnualObjectives:', error);
       throw error;
     }
   }

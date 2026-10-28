@@ -165,6 +165,7 @@ const ManagerPage = () => {
         unit: formData.unit,
         department: formData.department, 
         section: formData.section,
+        section_id: formData.section_id,
         remarks: '',
         process_category: formData.process_category, 
         process_type: formData.process_type,         

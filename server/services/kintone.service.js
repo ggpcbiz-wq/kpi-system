@@ -118,8 +118,7 @@ const getUniqueDepartments = async () => {
     throw new Error("Missing Kintone Organization App .env variables.");
   }
 
-  // ✨ ARCHITECTURAL FIX: Extract Code field to align with Section hierarchy
-  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department&fields[1]=Section&fields[2]=Segment&fields[3]=Code`;
+  const url = `https://${KINTONE_DOMAIN}/k/v1/records.json?app=${ORG_APP_ID}&fields[0]=Department&fields[1]=Section&fields[2]=Segment&fields[3]=Code&fields[4]=Rank&fields[5]=State`;
 
   try {
     const response = await fetch(url, {
@@ -133,10 +132,17 @@ const getUniqueDepartments = async () => {
     const deptMap = {};
     
     data.records.forEach(record => {
+      const state = record.State?.value?.trim();
+      if (state !== 'Active') return;
+
+      const rank = record.Rank?.value?.trim();
+      if (!['3rd', '4th'].includes(rank)) return;
+
       const deptName = record.Department?.value?.trim();
       const secName = record.Section?.value?.trim();
       const segName = record.Segment?.value?.trim();
       const secCode = record.Code?.value?.trim() || null; 
+      const segment = segName || 'Unassigned';
 
       if (!deptName) return;
 
@@ -145,9 +151,13 @@ const getUniqueDepartments = async () => {
       }
 
       if (secName) {
-        if (!deptMap[deptName].sections.some(s => s.name === secName)) {
-          // Bind the extracted code specifically to the section object
-          deptMap[deptName].sections.push({ name: secName, segment: segName || 'Unassigned', code: secCode });
+        const sectionExists = deptMap[deptName].sections.some(section =>
+          secCode
+            ? section.code === secCode
+            : section.name === secName && section.segment === segment
+        );
+        if (!sectionExists) {
+          deptMap[deptName].sections.push({ name: secName, segment, code: secCode });
         }
       }
     });

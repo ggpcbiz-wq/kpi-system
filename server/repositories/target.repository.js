@@ -7,10 +7,10 @@ class TargetRepository {
 
     const baseSelect = `
       SELECT 
-        t.id, t.kpi_no, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
-        t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
+        t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
+        t.process_category, t.process_type,
         d.name as dept_name, s.name as section_name, COALESCE(t.section_code, s.code) as section_code, 
-        u.name as proposer_name, u.plant       
+        u.name as proposer_name, COALESCE(NULLIF(t.plant, ''), u.plant) as plant
       FROM kpi_targets t
       LEFT JOIN departments d ON t.department_id = d.id
       LEFT JOIN sections s ON t.section_id = s.id
@@ -51,6 +51,28 @@ class TargetRepository {
       return rows;
     } catch (error) {
       console.error('[TargetRepository] Database error inside findAll:', error);
+      throw error;
+    }
+  }
+
+  async findActiveForAnnualObjectives() {
+    try {
+      const { rows } = await db.query(`
+        SELECT
+          t.id, t.kpi_no, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
+          t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
+          d.name as dept_name, s.name as section_name, COALESCE(t.section_code, s.code) as section_code,
+          u.name as proposer_name, COALESCE(NULLIF(t.plant, ''), u.plant) as plant
+        FROM kpi_targets t
+        LEFT JOIN departments d ON t.department_id = d.id
+        LEFT JOIN sections s ON t.section_id = s.id
+        LEFT JOIN users u ON t.proposed_by = u.id
+        WHERE t.status = 'Active'
+        ORDER BY t.plant, d.name, s.name, t.process_category, t.process_type
+      `);
+      return rows;
+    } catch (error) {
+      console.error('[TargetRepository] Database error in findActiveForAnnualObjectives:', error);
       throw error;
     }
   }
