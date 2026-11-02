@@ -1,7 +1,9 @@
+// client/src/App.jsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { PlantProvider } from './context/PlantProvider'; // Import the new PlantProvider
 
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout'; 
@@ -40,50 +42,52 @@ function App() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<RootRedirect />} />
-            
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
-
-            <Route element={<Layout />}>
+        {/* PlantProvider must be inside AuthProvider to access the logged-in user's default plant */}
+        <PlantProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={<RootRedirect />} />
               
-             
-              <Route element={<ProtectedRoute allowedRoles={['Administrator']} />}>
-                <Route path="/admin" element={<UserManagementPage />} />
-                <Route path="/admin/workflow" element={<WorkflowControlPage />} />
-                <Route path="/admin/departments" element={<DepartmentManagementPage />} />
-                <Route path="/reports/annual-objectives" element={<AnnualObjectivesPage />} />
-              </Route>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/unauthorized" element={<Unauthorized />} />
 
-              <Route element={<ProtectedRoute allowedRoles={['Supervisor', 'Manager']} />}>
-                 <Route path="/inbox" element={<QuarterlyCarInboxPage />} />
-              </Route>
-              
-             <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Supervisor']} />}>
-             <Route path="/supervisor" element={<SupervisorPage />} />
-              <Route path="/supervisor/data-entry" element={<DataEntryPage />} />
-            </Route>
+              <Route element={<Layout />}>
+                
+                <Route element={<ProtectedRoute allowedRoles={['Administrator']} />}>
+                  <Route path="/admin" element={<UserManagementPage />} />
+                  <Route path="/admin/workflow" element={<WorkflowControlPage />} />
+                  <Route path="/admin/departments" element={<DepartmentManagementPage />} />
+                  <Route path="/reports/annual-objectives" element={<AnnualObjectivesPage />} />
+                </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['Manager']} />}>
-                <Route path="/manager" element={<ManagerPage />} />
-              </Route>
+                <Route element={<ProtectedRoute allowedRoles={['Supervisor', 'Manager']} />}>
+                   <Route path="/inbox" element={<QuarterlyCarInboxPage />} />
+                </Route>
+                
+               <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Supervisor']} />}>
+                 <Route path="/supervisor" element={<SupervisorPage />} />
+                 <Route path="/supervisor/data-entry" element={<DataEntryPage />} />
+               </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['Top Management']} />}>
-                <Route path="/top-management" element={<TopManagementPage />} />
-              </Route>
+                <Route element={<ProtectedRoute allowedRoles={['Manager']} />}>
+                  <Route path="/manager" element={<ManagerPage />} />
+                </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['Supervisor', 'Manager', 'Top Management']} />}>
-                <Route path="/car-tracking" element={<CarTrackingPage />} />
-              </Route>
+                <Route element={<ProtectedRoute allowedRoles={['Top Management']} />}>
+                  <Route path="/top-management" element={<TopManagementPage />} />
+                </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Supervisor', 'Manager', 'Top Management']} />}>
-                <Route path="/overview" element={<CompanyOverviewPage />} />
+                <Route element={<ProtectedRoute allowedRoles={['Supervisor', 'Manager', 'Top Management']} />}>
+                  <Route path="/car-tracking" element={<CarTrackingPage />} />
+                </Route>
+
+                <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Supervisor', 'Manager', 'Top Management']} />}>
+                  <Route path="/overview" element={<CompanyOverviewPage />} />
+                </Route>
               </Route>
-            </Route>
-          </Routes>
-        </Router>
+            </Routes>
+          </Router>
+        </PlantProvider>
       </AuthProvider>
     </ToastProvider>
   );

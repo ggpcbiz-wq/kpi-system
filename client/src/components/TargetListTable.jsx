@@ -1,12 +1,12 @@
-// src/components/TargetListTable.jsx
 import { useState } from 'react';
-import { MessageSquare, PlusCircle, AlertCircle, SplitSquareHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MessageSquare, PlusCircle, SplitSquareHorizontal, ChevronLeft, ChevronRight, Factory } from 'lucide-react';
+import { usePlant } from '../context/PlantContext';
 
 const TargetListTable = ({ targets, onSelectTarget }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [prevTargets, setPrevTargets] = useState(targets);
+  const { selectedPlant } = usePlant();
   const ITEMS_PER_PAGE = 10;
-
 
   if (targets !== prevTargets) {
     setPrevTargets(targets);
@@ -22,138 +22,71 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'Active':
-        return 'bg-jira-success-bg dark:bg-jira-success/20 text-jira-success border-jira-success/30 dark:border-jira-success/30';
-      case 'Pending QMR Approval':
-        return 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50';
-      case 'Pending Top Management Approval':
-        return 'bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 border-brand-200 dark:border-brand-800/50';
-      case 'Pending Final Activation':
-        return 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50';
-      case 'Rejected':
-        return 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50';
-      default:
-        return 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600';
+      case 'Active': return 'bg-jira-success-bg text-jira-success border-jira-success/30';
+      case 'Pending QMR Approval': return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'Pending Top Management Approval': return 'bg-brand-50 text-brand-600 border-brand-200';
+      case 'Pending Final Activation': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case 'Rejected': return 'bg-rose-50 text-rose-700 border-rose-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
     }
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden h-full flex flex-col transition-colors duration-300">
-      <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between shrink-0 transition-colors">
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
+      <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
         <div className="flex items-center">
           <div className="w-1.5 h-5 bg-brand-500 rounded-full mr-3"></div>
-          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Department KPI Targets</h3>
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+            {selectedPlant === 'All Plants' ? 'Company-Wide KPI Targets' : `${selectedPlant} Plant Targets`}
+          </h3>
         </div>
-        <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+        <div className="text-xs font-medium text-slate-500">
           Showing {targets.length > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + ITEMS_PER_PAGE, targets.length)} of {targets.length}
         </div>
       </div>
       
       <div className="overflow-x-auto flex-1">
-        <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 table-fixed min-w-[1200px]">
-          <thead className="text-xs uppercase bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 tracking-wider transition-colors">
+        <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 table-fixed min-w-[1300px]">
+          <thead className="text-xs uppercase bg-white dark:bg-slate-800 text-slate-500 border-b border-slate-200 tracking-wider">
             <tr>
-              <th className="px-6 py-4 font-bold w-[12%]">
-                <div className="flex items-center">
-                  <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
-                </div>
-              </th>
+              {selectedPlant === 'All Plants' && (
+                <th className="px-6 py-4 font-bold w-[8%]">
+                  <div className="flex items-center"><Factory size={14} className="mr-1.5 text-slate-400" /> Plant</div>
+                </th>
+              )}
+              <th className="px-6 py-4 font-bold w-[12%]"><div className="flex items-center"><SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400" /> Section</div></th>
               <th className="px-6 py-4 font-bold w-[18%]">KPI</th>
-              <th className="px-6 py-4 font-bold w-[22%]">Objective</th>
-              <th className="px-6 py-4 font-bold w-[8%]">Category</th>
-              <th className="px-6 py-4 font-bold w-[14%]">Process Type</th>
-              <th className="px-6 py-4 font-bold w-[6%]">Freq</th>
+              <th className="px-6 py-4 font-bold w-[20%]">Objective</th>
+              <th className="px-6 py-4 font-bold w-[12%]">Process Type</th>
               <th className="px-6 py-4 font-bold w-[10%]">Target</th>
               <th className="px-6 py-4 font-bold w-[12%]">Status</th>
-              <th className="px-6 py-4 font-bold w-[16%]">
-                <div className="flex items-center">
-                  <MessageSquare size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Remarks
-                </div>
-              </th>
-              
-              {onSelectTarget && (
-                <th className="px-6 py-4 font-bold text-right w-[8%]">Action</th>
-              )}
+              <th className="px-6 py-4 font-bold w-[14%]"><div className="flex items-center"><MessageSquare size={14} className="mr-1.5 text-slate-400" /> Remarks</div></th>
+              {onSelectTarget && <th className="px-6 py-4 font-bold text-right w-[8%]">Action</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 bg-white dark:bg-slate-800 transition-colors">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
             {paginatedTargets.map(target => {
               const isActive = target.status === 'Active';
-              
               return (
-                <tr key={target.id} className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50 ${target.isOverdue ? 'bg-rose-50/30 dark:bg-rose-900/10' : ''}`}>
-                  <td className="px-6 py-4 text-slate-600 dark:text-slate-300 font-semibold truncate" title={target.section_name}>
-                    {target.section_name || <span className="text-slate-400 dark:text-slate-500 italic font-normal">--</span>}
-                  </td>
-                  
-                  <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 truncate" title={target.metric_name}>
-                    {target.metric_name}
-                  </td>
-
-                  <td className="px-6 py-4 min-w-[200px] max-w-xs">
-                    {target.objective ? (
-                      <span className="text-slate-600 dark:text-slate-300 text-xs line-clamp-3" title={target.objective}>
-                        {target.objective}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 dark:text-slate-500 italic text-xs">--</span>
-                    )}
-                  </td>
-                  
-                  <td className="px-6 py-4">
-                    {target.process_category ? (
-                      <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-md">
-                        {target.process_category}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 dark:text-slate-500 italic text-xs">--</span>
-                    )}
-                  </td>
-                  
-                  <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300 truncate" title={target.process_type}>
-                    {target.process_type || <span className="text-slate-400 dark:text-slate-500 italic text-xs">Uncategorized</span>}
-                  </td>
-                  
-                  <td className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    {target.frequency || 'Monthly'}
-                  </td>
-
-                  <td className="px-6 py-4 text-slate-900 dark:text-slate-100 font-black whitespace-nowrap">
-                    {target.operator} {target.target_value} <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-0.5">{target.unit}</span>
-                  </td>
-                  
+                <tr key={target.id} className="hover:bg-slate-50/80">
+                  {selectedPlant === 'All Plants' && (
+                    <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">{target.plant}</td>
+                  )}
+                  <td className="px-6 py-4 font-semibold truncate">{target.section_name || '--'}</td>
+                  <td className="px-6 py-4 font-bold text-slate-900 truncate">{target.metric_name}</td>
+                  <td className="px-6 py-4 min-w-[200px] max-w-xs text-xs line-clamp-3">{target.objective || '--'}</td>
+                  <td className="px-6 py-4 font-medium truncate">{target.process_type || 'Uncategorized'}</td>
+                  <td className="px-6 py-4 font-black whitespace-nowrap">{target.operator} {target.target_value} <span className="text-xs font-bold text-slate-500 ml-0.5">{target.unit}</span></td>
                   <td className="px-6 py-4 flex flex-col items-start gap-1.5">
-                    <span className={`inline-block whitespace-nowrap px-2.5 py-1 rounded-md text-xs font-bold border transition-colors ${getStatusBadge(target.status)}`}>
-                      {target.status}
-                    </span>
-                    {target.isOverdue && (
-                      <span className="flex items-center text-[10px] font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800/50 px-2 py-0.5 rounded shadow-sm transition-colors">
-                        <AlertCircle size={12} className="mr-1" strokeWidth={2.5} /> No Data
-                      </span>
-                    )}
+                    <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold border ${getStatusBadge(target.status)}`}>{target.status}</span>
                   </td>
-                  
-                  <td className="px-6 py-4 max-w-xs">
-                    {target.remarks ? (
-                      <span className="text-slate-600 dark:text-slate-300 wrap-break-word text-xs block line-clamp-3 hover:line-clamp-none transition-all duration-200 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-md border border-slate-200 dark:border-slate-700 shadow-inner shadow-slate-100 dark:shadow-none" title={target.remarks}>
-                        {target.remarks}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 dark:text-slate-500 italic text-xs">No remarks</span>
-                    )}
-                  </td>
-                  
+                  <td className="px-6 py-4 max-w-xs text-xs line-clamp-3">{target.remarks || <span className="text-slate-400 italic">No remarks</span>}</td>
                   {onSelectTarget && (
                     <td className="px-6 py-4 text-right">
                       <button 
                         onClick={() => onSelectTarget(target)}
                         disabled={!isActive}
-                        className={`flex items-center justify-center w-full px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm ${
-                          isActive 
-                            ? 'bg-white dark:bg-slate-900 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 hover:bg-brand-50 dark:hover:bg-brand-900/50 hover:border-brand-300 dark:hover:border-brand-700' 
-                            : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 cursor-not-allowed border border-slate-200 dark:border-slate-700 shadow-none'
-                        }`}
-                        title={isActive ? "Enter Monthly Data" : "Target must be Active to enter data"}
+                        className={`flex items-center justify-center w-full px-3 py-2 rounded-lg text-xs font-bold shadow-sm ${isActive ? 'bg-white text-brand-600 border border-brand-200 hover:bg-brand-50' : 'bg-slate-50 text-slate-400 cursor-not-allowed border border-slate-200'}`}
                       >
                         <PlusCircle size={14} className="mr-1.5" /> Data
                       </button>
@@ -162,39 +95,19 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
                 </tr>
               )
             })}
-            
             {targets.length === 0 && (
-              <tr>
-                <td colSpan={onSelectTarget ? "10" : "9"} className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">
-                  No KPI targets proposed or registered for your departments yet.
-                </td>
-              </tr>
+              <tr><td colSpan="10" className="px-6 py-16 text-center text-slate-500 font-medium">No KPI targets found for this view.</td></tr>
             )}
           </tbody>
         </table>
       </div>
-
-      {/* Pagination Footer */}
+      
       {targets.length > ITEMS_PER_PAGE && (
-        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between transition-colors">
-          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-            Page {currentPage} of {totalPages}
-          </div>
+        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
+          <div className="text-xs font-medium text-slate-500">Page {currentPage} of {totalPages}</div>
           <div className="flex items-center space-x-2">
-            <button
-              onClick={handlePrev}
-              disabled={currentPage === 1}
-              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={currentPage === totalPages}
-              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-            >
-              <ChevronRight size={16} />
-            </button>
+            <button onClick={handlePrev} disabled={currentPage === 1} className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"><ChevronLeft size={16} /></button>
+            <button onClick={handleNext} disabled={currentPage === totalPages} className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"><ChevronRight size={16} /></button>
           </div>
         </div>
       )}
