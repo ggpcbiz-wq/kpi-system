@@ -30,7 +30,10 @@ const CompanyOverviewPage = () => {
   const [rawTargets, setRawTargets] = useState([]);
   const [rawSubmissions, setRawSubmissions] = useState([]);
   const [globalChartData, setGlobalChartData] = useState({});
-  const [currentChartIndex, setCurrentChartIndex] = useState(0);
+  
+  // Grid Pagination State
+  const [chartPage, setChartPage] = useState(1);
+  const CHARTS_PER_PAGE = 6;
 
   useEffect(() => {
     let isMounted = true;
@@ -45,7 +48,7 @@ const CompanyOverviewPage = () => {
         const [targetRes, subRes, analyticsRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}${plantQuery.replace('&', '?')}`, { headers: { 'Authorization': `Bearer ${token}` } }),
           fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/api/analytics?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } })
+          fetch(`${API_BASE_URL}/api/analytics?_t=${timestamp}${plantQuery.replace('&', '?')}`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
 
         if (!isMounted) return;
@@ -87,7 +90,6 @@ const CompanyOverviewPage = () => {
     return rawTargets.filter(t => selectedPlant === 'All Plants' || t.plant === selectedPlant);
   }, [rawTargets, selectedPlant]);
 
-  // Derive dropdown departments strictly from active plant constraints
   const allDepartments = Array.from(new Set(activePlantTargets.map(t => t.dept_name).filter(Boolean)));
 
   const filteredTargets = activePlantTargets.filter(t => {
@@ -134,32 +136,28 @@ const CompanyOverviewPage = () => {
     });
   }, [globalChartData, filters.department, filters.search, filteredTargets]);
 
+  // Chart Pagination Logic
+  const totalChartPages = Math.ceil(allCharts.length / CHARTS_PER_PAGE) || 1;
+  const chartStartIndex = (chartPage - 1) * CHARTS_PER_PAGE;
+  const paginatedCharts = allCharts.slice(chartStartIndex, chartStartIndex + CHARTS_PER_PAGE);
+
+  const handlePrevChart = () => setChartPage(p => Math.max(1, p - 1));
+  const handleNextChart = () => setChartPage(p => Math.min(totalChartPages, p + 1));
+
   let achievementRate = 0;
   if (filteredSubmissions.length > 0) {
     const achievedCount = filteredSubmissions.filter(sub => !checkIsMissed(sub.actual_value, sub.target_value, sub.operator)).length;
     achievementRate = Math.round((achievedCount / filteredSubmissions.length) * 100);
   }
 
-  // Derive final department count based strictly on active targets (or 1 if a specific department is filtered)
   const departmentsTrackedCount = filters.department === 'All' 
     ? Array.from(new Set(filteredTargets.map(t => t.dept_name))).length 
     : 1;
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
-    setCurrentChartIndex(0); 
+    setChartPage(1); 
   };
-
-  const handlePrevChart = () => setCurrentChartIndex(prev => (prev > 0 ? prev - 1 : allCharts.length - 1));
-  const handleNextChart = () => setCurrentChartIndex(prev => (prev < allCharts.length - 1 ? prev + 1 : 0));
-
-  useEffect(() => {
-    if (allCharts.length <= 1) return;
-    const autoScrollInterval = setInterval(() => {
-      setCurrentChartIndex(prev => prev < allCharts.length - 1 ? prev + 1 : 0);
-    }, 5000); 
-    return () => clearInterval(autoScrollInterval);
-  }, [allCharts.length]);
 
   if (isLoading) {
     return (
@@ -214,9 +212,7 @@ const CompanyOverviewPage = () => {
           departments={allDepartments} 
         />
 
-        {/* Dynamic Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex flex-col justify-between h-24 relative overflow-hidden transition-all duration-300 hover:shadow-md">
             <div className="flex justify-between items-start">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider transition-colors">Active Targets</span>
@@ -260,64 +256,66 @@ const CompanyOverviewPage = () => {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col overflow-hidden transition-colors duration-300">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col overflow-hidden transition-colors duration-300 mb-8">
+          <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between shrink-0 transition-colors">
             <div className="flex items-center">
-              <div className="w-1.5 h-4 bg-brand-600 dark:bg-brand-500 rounded-full mr-3"></div>
-              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 transition-colors">
-                Performance Trends
+              <div className="w-1.5 h-5 bg-brand-600 dark:bg-brand-500 rounded-full mr-3"></div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 transition-colors">
+                Global Performance Trends
               </h3>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider transition-colors">
-                Chart {allCharts.length > 0 ? currentChartIndex + 1 : 0} of {allCharts.length}
+            {allCharts.length > 0 && (
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Showing {chartStartIndex + 1}-{Math.min(chartStartIndex + CHARTS_PER_PAGE, allCharts.length)} of {allCharts.length} Charts
               </span>
-              
-              {allCharts.length > 1 && (
-                <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md p-0.5 shadow-sm transition-colors">
-                  <button onClick={handlePrevChart} className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors">
-                    <ChevronLeft size={16} />
-                  </button>
-                  <div className="w-px h-4 bg-slate-200 dark:bg-slate-600 transition-colors"></div>
-                  <button onClick={handleNextChart} className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors">
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
+            )}
           </div>
           
-          <div className="p-6 relative flex flex-col items-center justify-center min-h-150 w-full">
+          <div className="p-8 bg-white dark:bg-slate-800 transition-colors">
             {allCharts.length > 0 ? (
-              <div className="w-full max-w-350 h-full flex flex-col items-center animate-in fade-in duration-500 flex-1">
-                <div className="w-full px-2 sm:px-4 flex-1 flex flex-col">
-                  <PerformanceChart 
-                    data={allCharts[currentChartIndex].data} 
-                    metricName={`${allCharts[currentChartIndex].metricName} (${allCharts[currentChartIndex].dept})`} 
-                    unit={allCharts[currentChartIndex].unit}
-                  />
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 items-start min-h-[300px]">
+                  {paginatedCharts.map((chartConfig) => (
+                    <PerformanceChart 
+                      key={chartConfig.id} 
+                      data={chartConfig.data} 
+                      metricName={`${chartConfig.metricName} (${chartConfig.dept})`} 
+                      unit={chartConfig.unit}
+                    />
+                  ))}
                 </div>
-
-                {allCharts.length > 1 && (
-                  <div className="flex space-x-2 mt-6 flex-wrap justify-center shrink-0">
-                    {allCharts.map((_, idx) => (
-                      <button 
-                        key={idx}
-                        onClick={() => setCurrentChartIndex(idx)}
-                        className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentChartIndex ? 'bg-brand-600 dark:bg-brand-500 w-6' : 'bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500'}`}
-                        aria-label={`Go to chart ${idx + 1}`}
-                      />
-                    ))}
+                
+                {allCharts.length > CHARTS_PER_PAGE && (
+                  <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between transition-colors">
+                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                      Page {chartPage} of {totalChartPages}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={handlePrevChart}
+                        disabled={chartPage === 1}
+                        className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button
+                        onClick={handleNextChart}
+                        disabled={chartPage === totalChartPages}
+                        className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
                   </div>
                 )}
-              </div>
+              </>
             ) : (
-              <div className="flex flex-col items-center justify-center text-center p-8">
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-full mb-4 border border-slate-100 dark:border-slate-700 transition-colors">
-                  <BarChart3 size={32} className="text-slate-300 dark:text-slate-600" />
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-full border border-slate-100 dark:border-slate-700 mb-4 transition-colors">
+                  <BarChart3 size={32} className="text-slate-300 dark:text-slate-600 transition-colors" />
                 </div>
-                <h4 className="text-slate-700 dark:text-slate-300 font-semibold mb-1 transition-colors">No Data Available</h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm transition-colors">There is no historical chart data available based on your current filter selection.</p>
+                <h4 className="text-slate-700 dark:text-slate-300 font-semibold mb-1 transition-colors">No Chart Data</h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium transition-colors">No global analytics data available to chart yet based on your current filters.</p>
               </div>
             )}
           </div>
