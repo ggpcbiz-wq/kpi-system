@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { CheckCircle, XCircle, AlertTriangle, PlayCircle, MessageSquare, BarChart3, Info, FileSpreadsheet, Layers, SplitSquareHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, PlayCircle, MessageSquare, BarChart3, Info, FileSpreadsheet, Layers, SplitSquareHorizontal, ChevronLeft, ChevronRight, Factory } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 import PerformanceChart from '../components/PerformanceChart';
 import { API_BASE_URL } from '../services/api';
@@ -15,21 +15,13 @@ const getMonthName = (monthNumber) => {
 const checkIsMissed = (actual, target, operator) => {
   const act = parseFloat(actual);
   const tgt = parseFloat(target);
-  
   const op = String(operator).trim();
 
-  // Less-Than constraints
   if (op === '≤' || op === '<=' || op === '‚â§') return act > tgt;
   if (op === '<') return act >= tgt;
-  
-  // Exact Match
   if (op === '=' || op === '==') return act !== tgt;
-  
-  // Greater-Than constraints
   if (op === '≥' || op === '>=' || op === '‚â•') return act < tgt;
   if (op === '>') return act <= tgt;
-  
-  // Default fail-safe (assumes higher is better)
   return act < tgt; 
 };
 
@@ -96,12 +88,10 @@ const WorkflowControlPage = () => {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [confirmPayload, setConfirmPayload] = useState({ id: null, title: '', message: '', btnText: '', queueName: '' });
 
-  // Chart Pagination State
   const [chartPage, setChartPage] = useState(1);
   const [prevChartData, setPrevChartData] = useState(globalChartData);
   const CHARTS_PER_PAGE = 6;
 
-  // Sync chart pagination on data refresh (Render-Phase Update)
   if (globalChartData !== prevChartData) {
     setPrevChartData(globalChartData);
     setChartPage(1);
@@ -125,6 +115,7 @@ const WorkflowControlPage = () => {
             .filter(t => t.status === 'Pending Final Activation')
             .map(t => ({
               id: t.id, 
+              plant: t.plant, // Extract Plant from backend payload
               dept: t.dept_name, 
               section: t.section_name, 
               metric: t.metric_name,
@@ -168,7 +159,6 @@ const WorkflowControlPage = () => {
     return () => { isMounted = false; };
   }, [token, refreshTrigger, addToast]); 
 
-  // Flatten nested chart data structure for pagination
   const allCharts = useMemo(() => {
     return Object.entries(globalChartData).flatMap(([dept, metrics]) =>
       metrics
@@ -182,7 +172,6 @@ const WorkflowControlPage = () => {
     );
   }, [globalChartData]);
 
-  // Chart Pagination Logic
   const totalChartPages = Math.ceil(allCharts.length / CHARTS_PER_PAGE) || 1;
   const chartStartIndex = (chartPage - 1) * CHARTS_PER_PAGE;
   const paginatedCharts = allCharts.slice(chartStartIndex, chartStartIndex + CHARTS_PER_PAGE);
@@ -269,7 +258,7 @@ const WorkflowControlPage = () => {
     }
   };
 
-  if (isLoading && pendingMonthlyData.length === 0) {
+  if (isLoading && pendingMonthlyData.length === 0 && finalActivationQueue.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors duration-300">
         <div className="flex flex-col items-center space-y-4">
@@ -307,9 +296,14 @@ const WorkflowControlPage = () => {
               <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider transition-colors">Approved by Top Management</p>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1300px]">
+              <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1450px]">
                 <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                   <tr>
+                    <th className="px-6 py-4 font-bold">
+                      <div className="flex items-center">
+                        <Factory size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Plant
+                      </div>
+                    </th>
                     <th className="px-6 py-4 font-bold">
                       <div className="flex items-center">
                         <Layers size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Dept
@@ -337,12 +331,13 @@ const WorkflowControlPage = () => {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 bg-white dark:bg-slate-800 transition-colors">
                   {finalActivationQueue.map(target => (
                     <tr key={target.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
-                      <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100">{target.dept}</td>
-                      <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">{target.section || '--'}</td>
+                      <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap align-top">{target.plant || '--'}</td>
+                      <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 align-top">{target.dept}</td>
+                      <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300 align-top">{target.section || '--'}</td>
                       
-                      <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 truncate" title={target.metric}>{target.metric}</td>
+                      <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 truncate align-top" title={target.metric}>{target.metric}</td>
                       
-                      <td className="px-6 py-4 min-w-[200px] max-w-xs">
+                      <td className="px-6 py-4 min-w-[200px] max-w-xs align-top">
                         {target.objective ? (
                           <span className="text-slate-600 dark:text-slate-300 text-xs line-clamp-2" title={target.objective}>
                             {target.objective}
@@ -352,7 +347,7 @@ const WorkflowControlPage = () => {
                         )}
                       </td>
 
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 align-top">
                         {target.processCategory ? (
                           <span className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-md">
                             {target.processCategory}
@@ -362,16 +357,16 @@ const WorkflowControlPage = () => {
                         )}
                       </td>
 
-                      <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">
+                      <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300 align-top">
                         {target.processType || <span className="text-slate-400 dark:text-slate-500 italic text-xs">Uncategorized</span>}
                       </td>
 
-                      <td className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                      <td className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 align-top">
                         {target.frequency || 'Monthly'}
                       </td>
 
-                      <td className="px-6 py-4 text-brand-600 dark:text-brand-400 font-bold whitespace-nowrap">{target.value}</td>
-                      <td className="px-6 py-4 min-w-[150px] max-w-xs">
+                      <td className="px-6 py-4 text-brand-600 dark:text-brand-400 font-bold whitespace-nowrap align-top">{target.value}</td>
+                      <td className="px-6 py-4 min-w-[150px] max-w-xs align-top">
                         {target.comment ? (
                           <div className="text-slate-600 dark:text-slate-300 text-xs bg-slate-50 dark:bg-slate-900/50 p-3 rounded-md border border-slate-200 dark:border-slate-700 max-h-32 overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none transition-colors">
                             {target.comment}
@@ -380,7 +375,7 @@ const WorkflowControlPage = () => {
                           <span className="text-slate-400 dark:text-slate-500 italic text-xs">No remarks</span>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 align-top">
                         <div className="flex justify-end space-x-2">
                           <button 
                             onClick={() => initiateApprove(target.id, 'final', 'Activate Target', `Activate the ${target.metric} target in the system? It will go live immediately.`, 'Activate Now')} 
@@ -401,7 +396,7 @@ const WorkflowControlPage = () => {
                     </tr>
                   ))}
                   {finalActivationQueue.length === 0 && (
-                    <tr><td colSpan="10" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No targets pending final activation.</td></tr>
+                    <tr><td colSpan="11" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No targets pending final activation.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -422,9 +417,14 @@ const WorkflowControlPage = () => {
             </span>
           </div>
           <div className="overflow-x-auto">
-             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1100px]">
+             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1250px]">
               <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                 <tr>
+                  <th className="px-6 py-4 font-bold">
+                    <div className="flex items-center">
+                      <Factory size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Plant
+                    </div>
+                  </th>
                   <th className="px-6 py-4 font-bold">
                     <div className="flex items-center">
                       <Layers size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Dept
@@ -466,6 +466,7 @@ const WorkflowControlPage = () => {
 
                   return (
                     <tr key={data.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
+                      <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{data.plant || '--'}</td>
                       <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">{data.dept_name || 'Unassigned'}</td>
                       <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300">{data.section_name || '--'}</td>
                       <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
@@ -551,7 +552,7 @@ const WorkflowControlPage = () => {
                   )
                 })}
                 {pendingMonthlyData.length === 0 && (
-                  <tr><td colSpan="8" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No monthly data pending sign-off.</td></tr>
+                  <tr><td colSpan="9" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No monthly data pending sign-off.</td></tr>
                 )}
               </tbody>
             </table>
@@ -566,7 +567,6 @@ const WorkflowControlPage = () => {
                 System Overview: <span className="text-brand-600 dark:text-brand-400">All Departments</span>
               </h3>
             </div>
-            {/* Display total charts count if applicable */}
             {allCharts.length > 0 && (
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Showing {chartStartIndex + 1}-{Math.min(chartStartIndex + CHARTS_PER_PAGE, allCharts.length)} of {allCharts.length} Charts
@@ -587,7 +587,6 @@ const WorkflowControlPage = () => {
                   ))}
                 </div>
                 
-                {/* Pagination Controls */}
                 {allCharts.length > CHARTS_PER_PAGE && (
                   <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between transition-colors">
                     <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
