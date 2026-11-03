@@ -1,24 +1,32 @@
+// client/src/components/TargetProposalForm.jsx
 import { useState, useEffect } from 'react';
-import { Target, Send, Briefcase, CalendarClock, Layers, SplitSquareHorizontal, BookOpen } from 'lucide-react';
+import { Target, Send, Briefcase, CalendarClock, Layers, SplitSquareHorizontal, BookOpen, Factory } from 'lucide-react';
 import { useToast } from '../context/ToastContext'; 
 import { useAuth } from '../context/AuthContext';
+import { usePlant } from '../context/usePlant';
 import { API_BASE_URL } from '../services/api';
 
 const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
   const { user, token } = useAuth();
   const { addToast } = useToast(); 
+  const { selectedPlant, plants } = usePlant();
 
   const operators = ['', '≥', '≤', '>', '<', 'min', 'max'];
   const units = ['%', 'Pcs', 'Hrs', 'mins', '$', 'Days', 'Incidents'];
+  
+  // Exclude 'All Plants' for data entry; targets must belong to a specific physical plant
+  const selectablePlants = plants.filter(p => p !== 'All Plants');
+  
+  // Derive the active plant directly during initialization, avoiding useEffect syncs
+  const initialPlant = selectedPlant === 'All Plants' ? (user?.plant || 'Laguna') : selectedPlant;
 
   const managerDepartments = user?.departments?.length > 0 
     ? user.departments 
     : (user?.department ? [user.department] : ['Department Not Set']);
 
   const [deptMappings, setDeptMappings] = useState([]);
-
   const [formData, setFormData] = useState({ 
-    plant: user?.plant || 'Laguna Plant', 
+    plant: initialPlant, 
     department: managerDepartments[0], 
     section: '',
     section_id: '',
@@ -62,7 +70,6 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
 
   const selectedDeptModel = deptMappings.find(d => d.name === formData.department);
   const availableSections = selectedDeptModel?.sections || [];
-  
   const selectedSectionModel = availableSections.find(s => s.id === formData.section_id);
   const availableProcesses = selectedSectionModel?.processTypes || [];
 
@@ -70,7 +77,6 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
     const newDeptName = e.target.value;
     const newDeptModel = deptMappings.find(d => d.name === newDeptName);
     const firstSection = newDeptModel?.sections?.[0];
-
     setFormData({
       ...formData, 
       department: newDeptName,
@@ -81,36 +87,13 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
     });
   };
 
-  const handleSectionChange = (e) => {
-    const section = availableSections.find(item => item.id === e.target.value);
-    setFormData({
-      ...formData,
-      section: section?.name || '',
-      section_id: section?.id || '',
-      process_category: '',
-      process_type: ''
-    });
-  };
-
-  const handleProcessChange = (e) => {
-    const val = e.target.value;
-    if (val === '|') {
-      setFormData({ ...formData, process_category: '', process_type: '' });
-    } else {
-      const [cat, type] = val.split('|');
-      setFormData({ ...formData, process_category: cat, process_type: type });
-    }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
-    
     if (!formData.process_category || !formData.process_type) {
       addToast('Please select an ISO Process Type mapped to this Section.', 'error');
       return;
     }
     
-    // ✨ ARCHITECTURAL FIX: Extract the code dynamically and append it to the submission payload
     const finalData = {
       ...formData,
       section_id: selectedSectionModel?.id || '',
@@ -119,71 +102,79 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
     };
     
     onSubmit(finalData);
-    
     setFormData(prev => ({ 
-      ...prev,
-      process_category: '',
-      process_type: '',
-      metric_name: '', 
-      objective: '',
-      target_value: '' 
+      ...prev, process_category: '', process_type: '', metric_name: '', objective: '', target_value: '' 
     }));
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        
+        {/* Plant Selector */}
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
+          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+            Plant Location <span className="text-rose-600 dark:text-rose-400">*</span>
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <Factory size={16} className="text-brand-600 dark:text-brand-400" />
+            </div>
+            <select 
+              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 appearance-none cursor-pointer shadow-sm"
+              value={formData.plant}
+              onChange={(e) => setFormData({...formData, plant: e.target.value})}
+            >
+              {selectablePlants.map(plant => (
+                <option key={plant} value={plant}>{plant} Plant</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Department Selector */}
+        <div>
+          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
             Department <span className="text-rose-600 dark:text-rose-400">*</span>
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <Briefcase size={16} className={managerDepartments.length > 1 ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500"} />
+              <Briefcase size={16} className="text-brand-600 dark:text-brand-400" />
             </div>
-            
-            {managerDepartments.length > 1 ? (
-              <select 
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 appearance-none cursor-pointer transition-colors shadow-sm"
-                value={formData.department}
-                onChange={handleDepartmentChange}
-              >
-                {managerDepartments.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-            ) : (
-              <input 
-                type="text" 
-                readOnly
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 cursor-not-allowed transition-colors"
-                value={formData.department}
-              />
-            )}
+            <select 
+              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 appearance-none cursor-pointer shadow-sm"
+              value={formData.department}
+              onChange={handleDepartmentChange}
+            >
+              {managerDepartments.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
           </div>
         </div>
 
+        {/* Section Selector */}
         <div>
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
+          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
             Section <span className="text-rose-600 dark:text-rose-400">*</span>
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <SplitSquareHorizontal size={16} className={availableSections.length > 0 ? "text-brand-600 dark:text-brand-400" : "text-slate-400 dark:text-slate-500"} />
+              <SplitSquareHorizontal size={16} className="text-brand-600 dark:text-brand-400" />
             </div>
             <select 
               required
               disabled={availableSections.length === 0}
-              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 disabled:bg-slate-50 dark:disabled:bg-slate-800/50 appearance-none cursor-pointer transition-colors shadow-sm"
+              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 disabled:bg-slate-50 appearance-none cursor-pointer shadow-sm"
               value={formData.section_id}
-              onChange={handleSectionChange}
+              onChange={(e) => {
+                const section = availableSections.find(item => item.id === e.target.value);
+                setFormData({...formData, section: section?.name || '', section_id: section?.id || '', process_category: '', process_type: ''});
+              }}
             >
               {availableSections.length > 0 ? (
                 availableSections.map(sec => (
-                  <option key={sec.id} value={sec.id}>
-                    {sec.code ? `[${sec.code}] ` : ''}{sec.name} ({sec.segment})
-                  </option>
+                  <option key={sec.id} value={sec.id}>{sec.code ? `[${sec.code}] ` : ''}{sec.name}</option>
                 ))
               ) : (
                 <option value="">-- No Sections Found --</option>
@@ -192,7 +183,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
           </div>
         </div>
       </div>
-
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">
@@ -227,7 +218,14 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
               disabled={availableProcesses.length === 0}
               className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 disabled:bg-slate-50 dark:disabled:bg-slate-800/50 disabled:text-slate-400 appearance-none cursor-pointer transition-colors shadow-sm"
               value={formData.process_category && formData.process_type ? `${formData.process_category}|${formData.process_type}` : '|'}
-              onChange={handleProcessChange}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '|') setFormData({ ...formData, process_category: '', process_type: '' });
+                else {
+                  const [cat, type] = val.split('|');
+                  setFormData({ ...formData, process_category: cat, process_type: type });
+                }
+              }}
             >
               <option value="|" disabled>
                 {availableProcesses.length > 0 ? '-- Select Mapped Process --' : '-- No Processes Mapped to Section --'}

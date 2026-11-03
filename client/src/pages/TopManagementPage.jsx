@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, SplitSquareHorizontal } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, SplitSquareHorizontal, Factory } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
 import FilterBar from '../components/FilterBar'; 
 import ConfirmModal from '../components/ConfirmModal';
@@ -16,21 +16,13 @@ const getMonthName = (monthNumber) => {
 const checkIsMissed = (actual, target, operator) => {
   const act = parseFloat(actual);
   const tgt = parseFloat(target);
-  
   const op = String(operator).trim();
 
- 
   if (op === '≤' || op === '<=' || op === '‚â§') return act > tgt;
   if (op === '<') return act >= tgt;
-  
-
   if (op === '=' || op === '==') return act !== tgt;
-  
- 
   if (op === '≥' || op === '>=' || op === '‚â•') return act < tgt;
   if (op === '>') return act <= tgt;
-  
- 
   return act < tgt; 
 };
 
@@ -39,15 +31,12 @@ const TopManagementPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All' });
-  
- 
   const executiveDepartments = user?.departments?.length > 0 ? user.departments : [];
 
   const [pendingFinalTargets, setPendingFinalTargets] = useState([]);
   const [recentNotifications, setRecentNotifications] = useState([]); 
   const [globalChartData, setGlobalChartData] = useState({}); 
   const [currentChartIndex, setCurrentChartIndex] = useState(0);
-
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
@@ -58,63 +47,73 @@ const TopManagementPage = () => {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [confirmPayload, setConfirmPayload] = useState({ id: null, title: '', message: '', btnText: '' });
 
-  const fetchGlobalQueues = useCallback(async () => {
-    try {
-      const timestamp = new Date().getTime();
-      
-      const [targetRes, subRes, analyticsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_BASE_URL}/api/analytics?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } })
-      ]);
-      
-      if (targetRes.ok) {
-        const allTargets = await targetRes.json();
-        const mappedTargets = allTargets
-          .filter(t => t.status === 'Pending Top Management Approval')
-          .map(t => ({
-            id: t.id, 
-            dept: t.dept_name, 
-            section: t.section_name,
-            metric: t.metric_name,
-            objective: t.objective, 
-            processCategory: t.process_category,
-            processType: t.process_type,
-            frequency: t.frequency,
-            value: `${t.operator} ${t.target_value} ${t.unit}`,
-            comment: t.remarks
-          }));
-        setPendingFinalTargets(mappedTargets);
-      }
-      
-      if (subRes.ok) {
-        const allSubmissions = await subRes.json();
-        const finalized = allSubmissions.filter(sub => 
-          sub.status === 'Approved' || sub.status === 'CAR Requested'
-        );
-        setRecentNotifications(finalized);
-      }
-
-      if (analyticsRes.ok) {
-        setGlobalChartData(await analyticsRes.json());
-      }
-      
-    } catch (error) {
-      console.error("Failed to fetch executive data", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [token]);
+  // Expose a trigger to force refetching without putting the whole function in useEffect dependencies
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    const loadData = async () => {
-      if (token) {
-        await fetchGlobalQueues();
+    let isMounted = true;
+
+    const loadDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        const timestamp = new Date().getTime();
+        
+        const [targetRes, subRes, analyticsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/api/analytics?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+        
+        if (!isMounted) return;
+
+        if (targetRes.ok) {
+          const allTargets = await targetRes.json();
+          const mappedTargets = allTargets
+            .filter(t => t.status === 'Pending Top Management Approval')
+            .map(t => ({
+              id: t.id, 
+              plant: t.plant, 
+              dept: t.dept_name, 
+              section: t.section_name,
+              metric: t.metric_name,
+              objective: t.objective, 
+              processCategory: t.process_category,
+              processType: t.process_type,
+              frequency: t.frequency,
+              value: `${t.operator} ${t.target_value} ${t.unit}`,
+              comment: t.remarks
+            }));
+          setPendingFinalTargets(mappedTargets);
+        }
+        
+        if (subRes.ok) {
+          const allSubmissions = await subRes.json();
+          const finalized = allSubmissions.filter(sub => 
+            sub.status === 'Approved' || sub.status === 'CAR Requested'
+          );
+          setRecentNotifications(finalized);
+        }
+
+        if (analyticsRes.ok) {
+          const analyticsData = await analyticsRes.json();
+          setGlobalChartData(analyticsData);
+        }
+        
+      } catch (error) {
+        console.error("Failed to fetch executive data", error);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
     };
-    
-    loadData();
-  }, [token, fetchGlobalQueues]);
+
+    if (token) {
+      loadDashboardData();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token, refreshTrigger]);
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
@@ -134,7 +133,7 @@ const TopManagementPage = () => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ status: 'Pending Final Activation', remarks: comment })
       });
-      fetchGlobalQueues();
+      setRefreshTrigger(prev => prev + 1);
       setIsConfirmModalOpen(false);
     } catch (error) {
       console.error("Approval failed", error);
@@ -155,7 +154,7 @@ const TopManagementPage = () => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ status: 'Rejected', remarks: rejectReason })
       });
-      fetchGlobalQueues();
+      setRefreshTrigger(prev => prev + 1);
       setIsRejectModalOpen(false);
       setRejectPayload({ id: null });
       setRejectReason('');
@@ -166,16 +165,17 @@ const TopManagementPage = () => {
 
   const filteredTargets = pendingFinalTargets.filter(t => {
     const matchesDept = filters.department === 'All' || t.dept === filters.department;
+    const matchesPlant = filters.plant === 'All' || t.plant === filters.plant; 
     const matchesSearch = !filters.search || t.metric.toLowerCase().includes(filters.search.toLowerCase());
-    return matchesDept && matchesSearch;
+    return matchesDept && matchesSearch && matchesPlant;
   });
 
   const filteredNotifications = recentNotifications.filter(d => {
     const matchesDept = filters.department === 'All' || d.dept_name === filters.department;
+    const matchesPlant = filters.plant === 'All' || d.plant === filters.plant; 
     const matchesSearch = !filters.search || d.metric_name.toLowerCase().includes(filters.search.toLowerCase());
-    return matchesDept && matchesSearch;
+    return matchesDept && matchesSearch && matchesPlant;
   });
-  
   
   const chartDeptToDisplay = filters.department === 'All' ? (executiveDepartments[0] || 'Unassigned') : filters.department;
   const departmentMetrics = globalChartData[chartDeptToDisplay] || [];
@@ -183,7 +183,7 @@ const TopManagementPage = () => {
   const handlePrevChart = () => setCurrentChartIndex(prev => (prev > 0 ? prev - 1 : departmentMetrics.length - 1));
   const handleNextChart = () => setCurrentChartIndex(prev => (prev < departmentMetrics.length - 1 ? prev + 1 : 0));
 
-  if (isLoading) {
+  if (isLoading && pendingFinalTargets.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors duration-300">
         <div className="flex flex-col items-center space-y-4">
@@ -200,7 +200,6 @@ const TopManagementPage = () => {
       setCurrentPage(1);
       return;
     }
-
     const maxPage = Math.max(1, Math.ceil(filteredNotifications.length / itemsPerPage));
     setCurrentPage(Math.min(Math.max(nextPage, 1), maxPage));
   };
@@ -219,7 +218,6 @@ const TopManagementPage = () => {
             </p>
           </div>
           <div className="flex items-center">
-         
             <span 
               className="bg-brand-50 dark:bg-slate-800 text-brand-700 dark:text-brand-400 px-3 py-1.5 rounded-lg text-xs font-bold border border-brand-200 dark:border-slate-700 uppercase tracking-wide shadow-sm transition-colors cursor-help"
               title={executiveDepartments.join(', ')}
@@ -249,26 +247,35 @@ const TopManagementPage = () => {
             </span>
           </div>
           <div className="overflow-x-auto">
-             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1400px]">
+             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1500px]">
               <thead className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 transition-colors">
                 <tr>
+                  <th className="px-6 py-4 font-bold w-[10%]">
+                    <div className="flex items-center">
+                      <Factory size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Plant
+                    </div>
+                  </th>
                   <th className="px-6 py-4 font-bold w-[12%]">
                     <div className="flex items-center">
                       <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                     </div>
                   </th>
                   <th className="px-6 py-4 font-bold w-[12%]">KPI</th>
-                  <th className="px-6 py-4 font-bold w-[30%]">Objective</th>
-                  <th className="px-6 py-4 font-bold w-[14%]">Process Type</th>
+                  <th className="px-6 py-4 font-bold w-[25%]">Objective</th>
+                  <th className="px-6 py-4 font-bold w-[12%]">Process Type</th>
                   <th className="px-6 py-4 font-bold w-[7%]">Frequency</th>
-                  <th className="px-6 py-4 font-bold w-[9%]">Proposed Target</th>
-                  <th className="px-6 py-4 font-bold w-[9%]">Remarks</th>
-                  <th className="px-6 py-4 font-bold text-right w-[7%]">Executive Actions</th>
+                  <th className="px-6 py-4 font-bold w-[8%]">Proposed Target</th>
+                  <th className="px-6 py-4 font-bold w-[8%]">Remarks</th>
+                  <th className="px-6 py-4 font-bold text-right w-[6%]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 bg-white dark:bg-slate-800 transition-colors">
                 {filteredTargets.map(target => (
                   <tr key={target.id} className="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-700/50">
+                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap align-top">
+                      {target.plant || '--'}
+                    </td>
+                    
                     <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap align-top">{target.section || '--'}</td>
                     
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 align-top">{target.metric}</td>
@@ -325,7 +332,7 @@ const TopManagementPage = () => {
                     </td>
                   </tr>
                 ))}
-                {filteredTargets.length === 0 && <tr><td colSpan="8" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending targets match current filters.</td></tr>}
+                {filteredTargets.length === 0 && <tr><td colSpan="9" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending targets match current filters.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -448,7 +455,6 @@ const TopManagementPage = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

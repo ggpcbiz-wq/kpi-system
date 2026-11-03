@@ -1,3 +1,4 @@
+// server/src/controllers/target.controller.js
 const targetService = require('../services/target.service');
 const targetRepository = require('../repositories/target.repository'); 
 const kintoneService = require('../services/kintone.service');
@@ -6,7 +7,11 @@ const getTargets = async (req, res) => {
   try {
     const activeUserId = req.user?.userId || req.user?.id;
     if (!req.user || !activeUserId) return res.status(401).json({ message: 'Unauthorized. Invalid user context.' });
-    const targets = await targetService.getDashboardTargets(req.user);
+    
+    // Pass the plant query parameter directly to the service layer
+    const plantFilter = req.query.plant || 'All Plants';
+    const targets = await targetService.getDashboardTargets(req.user, plantFilter);
+    
     return res.status(200).json(targets);
   } catch (error) {
     console.error('[Target Controller Error] Failed to fetch targets:', error.message, error.stack);

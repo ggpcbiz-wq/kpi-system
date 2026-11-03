@@ -1,23 +1,28 @@
-import { Search, Filter, Calendar, Briefcase } from 'lucide-react';
+import { Search, Filter, Calendar, Briefcase, Factory } from 'lucide-react';
+import { usePlant } from '../context/usePlant'; // Import the global plant hook
 
 const FilterBar = ({ 
   filters, 
   onFilterChange, 
-  config = { showDept: false, showDate: true, showSearch: true },
+  config = { showDept: false, showDate: true, showSearch: true, showPlant: false },
   departments = [] 
 }) => {
+
+  // Consume the global plant context
+  const { selectedPlant, setSelectedPlant, plants } = usePlant();
 
   const handleChange = (key, value) => {
     onFilterChange({ ...filters, [key]: value });
   };
 
   const handleClear = () => {
-    
     onFilterChange({ search: '', period: '', department: 'All' });
+    if (config.showPlant) {
+      setSelectedPlant('All Plants'); // Reset global plant context
+    }
   };
 
-
-  const isFiltered = filters.search || filters.period || filters.department !== 'All';
+  const isFiltered = filters.search || filters.period || filters.department !== 'All' || (config.showPlant && selectedPlant !== 'All Plants');
 
   return (
     <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4 items-end mb-8 transition-colors duration-300">
@@ -37,6 +42,29 @@ const FilterBar = ({
               value={filters.search || ''}
               onChange={(e) => handleChange('search', e.target.value)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Global Plant Filter */}
+      {config.showPlant && (
+        <div className="w-full md:w-48 shrink-0">
+          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">Plant Location</label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Factory size={16} className="text-slate-400 dark:text-slate-500" />
+            </div>
+            <select
+              className="w-full pl-9 pr-8 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-600 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 appearance-none transition-all shadow-sm cursor-pointer"
+              value={selectedPlant}
+              onChange={(e) => setSelectedPlant(e.target.value)}
+            >
+              {plants.map(plant => (
+                <option key={plant} value={plant}>
+                  {plant === 'All Plants' ? plant : `${plant} Plant`}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       )}

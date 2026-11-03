@@ -1,11 +1,11 @@
 const targetRepository = require('../repositories/target.repository');
 const db = require('../config/db'); 
 
-const getDashboardTargets = async (user) => {
-
+const getDashboardTargets = async (user, plantFilter = 'All Plants') => {
   const userContext = {
     ...user,
-    id: user.userId || user.id
+    id: user.userId || user.id,
+    plantFilter // Pass the plant filter to the repository
   };
   return await targetRepository.findAll(userContext);
 };
@@ -34,8 +34,9 @@ const proposeNewTarget = async (data, user) => {
     if (secRes.rowCount > 0) secId = secRes.rows[0].id;
   }
 
-  
+  // Explicitly map the 'plant' property from the frontend DTO
   const targetData = {
+    plant: data.plant, // <--- ADDED MAPPING
     metric_name: data.metric_name, 
     objective: data.objective,
     target_value: data.target_value,
