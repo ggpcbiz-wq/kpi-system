@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { usePlant } from '../context/usePlant';
 import { Globe, TrendingUp, Award, BarChart3, ChevronLeft, ChevronRight, Activity } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
 import FilterBar from '../components/FilterBar'; 
@@ -9,55 +10,55 @@ import { API_BASE_URL } from '../services/api';
 const checkIsMissed = (actual, target, operator) => {
   const act = parseFloat(actual);
   const tgt = parseFloat(target);
-  
   const op = String(operator).trim();
-
 
   if (op === '≤' || op === '<=' || op === '‚â§') return act > tgt;
   if (op === '<') return act >= tgt;
-  
-
   if (op === '=' || op === '==') return act !== tgt;
-  
-  
   if (op === '≥' || op === '>=' || op === '‚â•') return act < tgt;
   if (op === '>') return act <= tgt;
-  
-
   return act < tgt; 
 };
 
 const CompanyOverviewPage = () => {
   const { user, token } = useAuth();
   const { addToast } = useToast();
+  const { selectedPlant } = usePlant();
   const [isLoading, setIsLoading] = useState(true);
   
-  const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All' });
+  const [filters, setFilters] = useState({ search: '', period: '', department: 'All' });
   const [rawTargets, setRawTargets] = useState([]);
   const [rawSubmissions, setRawSubmissions] = useState([]);
+  const [globalChartData, setGlobalChartData] = useState({});
   const [currentChartIndex, setCurrentChartIndex] = useState(0);
 
   useEffect(() => {
-    if (!token) return;
     let isMounted = true;
 
-    const fetchOverviewData = async () => {
+    const loadOverviewData = async () => {
       try {
-    
+        setIsLoading(true);
         const timestamp = new Date().getTime();
-        const [targetRes, subRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } })
+        
+        const plantQuery = selectedPlant !== 'All Plants' ? `&plant=${selectedPlant}` : '';
+        
+        const [targetRes, subRes, analyticsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}${plantQuery.replace('&', '?')}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}${plantQuery.replace('&', '?')}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/api/analytics?_t=${timestamp}${plantQuery.replace('&', '?')}`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
 
-        if (targetRes.ok && subRes.ok && isMounted) {
+        if (!isMounted) return;
+
+        if (targetRes.ok && subRes.ok && analyticsRes.ok) {
           setRawTargets(await targetRes.json());
-          const submissions = await subRes.json();
           
-         
+          const submissions = await subRes.json();
           setRawSubmissions(submissions.filter(s => 
             ['Approved', 'CAR Requested', 'Locked - Pending Manager Review', 'Locked - Pending QMR Sign-Off'].includes(s.status)
           ));
+          
+          setGlobalChartData(await analyticsRes.json());
         }
       } catch (error) {
         console.error("Failed to fetch overview data:", error);
@@ -67,67 +68,55 @@ const CompanyOverviewPage = () => {
       }
     };
 
-    fetchOverviewData();
-    return () => { isMounted = false; };
-  }, [token, addToast]);
+    if (token) {
+      loadOverviewData();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [token, selectedPlant, addToast]);
 
   const allDepartments = Array.from(new Set(rawTargets.map(t => t.dept_name).filter(Boolean)));
 
   const filteredTargets = rawTargets.filter(t => {
     if (t.status !== 'Active') return false;
     if (filters.department !== 'All' && t.dept_name !== filters.department) return false;
-    if (filters.plant !== 'All' && t.plant !== filters.plant) return false;
     if (filters.search && !t.metric_name.toLowerCase().includes(filters.search.toLowerCase())) return false;
     return true;
   });
 
   const filteredSubmissions = rawSubmissions.filter(sub => {
     const matchDept = filters.department === 'All' ? true : sub.dept_name === filters.department;
-    const matchPlant = filters.plant === 'All' ? true : sub.plant === filters.plant;
-    
     let matchPeriod = true;
     if (filters.period) {
       const [year, month] = filters.period.split('-');
       matchPeriod = (sub.report_year === parseInt(year)) && (sub.report_month === parseInt(month, 10));
     }
-    return matchDept && matchPlant && matchPeriod;
+    return matchDept && matchPeriod;
   });
 
-  const dynamicChartData = useMemo(() => {
-    const grouped = {};
-    
-    filteredTargets.forEach(t => {
-      const dept = t.dept_name || 'Unassigned';
-      if (!grouped[dept]) grouped[dept] = [];
+  const allCharts = useMemo(() => {
+    return Object.entries(globalChartData).flatMap(([dept, metrics]) => {
+      // Apply department filter to charts
+      if (filters.department !== 'All' && dept !== filters.department) return [];
       
-      let chartSubs = rawSubmissions.filter(s => s.target_id === t.id);
-
-      if (filters.period) {
-        const [year, month] = filters.period.split('-');
-        chartSubs = chartSubs.filter(s => 
-          s.report_year === parseInt(year) && s.report_month <= parseInt(month, 10)
-        );
-      } else {
-        const currentYear = new Date().getFullYear();
-        chartSubs = chartSubs.filter(s => s.report_year === currentYear);
-      }
-      
-      chartSubs.sort((a, b) => a.report_month - b.report_month);
-      
-      const dataPoints = chartSubs.map(sub => {
-        const date = new Date();
-        date.setMonth(sub.report_month - 1);
-        return {
-          month: date.toLocaleString('default', { month: 'short' }),
-          target: parseFloat(sub.target_value),
-          actual: parseFloat(sub.actual_value)
-        };
-      });
-
-      grouped[dept].push({ metricName: t.metric_name, unit: t.unit, data: dataPoints });
+      return metrics
+        .filter(m => m.data && m.data.length > 0)
+        .map((metric, index) => {
+          // Apply search filter to charts
+          if (filters.search && !metric.metricName.toLowerCase().includes(filters.search.toLowerCase())) return null;
+          
+          return {
+            id: `${dept}-${index}`,
+            dept,
+            metricName: metric.metricName,
+            unit: metric.unit,
+            data: metric.data
+          };
+        }).filter(Boolean);
     });
-    return grouped;
-  }, [filteredTargets, rawSubmissions, filters.period]);
+  }, [globalChartData, filters.department, filters.search]);
 
   let achievementRate = 0;
   if (filteredSubmissions.length > 0) {
@@ -135,34 +124,27 @@ const CompanyOverviewPage = () => {
     achievementRate = Math.round((achievedCount / filteredSubmissions.length) * 100);
   }
 
-  const visibleChartDataEntries = Object.entries(dynamicChartData)
-    .flatMap(([dept, metrics]) => metrics.filter(m => m.data && m.data.length > 0).map(m => ({ dept, ...m })));
-
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
     setCurrentChartIndex(0); 
   };
 
-  const handlePrevChart = () => setCurrentChartIndex(prev => (prev > 0 ? prev - 1 : visibleChartDataEntries.length - 1));
-  const handleNextChart = () => setCurrentChartIndex(prev => (prev < visibleChartDataEntries.length - 1 ? prev + 1 : 0));
+  const handlePrevChart = () => setCurrentChartIndex(prev => (prev > 0 ? prev - 1 : allCharts.length - 1));
+  const handleNextChart = () => setCurrentChartIndex(prev => (prev < allCharts.length - 1 ? prev + 1 : 0));
 
   useEffect(() => {
-    if (visibleChartDataEntries.length <= 1) return;
-
+    if (allCharts.length <= 1) return;
     const autoScrollInterval = setInterval(() => {
-      setCurrentChartIndex(prev => 
-        prev < visibleChartDataEntries.length - 1 ? prev + 1 : 0
-      );
+      setCurrentChartIndex(prev => prev < allCharts.length - 1 ? prev + 1 : 0);
     }, 5000); 
-
     return () => clearInterval(autoScrollInterval);
-  }, [visibleChartDataEntries.length, currentChartIndex]);
+  }, [allCharts.length]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center transition-colors duration-300">
         <div className="flex flex-col items-center space-y-4">
-          <Activity size={32} className="text-slate-300 dark:text-slate-600 animate-pulse" />
+          <Activity size={32} className="text-brand-600 dark:text-brand-500 animate-pulse" />
           <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">Aggregating Global Metrics...</p>
         </div>
       </div>
@@ -265,10 +247,10 @@ const CompanyOverviewPage = () => {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider transition-colors">
-                Chart {visibleChartDataEntries.length > 0 ? currentChartIndex + 1 : 0} of {visibleChartDataEntries.length}
+                Chart {allCharts.length > 0 ? currentChartIndex + 1 : 0} of {allCharts.length}
               </span>
               
-              {visibleChartDataEntries.length > 1 && (
+              {allCharts.length > 1 && (
                 <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md p-0.5 shadow-sm transition-colors">
                   <button onClick={handlePrevChart} className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors">
                     <ChevronLeft size={16} />
@@ -283,19 +265,19 @@ const CompanyOverviewPage = () => {
           </div>
           
           <div className="p-6 relative flex flex-col items-center justify-center min-h-150 w-full">
-            {visibleChartDataEntries.length > 0 ? (
+            {allCharts.length > 0 ? (
               <div className="w-full max-w-350 h-full flex flex-col items-center animate-in fade-in duration-500 flex-1">
                 <div className="w-full px-2 sm:px-4 flex-1 flex flex-col">
                   <PerformanceChart 
-                    data={visibleChartDataEntries[currentChartIndex].data} 
-                    metricName={`${visibleChartDataEntries[currentChartIndex].metricName} (${visibleChartDataEntries[currentChartIndex].dept})`} 
-                    unit={visibleChartDataEntries[currentChartIndex].unit}
+                    data={allCharts[currentChartIndex].data} 
+                    metricName={`${allCharts[currentChartIndex].metricName} (${allCharts[currentChartIndex].dept})`} 
+                    unit={allCharts[currentChartIndex].unit}
                   />
                 </div>
 
-                {visibleChartDataEntries.length > 1 && (
+                {allCharts.length > 1 && (
                   <div className="flex space-x-2 mt-6 flex-wrap justify-center shrink-0">
-                    {visibleChartDataEntries.map((_, idx) => (
+                    {allCharts.map((_, idx) => (
                       <button 
                         key={idx}
                         onClick={() => setCurrentChartIndex(idx)}
