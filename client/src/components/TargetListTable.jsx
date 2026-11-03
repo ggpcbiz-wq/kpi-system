@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MessageSquare, PlusCircle, SplitSquareHorizontal, ChevronLeft, ChevronRight, Factory } from 'lucide-react';
-import { usePlant } from '../hooks/usePlant';
+import { usePlant } from '../context/usePlant';
 
 const TargetListTable = ({ targets, onSelectTarget }) => {
   const [currentPage, setCurrentPage] = useState(1);

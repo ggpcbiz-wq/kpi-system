@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Target, Send, Briefcase, CalendarClock, Layers, SplitSquareHorizontal, BookOpen, Factory } from 'lucide-react';
 import { useToast } from '../context/ToastContext'; 
 import { useAuth } from '../context/AuthContext';
-import { usePlant } from '../hooks/usePlant';
+import { usePlant } from '../context/usePlant';
 import { API_BASE_URL } from '../services/api';
 
 const TargetProposalForm = ({ onSubmit, isSubmitting }) => {

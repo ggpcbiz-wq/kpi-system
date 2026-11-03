@@ -1,5 +1,6 @@
+// client/src/context/usePlant.js
 import { useContext } from 'react';
-import { PlantContext } from '../context/PlantContext';
+import { PlantContext } from './PlantContext';
 
 export const usePlant = () => {
   const context = useContext(PlantContext);
