@@ -44,8 +44,8 @@ const CompanyOverviewPage = () => {
         
         const [targetRes, subRes, analyticsRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/targets?_t=${timestamp}${plantQuery.replace('&', '?')}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}${plantQuery.replace('&', '?')}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${API_BASE_URL}/api/analytics?_t=${timestamp}${plantQuery.replace('&', '?')}`, { headers: { 'Authorization': `Bearer ${token}` } })
+          fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE_URL}/api/analytics?_t=${timestamp}`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
 
         if (!isMounted) return;
@@ -77,9 +77,20 @@ const CompanyOverviewPage = () => {
     };
   }, [token, selectedPlant, addToast]);
 
-  const allDepartments = Array.from(new Set(rawTargets.map(t => t.dept_name).filter(Boolean)));
+  const targetPlantMap = useMemo(() => {
+    const map = {};
+    rawTargets.forEach(t => { map[t.id] = t.plant; });
+    return map;
+  }, [rawTargets]);
 
-  const filteredTargets = rawTargets.filter(t => {
+  const activePlantTargets = useMemo(() => {
+    return rawTargets.filter(t => selectedPlant === 'All Plants' || t.plant === selectedPlant);
+  }, [rawTargets, selectedPlant]);
+
+  // Derive dropdown departments strictly from active plant constraints
+  const allDepartments = Array.from(new Set(activePlantTargets.map(t => t.dept_name).filter(Boolean)));
+
+  const filteredTargets = activePlantTargets.filter(t => {
     if (t.status !== 'Active') return false;
     if (filters.department !== 'All' && t.dept_name !== filters.department) return false;
     if (filters.search && !t.metric_name.toLowerCase().includes(filters.search.toLowerCase())) return false;
@@ -87,26 +98,31 @@ const CompanyOverviewPage = () => {
   });
 
   const filteredSubmissions = rawSubmissions.filter(sub => {
-    const matchDept = filters.department === 'All' ? true : sub.dept_name === filters.department;
+    const subPlant = targetPlantMap[sub.target_id] || sub.plant; 
+    const matchPlant = selectedPlant === 'All Plants' || subPlant === selectedPlant;
+    const matchDept = filters.department === 'All' || sub.dept_name === filters.department;
     let matchPeriod = true;
+    
     if (filters.period) {
       const [year, month] = filters.period.split('-');
       matchPeriod = (sub.report_year === parseInt(year)) && (sub.report_month === parseInt(month, 10));
     }
-    return matchDept && matchPeriod;
+    
+    return matchPlant && matchDept && matchPeriod;
   });
 
   const allCharts = useMemo(() => {
     return Object.entries(globalChartData).flatMap(([dept, metrics]) => {
-      // Apply department filter to charts
       if (filters.department !== 'All' && dept !== filters.department) return [];
       
       return metrics
         .filter(m => m.data && m.data.length > 0)
         .map((metric, index) => {
-          // Apply search filter to charts
           if (filters.search && !metric.metricName.toLowerCase().includes(filters.search.toLowerCase())) return null;
           
+          const targetExistsInPlant = filteredTargets.some(t => t.metric_name === metric.metricName && t.dept_name === dept);
+          if (!targetExistsInPlant) return null;
+
           return {
             id: `${dept}-${index}`,
             dept,
@@ -116,13 +132,18 @@ const CompanyOverviewPage = () => {
           };
         }).filter(Boolean);
     });
-  }, [globalChartData, filters.department, filters.search]);
+  }, [globalChartData, filters.department, filters.search, filteredTargets]);
 
   let achievementRate = 0;
   if (filteredSubmissions.length > 0) {
     const achievedCount = filteredSubmissions.filter(sub => !checkIsMissed(sub.actual_value, sub.target_value, sub.operator)).length;
     achievementRate = Math.round((achievedCount / filteredSubmissions.length) * 100);
   }
+
+  // Derive final department count based strictly on active targets (or 1 if a specific department is filtered)
+  const departmentsTrackedCount = filters.department === 'All' 
+    ? Array.from(new Set(filteredTargets.map(t => t.dept_name))).length 
+    : 1;
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
@@ -193,7 +214,9 @@ const CompanyOverviewPage = () => {
           departments={allDepartments} 
         />
 
+        {/* Dynamic Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex flex-col justify-between h-24 relative overflow-hidden transition-all duration-300 hover:shadow-md">
             <div className="flex justify-between items-start">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider transition-colors">Active Targets</span>
@@ -232,7 +255,7 @@ const CompanyOverviewPage = () => {
               </div>
             </div>
             <div className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight transition-colors">
-              {filters.department === 'All' ? allDepartments.length : 1}
+              {departmentsTrackedCount}
             </div>
           </div>
         </div>
