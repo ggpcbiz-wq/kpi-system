@@ -40,7 +40,6 @@ const CompanyOverviewPage = () => {
         setIsLoading(true);
         const timestamp = new Date().getTime();
         
-        // Pass plantQuery for endpoints that support it, but rely on FE mapping for strict safety
         const plantQuery = selectedPlant !== 'All Plants' ? `&plant=${selectedPlant}` : '';
         
         const [targetRes, subRes, analyticsRes] = await Promise.all([
@@ -78,18 +77,17 @@ const CompanyOverviewPage = () => {
     };
   }, [token, selectedPlant, addToast]);
 
-  // Map Target IDs to Plants for secure cross-referencing
   const targetPlantMap = useMemo(() => {
     const map = {};
     rawTargets.forEach(t => { map[t.id] = t.plant; });
     return map;
   }, [rawTargets]);
 
-  // Enforce Plant Filters on Core Datasets
   const activePlantTargets = useMemo(() => {
     return rawTargets.filter(t => selectedPlant === 'All Plants' || t.plant === selectedPlant);
   }, [rawTargets, selectedPlant]);
 
+  // Derive dropdown departments strictly from active plant constraints
   const allDepartments = Array.from(new Set(activePlantTargets.map(t => t.dept_name).filter(Boolean)));
 
   const filteredTargets = activePlantTargets.filter(t => {
@@ -100,7 +98,7 @@ const CompanyOverviewPage = () => {
   });
 
   const filteredSubmissions = rawSubmissions.filter(sub => {
-    const subPlant = targetPlantMap[sub.target_id] || sub.plant; // Fallback mapping integration
+    const subPlant = targetPlantMap[sub.target_id] || sub.plant; 
     const matchPlant = selectedPlant === 'All Plants' || subPlant === selectedPlant;
     const matchDept = filters.department === 'All' || sub.dept_name === filters.department;
     let matchPeriod = true;
@@ -122,7 +120,6 @@ const CompanyOverviewPage = () => {
         .map((metric, index) => {
           if (filters.search && !metric.metricName.toLowerCase().includes(filters.search.toLowerCase())) return null;
           
-          // Strict verification: Only render chart if the metric exists in the currently active plant
           const targetExistsInPlant = filteredTargets.some(t => t.metric_name === metric.metricName && t.dept_name === dept);
           if (!targetExistsInPlant) return null;
 
@@ -142,6 +139,11 @@ const CompanyOverviewPage = () => {
     const achievedCount = filteredSubmissions.filter(sub => !checkIsMissed(sub.actual_value, sub.target_value, sub.operator)).length;
     achievementRate = Math.round((achievedCount / filteredSubmissions.length) * 100);
   }
+
+  // Derive final department count based strictly on active targets (or 1 if a specific department is filtered)
+  const departmentsTrackedCount = filters.department === 'All' 
+    ? Array.from(new Set(filteredTargets.map(t => t.dept_name))).length 
+    : 1;
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
@@ -212,7 +214,9 @@ const CompanyOverviewPage = () => {
           departments={allDepartments} 
         />
 
+        {/* Dynamic Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 flex flex-col justify-between h-24 relative overflow-hidden transition-all duration-300 hover:shadow-md">
             <div className="flex justify-between items-start">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider transition-colors">Active Targets</span>
@@ -251,7 +255,7 @@ const CompanyOverviewPage = () => {
               </div>
             </div>
             <div className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight transition-colors">
-              {filters.department === 'All' ? allDepartments.length : 1}
+              {departmentsTrackedCount}
             </div>
           </div>
         </div>
