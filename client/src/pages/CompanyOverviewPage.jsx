@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { usePlant } from '../context/usePlant';
@@ -34,6 +34,7 @@ const CompanyOverviewPage = () => {
   // Grid Pagination State
   const [chartPage, setChartPage] = useState(1);
   const CHARTS_PER_PAGE = 6;
+  const autoRotateIntervalRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -136,13 +137,34 @@ const CompanyOverviewPage = () => {
     });
   }, [globalChartData, filters.department, filters.search, filteredTargets]);
 
-  // Chart Pagination Logic
   const totalChartPages = Math.ceil(allCharts.length / CHARTS_PER_PAGE) || 1;
   const chartStartIndex = (chartPage - 1) * CHARTS_PER_PAGE;
   const paginatedCharts = allCharts.slice(chartStartIndex, chartStartIndex + CHARTS_PER_PAGE);
 
-  const handlePrevChart = () => setChartPage(p => Math.max(1, p - 1));
-  const handleNextChart = () => setChartPage(p => Math.min(totalChartPages, p + 1));
+  // 10-Second Auto-Rotation Logic
+  const startAutoRotation = useCallback(() => {
+    if (totalChartPages <= 1) return;
+    
+    clearInterval(autoRotateIntervalRef.current);
+    autoRotateIntervalRef.current = setInterval(() => {
+      setChartPage(prev => (prev < totalChartPages ? prev + 1 : 1));
+    }, 10000); 
+  }, [totalChartPages]);
+
+  useEffect(() => {
+    startAutoRotation();
+    return () => clearInterval(autoRotateIntervalRef.current);
+  }, [startAutoRotation, allCharts.length]); 
+
+  const handlePrevChart = () => {
+    setChartPage(p => Math.max(1, p - 1));
+    startAutoRotation(); 
+  };
+  
+  const handleNextChart = () => {
+    setChartPage(p => Math.min(totalChartPages, p + 1));
+    startAutoRotation(); 
+  };
 
   let achievementRate = 0;
   if (filteredSubmissions.length > 0) {
@@ -157,6 +179,7 @@ const CompanyOverviewPage = () => {
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
     setChartPage(1); 
+    startAutoRotation();
   };
 
   if (isLoading) {
