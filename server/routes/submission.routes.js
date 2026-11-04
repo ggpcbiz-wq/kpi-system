@@ -15,8 +15,8 @@ const upload = multer({
 router.get('/', requireAuth, getSubmissions);
 
 // Intercept multipart/form-data and append the file to req.file
-router.post('/', requireAuth, authorizeRoles('Supervisor'), upload.single('attachment'), createSubmission);
+router.post('/', requireAuth, authorizeRoles('Supervisor', 'Senior Supervisor'), upload.single('attachment'), createSubmission);
 
-router.put('/:id', requireAuth, authorizeRoles('Supervisor', 'Manager', 'Administrator'), updateSubmissionStatus);
+router.put('/:id', requireAuth, authorizeRoles('Supervisor', 'Senior Supervisor', 'Manager', 'Administrator'), updateSubmissionStatus);
 
 module.exports = router;

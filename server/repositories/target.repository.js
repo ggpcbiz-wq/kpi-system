@@ -47,7 +47,7 @@ class TargetRepository {
         return rows;
       }
       
-      if (role === 'Supervisor' || role === 'Acting Supervisor') {
+      if (role === 'Supervisor' || role === 'Senior Supervisor' || role === 'Acting Supervisor') {
         values.push(id);
         const idIdx = values.length;
         

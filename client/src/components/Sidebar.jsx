@@ -41,6 +41,7 @@ const Sidebar = () => {
           { name: 'Annual Objectives', path: '/reports/annual-objectives', icon: FileSpreadsheet } 
         ];
       case 'Supervisor':
+      case 'Senior Supervisor':
         return [
           { name: 'Company Scoreboard', path: '/overview', icon: Globe },
           { name: 'Department Dashboard', path: '/supervisor', icon: LayoutDashboard },
