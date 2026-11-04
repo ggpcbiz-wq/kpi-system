@@ -54,7 +54,7 @@ class TargetRepository {
         const { rows } = await db.query(`
           ${baseSelect}
           AND t.status = 'Active' 
-          AND t.section_id IN (SELECT section_id FROM user_sections WHERE user_id = $${idIdx})
+          AND t.department_id IN (SELECT department_id FROM user_departments WHERE user_id = $${idIdx})
           ORDER BY t.created_at DESC
         `, values);
         return rows;
