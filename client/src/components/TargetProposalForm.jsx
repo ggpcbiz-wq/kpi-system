@@ -10,6 +10,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
   const { user, token } = useAuth();
   const { addToast } = useToast(); 
   const { selectedPlant, plants } = usePlant();
+  const currentYear = new Date().getFullYear();
 
   const operators = ['', '≥', '≤', '>', '<', 'min', 'max'];
   const units = ['%', 'Pcs', 'Hrs', 'mins', '$', 'Days', 'Incidents'];
@@ -31,6 +32,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
     section: '',
     section_id: '',
     frequency: 'Monthly',
+    target_year: currentYear,
     process_category: '',
     process_type: '',
     metric_name: '',
@@ -109,7 +111,21 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+        <div>
+          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+            Target Year <span className="text-rose-600 dark:text-rose-400">*</span>
+          </label>
+          <input
+            type="number"
+            required
+            min="2000"
+            max="2100"
+            className="w-full px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-brand-600 dark:focus:ring-brand-500 shadow-sm"
+            value={formData.target_year}
+            onChange={(e) => setFormData({...formData, target_year: e.target.value})}
+          />
+        </div>
         
         {/* Plant Selector */}
         <div>

@@ -54,6 +54,7 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
                   <div className="flex items-center"><Factory size={14} className="mr-1.5 text-slate-400" /> Plant</div>
                 </th>
               )}
+              <th className="px-6 py-4 font-bold w-[7%]">Year</th>
               <th className="px-6 py-4 font-bold w-[12%]"><div className="flex items-center"><SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400" /> Section</div></th>
               <th className="px-6 py-4 font-bold w-[18%]">KPI</th>
               <th className="px-6 py-4 font-bold w-[20%]">Objective</th>
@@ -72,12 +73,13 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
                   {selectedPlant === 'All Plants' && (
                     <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">{target.plant}</td>
                   )}
+                  <td className="px-6 py-4 font-semibold">{target.target_year || '--'}</td>
                   <td className="px-6 py-4 font-semibold truncate">{target.section_name || '--'}</td>
                   <td className="px-6 py-4 font-bold text-slate-900 truncate">{target.metric_name}</td>
                   <td className="px-6 py-4 min-w-[200px] max-w-xs text-xs line-clamp-3">{target.objective || '--'}</td>
                   <td className="px-6 py-4 font-medium truncate">{target.process_type || 'Uncategorized'}</td>
                   <td className="px-6 py-4 font-black whitespace-nowrap">{target.operator} {target.target_value} <span className="text-xs font-bold text-slate-500 ml-0.5">{target.unit}</span></td>
-                  <td className="px-6 py-4 flex flex-col items-start gap-1.5">
+                  <td className="px-6 py-4">
                     <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold border ${getStatusBadge(target.status)}`}>{target.status}</span>
                   </td>
                   <td className="px-6 py-4 max-w-xs text-xs line-clamp-3">{target.remarks || <span className="text-slate-400 italic">No remarks</span>}</td>
@@ -96,7 +98,7 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
               )
             })}
             {targets.length === 0 && (
-              <tr><td colSpan="10" className="px-6 py-16 text-center text-slate-500 font-medium">No KPI targets found for this view.</td></tr>
+              <tr><td colSpan={8 + (selectedPlant === 'All Plants' ? 1 : 0) + (onSelectTarget ? 1 : 0)} className="px-6 py-16 text-center text-slate-500 font-medium">No KPI targets found for this view.</td></tr>
             )}
           </tbody>
         </table>

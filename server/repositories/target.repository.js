@@ -7,7 +7,7 @@ class TargetRepository {
 
     let baseSelect = `
       SELECT 
-        t.id, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
+        t.id, t.metric_name, t.objective, t.target_value, t.target_year, t.operator, t.unit,
         t.process_category, t.process_type, t.status, t.remarks, t.frequency, t.created_at,
         d.name as dept_name, s.name as section_name, COALESCE(t.section_code, s.code) as section_code, 
         u.name as proposer_name, COALESCE(NULLIF(t.plant, ''), u.plant) as plant
@@ -81,7 +81,7 @@ class TargetRepository {
     try {
       const { rows } = await db.query(`
         SELECT
-          t.id, t.kpi_no, t.metric_name, t.objective, t.target_value, t.operator, t.unit,
+          t.id, t.kpi_no, t.metric_name, t.objective, t.target_value, t.target_year, t.operator, t.unit,
           t.status, t.remarks, t.process_category, t.process_type, t.frequency, t.created_at,
           d.name as dept_name, s.name as section_name, COALESCE(t.section_code, s.code) as section_code,
           u.name as proposer_name, COALESCE(NULLIF(t.plant, ''), u.plant) as plant
@@ -122,25 +122,25 @@ class TargetRepository {
 
   async create(targetData) {
     const { 
-      metric_name, objective, target_value, operator, unit, departmentId, sectionId, userId, remarks, 
-      process_category, process_type, frequency, plant // <-- Added plant
+      metric_name, objective, target_value, target_year, operator, unit, departmentId, sectionId, userId, remarks,
+      process_category, process_type, frequency, plant
     } = targetData;
     
     // Extracted plant as $13 and mapped it to the plant column
     const { rows } = await db.query(`
       INSERT INTO kpi_targets (
-        id, department_id, section_id, section_code, proposed_by, metric_name, objective, target_value, 
+        id, department_id, section_id, section_code, proposed_by, metric_name, objective, target_value, target_year,
         status, remarks, operator, unit, process_category, process_type, frequency, plant,
         created_at, updated_at
       )
       VALUES (
-        gen_random_uuid(), $1, $2, (SELECT code FROM sections WHERE id = $2), $3, $4, $5, $6, 
-        'Pending Top Management Approval', $7, $8, $9, $10, $11, $12, $13, 
+        gen_random_uuid(), $1, $2, (SELECT code FROM sections WHERE id = $2), $3, $4, $5, $6, $7,
+        'Pending Top Management Approval', $8, $9, $10, $11, $12, $13, $14,
         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
       )
       RETURNING *
     `, [
-      departmentId, sectionId, userId, metric_name, objective, target_value, remarks, operator, unit, 
+      departmentId, sectionId, userId, metric_name, objective, target_value, target_year, remarks, operator, unit,
       process_category, process_type, frequency, plant
     ]);
 

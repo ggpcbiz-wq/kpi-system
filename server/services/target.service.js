@@ -12,6 +12,10 @@ const getDashboardTargets = async (user, plantFilter = 'All Plants') => {
 
 const proposeNewTarget = async (data, user) => {
   const activeUserId = user.userId || user.id;
+  const targetYear = Number(data.target_year);
+  if (!Number.isInteger(targetYear) || targetYear < 2000 || targetYear > 2100) {
+    throw new Error('Target year is required and must be between 2000 and 2100');
+  }
 
   const deptRes = await db.query('SELECT id FROM departments WHERE name = $1', [data.department]);
   if (deptRes.rowCount === 0) throw new Error('Department not found in registry');
@@ -40,6 +44,7 @@ const proposeNewTarget = async (data, user) => {
     metric_name: data.metric_name, 
     objective: data.objective,
     target_value: data.target_value,
+    target_year: targetYear,
     operator: data.operator,
     unit: data.unit,
     remarks: data.remarks,

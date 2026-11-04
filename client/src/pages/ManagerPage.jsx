@@ -161,6 +161,7 @@ const ManagerPage = () => {
         metric_name: formData.metric_name, 
         objective: formData.objective,
         target_value: parseFloat(formData.target_value),
+        target_year: parseInt(formData.target_year, 10),
         operator: formData.operator, 
         unit: formData.unit,
         department: formData.department, 

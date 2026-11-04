@@ -95,7 +95,8 @@ const AnnualObjectivesPage = () => {
 
   const reportData = useMemo(() => {
     const visibleTargets = targets.filter(target =>
-      selectedPlant === 'All' || normalizePlant(target.plant) === selectedPlant
+      Number(target.target_year) === currentYear
+      && (selectedPlant === 'All' || normalizePlant(target.plant) === selectedPlant)
     );
     const merged = visibleTargets.map((target, index) => {
       const isCumulative = target.unit?.trim() !== '%';
@@ -202,6 +203,7 @@ const AnnualObjectivesPage = () => {
           'Department / Section': deptSectionDisplay,
           'Objectives': row.objective || '-',
           'KPI': row.metric_name,
+          'Target Year': row.target_year || '-',
         };
 
         if (showHistorical) {
