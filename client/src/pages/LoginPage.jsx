@@ -26,7 +26,13 @@ const LoginPage = () => {
         case 'Manager':
           navigate('/manager');
           break;
+          case 'Assistant Manager':
+          navigate('/manager');
+          break;
         case 'Supervisor':
+          navigate('/supervisor');
+          break;
+          case 'Senior Supervisor':
           navigate('/supervisor');
           break;
         default:
