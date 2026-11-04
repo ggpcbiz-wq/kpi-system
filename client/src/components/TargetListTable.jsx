@@ -37,7 +37,7 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
         <div className="flex items-center">
           <div className="w-1.5 h-5 bg-brand-500 rounded-full mr-3"></div>
           <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-            {selectedPlant === 'All Plants' ? 'Company-Wide KPI Targets' : `${selectedPlant} Plant Targets`}
+            {selectedPlant === 'All Plants' ? 'Company-Wide KPI Targets' : `${selectedPlant} Targets`}
           </h3>
         </div>
         <div className="text-xs font-medium text-slate-500">

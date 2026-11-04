@@ -47,7 +47,7 @@ const SupervisorPage = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const defaultDept = user?.departments?.[0] || 'GLOBAL';
-  const [filters, setFilters] = useState({ search: '', plant: user?.plant || 'All', period: '', department: defaultDept });
+  const [filters, setFilters] = useState({ search: '', plant: user?.plant || 'All', period: '', department: defaultDept, targetYear: '' });
   
  
   const isOwnDepartment = filters.department === 'All' || (user?.departments?.includes(filters.department) || false);
@@ -96,9 +96,14 @@ const SupervisorPage = () => {
   const filteredTargets = useMemo(() => {
     return rawTargets.filter(t => {
       if (t.status === 'Rejected') return false;
-      return filters.department === 'All' ? true : t.dept_name === filters.department;
+      const matchesDepartment = filters.department === 'All' || t.dept_name === filters.department;
+      const matchesYear = !filters.targetYear
+        || (filters.targetYear === 'unassigned'
+          ? t.target_year === null || t.target_year === undefined || t.target_year === ''
+          : String(t.target_year) === filters.targetYear);
+      return matchesDepartment && matchesYear;
     });
-  }, [rawTargets, filters.department]);
+  }, [rawTargets, filters.department, filters.targetYear]);
 
   const processedTargets = useMemo(() => {
     return filteredTargets.map(target => {
@@ -120,7 +125,10 @@ const SupervisorPage = () => {
     
     const activeDeptTargets = rawTargets.filter(t => 
       t.status === 'Active' && 
-      (filters.department === 'All' ? true : t.dept_name === filters.department)
+      (filters.department === 'All' || t.dept_name === filters.department) &&
+      (!filters.targetYear || (filters.targetYear === 'unassigned'
+        ? t.target_year === null || t.target_year === undefined || t.target_year === ''
+        : String(t.target_year) === filters.targetYear))
     );
 
     return activeDeptTargets.some(target => {
@@ -131,7 +139,7 @@ const SupervisorPage = () => {
       );
       return !hasSubmission;
     });
-  }, [isFirstWeek, rawTargets, rawSubmissions, filters.department, expectedReportMonth, expectedReportYear]);
+  }, [isFirstWeek, rawTargets, rawSubmissions, filters.department, filters.targetYear, expectedReportMonth, expectedReportYear]);
 
   const filteredSubmissions = useMemo(() => {
     return rawSubmissions.filter(sub => {
@@ -147,7 +155,7 @@ const SupervisorPage = () => {
 
   const dynamicChartData = useMemo(() => {
     const grouped = {};
-    const targetsToChart = filters.department === 'All' ? rawTargets : filteredTargets;
+    const targetsToChart = filteredTargets;
 
     targetsToChart.forEach(t => {
       const dept = t.dept_name || 'Unassigned';
@@ -183,7 +191,7 @@ const SupervisorPage = () => {
       grouped[dept].push({ metricName: t.metric_name, unit: t.unit, data: dataPoints });
     });
     return grouped;
-  }, [filteredTargets, rawTargets, rawSubmissions, filters.department, filters.period]);
+  }, [filteredTargets, rawSubmissions, filters.period]);
 
 
   const handleOpenDataEntry = (target) => {
@@ -248,8 +256,9 @@ const SupervisorPage = () => {
         <FilterBar 
           filters={filters} 
           onFilterChange={setFilters} 
-          config={{ showSearch: false, showPlant: false, showDate: true, showDept: true }}
+          config={{ showSearch: false, showPlant: false, showDate: true, showDept: true, showTargetYear: true }}
           departments={user?.departments || []} 
+          targetYears={[...new Set(rawTargets.map(target => target.target_year))]}
         />
         
         {isOwnDepartment ? (

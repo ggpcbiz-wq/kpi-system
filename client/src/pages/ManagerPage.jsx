@@ -44,7 +44,7 @@ const ManagerPage = () => {
   const [activeChartTab, setActiveChartTab] = useState('DEPT-001');
   const [currentChartIndex, setCurrentChartIndex] = useState(0);
 
-  const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All' });
+  const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All', targetYear: '' });
 
   const [pendingData, setPendingData] = useState([]);
   const [globalFinalizedSubmissions, setGlobalFinalizedSubmissions] = useState([]); 
@@ -249,6 +249,12 @@ const ManagerPage = () => {
   };
 
   const allDepartments = Array.from(new Set(proposedTargets.map(t => t.dept_name).filter(Boolean)));
+  const targetYears = [...new Set(proposedTargets.map(target => target.target_year))];
+  const filteredProposedTargets = proposedTargets.filter(target => {
+    if (!filters.targetYear) return true;
+    if (filters.targetYear === 'unassigned') return target.target_year === null || target.target_year === undefined || target.target_year === '';
+    return String(target.target_year) === filters.targetYear;
+  });
 
   if (isLoading && proposedTargets.length === 0) {
     return (
@@ -279,8 +285,9 @@ const ManagerPage = () => {
         <FilterBar 
           filters={filters} 
           onFilterChange={handleFilterChange} 
-          config={{ showSearch: false, showPlant: false, showDate: true, showDept: true }}
+          config={{ showSearch: false, showPlant: false, showDate: true, showDept: true, showTargetYear: true }}
           departments={allDepartments}
+          targetYears={targetYears}
         />
 
         <div className="flex flex-col space-y-8">
@@ -293,7 +300,7 @@ const ManagerPage = () => {
           </div>
 
           <div className="w-full">
-             <TargetListTable targets={proposedTargets} />
+             <TargetListTable targets={filteredProposedTargets} />
           </div>
         </div>
 

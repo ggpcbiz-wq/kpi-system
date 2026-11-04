@@ -26,7 +26,7 @@ const CompanyOverviewPage = () => {
   const { selectedPlant } = usePlant();
   const [isLoading, setIsLoading] = useState(true);
   
-  const [filters, setFilters] = useState({ search: '', period: '', department: 'All' });
+  const [filters, setFilters] = useState({ search: '', period: '', department: 'All', targetYear: '' });
   const [rawTargets, setRawTargets] = useState([]);
   const [rawSubmissions, setRawSubmissions] = useState([]);
   const [globalChartData, setGlobalChartData] = useState({});
@@ -92,9 +92,19 @@ const CompanyOverviewPage = () => {
   }, [rawTargets, selectedPlant]);
 
   const allDepartments = Array.from(new Set(activePlantTargets.map(t => t.dept_name).filter(Boolean)));
+  const targetsInSelectedYear = activePlantTargets.filter(target =>
+    !filters.targetYear
+    || (filters.targetYear === 'unassigned'
+      ? target.target_year === null || target.target_year === undefined || target.target_year === ''
+      : String(target.target_year) === filters.targetYear)
+  );
+  const targetIdsInSelectedYear = new Set(targetsInSelectedYear.map(target => target.id));
 
   const filteredTargets = activePlantTargets.filter(t => {
     if (t.status !== 'Active') return false;
+    if (filters.targetYear && (filters.targetYear === 'unassigned'
+      ? t.target_year !== null && t.target_year !== undefined && t.target_year !== ''
+      : String(t.target_year) !== filters.targetYear)) return false;
     if (filters.department !== 'All' && t.dept_name !== filters.department) return false;
     if (filters.search && !t.metric_name.toLowerCase().includes(filters.search.toLowerCase())) return false;
     return true;
@@ -103,6 +113,7 @@ const CompanyOverviewPage = () => {
   const filteredSubmissions = rawSubmissions.filter(sub => {
     const subPlant = targetPlantMap[sub.target_id] || sub.plant; 
     const matchPlant = selectedPlant === 'All Plants' || subPlant === selectedPlant;
+    const matchTargetYear = !filters.targetYear || targetIdsInSelectedYear.has(sub.target_id);
     const matchDept = filters.department === 'All' || sub.dept_name === filters.department;
     let matchPeriod = true;
     
@@ -111,7 +122,7 @@ const CompanyOverviewPage = () => {
       matchPeriod = (sub.report_year === parseInt(year)) && (sub.report_month === parseInt(month, 10));
     }
     
-    return matchPlant && matchDept && matchPeriod;
+    return matchPlant && matchTargetYear && matchDept && matchPeriod;
   });
 
   const allCharts = useMemo(() => {
@@ -231,8 +242,9 @@ const CompanyOverviewPage = () => {
         <FilterBar 
           filters={filters} 
           onFilterChange={handleFilterChange} 
-          config={{ showSearch: false, showPlant: true, showDate: true, showDept: true }} 
+          config={{ showSearch: false, showPlant: true, showDate: true, showDept: true, showTargetYear: true }}
           departments={allDepartments} 
+          targetYears={[...new Set(activePlantTargets.map(target => target.target_year))]}
         />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

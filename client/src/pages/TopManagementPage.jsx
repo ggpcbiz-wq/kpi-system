@@ -30,7 +30,7 @@ const TopManagementPage = () => {
   const { user, token } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   
-  const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All' });
+  const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All', targetYear: '' });
   const executiveDepartments = user?.departments?.length > 0 ? user.departments : [];
 
   const [pendingFinalTargets, setPendingFinalTargets] = useState([]);
@@ -80,6 +80,7 @@ const TopManagementPage = () => {
               processCategory: t.process_category,
               processType: t.process_type,
               frequency: t.frequency,
+              target_year: t.target_year,
               value: `${t.operator} ${t.target_value} ${t.unit}`,
               comment: t.remarks
             }));
@@ -167,7 +168,11 @@ const TopManagementPage = () => {
     const matchesDept = filters.department === 'All' || t.dept === filters.department;
     const matchesPlant = filters.plant === 'All' || t.plant === filters.plant; 
     const matchesSearch = !filters.search || t.metric.toLowerCase().includes(filters.search.toLowerCase());
-    return matchesDept && matchesSearch && matchesPlant;
+    const matchesYear = !filters.targetYear
+      || (filters.targetYear === 'unassigned'
+        ? t.target_year === null || t.target_year === undefined || t.target_year === ''
+        : String(t.target_year) === filters.targetYear);
+    return matchesDept && matchesSearch && matchesPlant && matchesYear;
   });
 
   const filteredNotifications = recentNotifications.filter(d => {
@@ -230,8 +235,9 @@ const TopManagementPage = () => {
        <FilterBar 
           filters={filters} 
           onFilterChange={handleFilterChange} 
-          config={{ showSearch: true, showPlant: true, showDate: true, showDept: true }} 
+          config={{ showSearch: true, showPlant: true, showDate: true, showDept: true, showTargetYear: true }}
           departments={executiveDepartments} 
+          targetYears={[...new Set(pendingFinalTargets.map(target => target.target_year))]}
         />
 
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col w-full mb-8 transition-colors duration-300">
@@ -260,6 +266,7 @@ const TopManagementPage = () => {
                       <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                     </div>
                   </th>
+                  <th className="px-6 py-4 font-bold w-[6%]">Year</th>
                   <th className="px-6 py-4 font-bold w-[12%]">KPI</th>
                   <th className="px-6 py-4 font-bold w-[25%]">Objective</th>
                   <th className="px-6 py-4 font-bold w-[12%]">Process Type</th>
@@ -277,6 +284,7 @@ const TopManagementPage = () => {
                     </td>
                     
                     <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap align-top">{target.section || '--'}</td>
+                    <td className="px-6 py-4 font-semibold whitespace-nowrap align-top">{target.target_year || '--'}</td>
                     
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 align-top">{target.metric}</td>
                     
@@ -332,7 +340,7 @@ const TopManagementPage = () => {
                     </td>
                   </tr>
                 ))}
-                {filteredTargets.length === 0 && <tr><td colSpan="9" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending targets match current filters.</td></tr>}
+                {filteredTargets.length === 0 && <tr><td colSpan="10" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending targets match current filters.</td></tr>}
               </tbody>
             </table>
           </div>
