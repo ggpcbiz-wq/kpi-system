@@ -112,9 +112,19 @@ const SupervisorPage = () => {
   );
 
   const processedTargets = useMemo(() => {
+    const supervisorId = user?.id || user?.userId;
+
     return filteredTargets.map(target => {
+      const hasSubmittedCurrentPeriod = rawSubmissions.some(sub =>
+        sub.target_id === target.id &&
+        sub.submitted_by === supervisorId &&
+        Number(sub.report_month) === expectedReportMonth &&
+        Number(sub.report_year) === expectedReportYear
+      );
+
       return {
         ...target,
+        hasSubmittedCurrentPeriod,
         isOverdue: !rawSubmissions.some(sub =>
           sub.target_id === target.id &&
           Number(sub.report_month) === expectedReportMonth &&
@@ -124,7 +134,7 @@ const SupervisorPage = () => {
           && target.status === 'Active'
       };
     });
-  }, [filteredTargets, rawSubmissions, expectedReportMonth, expectedReportYear, isThirdWeekOrLater]);
+  }, [filteredTargets, rawSubmissions, user?.id, user?.userId, expectedReportMonth, expectedReportYear, isThirdWeekOrLater]);
 
   const hasPendingFirstWeekData = useMemo(() => {
     if (!isFirstWeek) return false;
