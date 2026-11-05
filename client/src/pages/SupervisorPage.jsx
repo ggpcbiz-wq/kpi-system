@@ -64,6 +64,11 @@ const SupervisorPage = () => {
     expectedReportMonth = 12;
     expectedReportYear -= 1;
   }
+
+  const [periodYear, periodMonth] = filters.period
+    ? filters.period.split('-').map(Number)
+    : [expectedReportYear, expectedReportMonth];
+  const submissionPeriodLabel = `${getMonthName(periodMonth)} ${periodYear}`;
   
   const isFirstWeek = currentDay >= 1 && currentDay <= 7;
   const isThirdWeekOrLater = currentDay >= 15;
@@ -113,18 +118,23 @@ const SupervisorPage = () => {
 
   const processedTargets = useMemo(() => {
     return filteredTargets.map(target => {
-      const hasSubmission = rawSubmissions.some(sub => 
-        sub.target_id === target.id && 
-        sub.report_month === expectedReportMonth && 
-        sub.report_year === expectedReportYear
+      const monthlySubmission = rawSubmissions.find(sub =>
+        sub.target_id === target.id &&
+        Number(sub.report_month) === periodMonth &&
+        Number(sub.report_year) === periodYear
       );
       
       return {
         ...target,
-        isOverdue: !hasSubmission && isThirdWeekOrLater && target.status === 'Active'
+        monthlySubmission,
+        isOverdue: !monthlySubmission
+          && periodMonth === expectedReportMonth
+          && periodYear === expectedReportYear
+          && isThirdWeekOrLater
+          && target.status === 'Active'
       };
     });
-  }, [filteredTargets, rawSubmissions, expectedReportMonth, expectedReportYear, isThirdWeekOrLater]);
+  }, [filteredTargets, rawSubmissions, periodMonth, periodYear, expectedReportMonth, expectedReportYear, isThirdWeekOrLater]);
 
   const hasPendingFirstWeekData = useMemo(() => {
     if (!isFirstWeek) return false;
@@ -270,7 +280,11 @@ const SupervisorPage = () => {
              
              {/* Target List Container */}
              <div className="w-full">
-               <TargetListTable targets={processedTargets} onSelectTarget={handleOpenDataEntry} />
+               <TargetListTable
+                 targets={processedTargets}
+                 onSelectTarget={handleOpenDataEntry}
+                 submissionPeriodLabel={submissionPeriodLabel}
+               />
              </div>
 
              {/* Recent Submissions Table Widget */}
