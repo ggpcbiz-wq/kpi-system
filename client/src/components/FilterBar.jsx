@@ -23,7 +23,7 @@ const FilterBar = ({
   };
 
   const isFiltered = filters.search || filters.period || filters.department !== 'All' || (config.showPlant && selectedPlant !== 'All Plants');
-
+1
   return (
     <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4 items-end mb-8 transition-colors duration-300">
       
