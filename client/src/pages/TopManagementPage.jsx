@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { usePlant } from '../context/usePlant';
 import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, SplitSquareHorizontal, Factory } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
 import FilterBar from '../components/FilterBar'; 
@@ -28,9 +29,10 @@ const checkIsMissed = (actual, target, operator) => {
 
 const TopManagementPage = () => {
   const { user, token } = useAuth();
+  const { selectedPlant } = usePlant();
   const [isLoading, setIsLoading] = useState(true);
   
-  const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All', targetYear: '' });
+  const [filters, setFilters] = useState({ search: '', period: '', department: 'All' });
   const executiveDepartments = user?.departments?.length > 0 ? user.departments : [];
 
   const [pendingFinalTargets, setPendingFinalTargets] = useState([]);
@@ -166,18 +168,16 @@ const TopManagementPage = () => {
 
   const filteredTargets = pendingFinalTargets.filter(t => {
     const matchesDept = filters.department === 'All' || t.dept === filters.department;
-    const matchesPlant = filters.plant === 'All' || t.plant === filters.plant; 
     const matchesSearch = !filters.search || t.metric.toLowerCase().includes(filters.search.toLowerCase());
-    const matchesYear = !filters.targetYear
-      || (filters.targetYear === 'unassigned'
-        ? t.target_year === null || t.target_year === undefined || t.target_year === ''
-        : String(t.target_year) === filters.targetYear);
+    const selectedPeriodYear = filters.period ? Number(filters.period.split('-')[0]) : null;
+    const matchesYear = selectedPeriodYear === null || Number(t.target_year) === selectedPeriodYear;
+    const matchesPlant = selectedPlant === 'All Plants' || t.plant === selectedPlant;
     return matchesDept && matchesSearch && matchesPlant && matchesYear;
   });
 
   const filteredNotifications = recentNotifications.filter(d => {
     const matchesDept = filters.department === 'All' || d.dept_name === filters.department;
-    const matchesPlant = filters.plant === 'All' || d.plant === filters.plant; 
+    const matchesPlant = selectedPlant === 'All Plants' || d.plant === selectedPlant;
     const matchesSearch = !filters.search || d.metric_name.toLowerCase().includes(filters.search.toLowerCase());
     return matchesDept && matchesSearch && matchesPlant;
   });
@@ -235,9 +235,8 @@ const TopManagementPage = () => {
        <FilterBar 
           filters={filters} 
           onFilterChange={handleFilterChange} 
-          config={{ showSearch: true, showPlant: true, showDate: true, showDept: true, showTargetYear: true }}
+          config={{ showSearch: true, showPlant: true, showDate: true, showDept: true }}
           departments={executiveDepartments} 
-          targetYears={[...new Set(pendingFinalTargets.map(target => target.target_year))]}
         />
 
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col w-full mb-8 transition-colors duration-300">

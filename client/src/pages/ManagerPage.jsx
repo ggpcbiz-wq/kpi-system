@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { usePlant } from '../context/usePlant';
 import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Info, FileSpreadsheet, Layers, SplitSquareHorizontal } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
 import TargetProposalForm from '../components/TargetProposalForm';
@@ -39,12 +40,13 @@ const checkIsMissed = (actual, target, operator) => {
 const ManagerPage = () => {
   const { user, token } = useAuth();
   const { addToast } = useToast();
+  const { selectedPlant } = usePlant();
   const [isLoading, setIsLoading] = useState(true);
   
   const [activeChartTab, setActiveChartTab] = useState('DEPT-001');
   const [currentChartIndex, setCurrentChartIndex] = useState(0);
 
-  const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All', targetYear: '' });
+  const [filters, setFilters] = useState({ search: '', period: '', department: 'All' });
 
   const [pendingData, setPendingData] = useState([]);
   const [globalFinalizedSubmissions, setGlobalFinalizedSubmissions] = useState([]); 
@@ -250,11 +252,12 @@ const ManagerPage = () => {
   };
 
   const allDepartments = Array.from(new Set(proposedTargets.map(t => t.dept_name).filter(Boolean)));
-  const targetYears = [...new Set(proposedTargets.map(target => target.target_year))];
+  const selectedPeriodYear = filters.period ? Number(filters.period.split('-')[0]) : null;
   const filteredProposedTargets = proposedTargets.filter(target => {
-    if (!filters.targetYear) return true;
-    if (filters.targetYear === 'unassigned') return target.target_year === null || target.target_year === undefined || target.target_year === '';
-    return String(target.target_year) === filters.targetYear;
+    const matchesYear = selectedPeriodYear === null || Number(target.target_year) === selectedPeriodYear;
+    const matchesPlant = selectedPlant === 'All Plants' || target.plant === selectedPlant;
+    const matchesDepartment = filters.department === 'All' || target.dept_name === filters.department;
+    return matchesYear && matchesPlant && matchesDepartment;
   });
 
   if (isLoading && proposedTargets.length === 0) {
@@ -286,9 +289,8 @@ const ManagerPage = () => {
         <FilterBar 
           filters={filters} 
           onFilterChange={handleFilterChange} 
-          config={{ showSearch: false, showPlant: false, showDate: true, showDept: true, showTargetYear: true }}
+          config={{ showSearch: false, showPlant: true, showDate: true, showDept: true }}
           departments={allDepartments}
-          targetYears={targetYears}
         />
 
         <div className="flex flex-col space-y-8">

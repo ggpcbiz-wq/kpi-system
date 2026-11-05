@@ -4,9 +4,8 @@ import { usePlant } from '../context/usePlant'; // Import the global plant hook
 const FilterBar = ({ 
   filters, 
   onFilterChange, 
-  config = { showDept: false, showDate: true, showSearch: true, showPlant: false, showTargetYear: false },
-  departments = [],
-  targetYears = []
+  config = { showDept: false, showDate: true, showSearch: true, showPlant: false },
+  departments = []
 }) => {
 
   // Consume the global plant context
@@ -17,16 +16,13 @@ const FilterBar = ({
   };
 
   const handleClear = () => {
-    onFilterChange({ ...filters, search: '', period: '', department: 'All', targetYear: '' });
+    onFilterChange({ ...filters, search: '', period: '', department: 'All' });
     if (config.showPlant) {
       setSelectedPlant('All Plants'); // Reset global plant context
     }
   };
 
-  const isFiltered = filters.search || filters.period || filters.targetYear || filters.department !== 'All' || (config.showPlant && selectedPlant !== 'All Plants');
-  const sortedTargetYears = [...new Set(targetYears.filter(year => year !== null && year !== undefined && year !== ''))]
-    .sort((a, b) => Number(b) - Number(a));
-  const hasUnassignedTargets = targetYears.some(year => year === null || year === undefined || year === '');
+  const isFiltered = filters.search || filters.period || filters.department !== 'All' || (config.showPlant && selectedPlant !== 'All Plants');
 
   return (
     <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4 items-end mb-8 transition-colors duration-300">
@@ -110,23 +106,6 @@ const FilterBar = ({
               onChange={(e) => handleChange('period', e.target.value)}
             />
           </div>
-        </div>
-      )}
-
-      {config.showTargetYear && (
-        <div className="w-full md:w-40 shrink-0">
-          <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5 transition-colors">Target Year</label>
-          <select
-            className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-600 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 appearance-none transition-all shadow-sm cursor-pointer"
-            value={filters.targetYear || ''}
-            onChange={(e) => handleChange('targetYear', e.target.value)}
-          >
-            <option value="">All Years</option>
-            {sortedTargetYears.map(year => (
-              <option key={year} value={String(year)}>{year}</option>
-            ))}
-            {hasUnassignedTargets && <option value="unassigned">Unassigned</option>}
-          </select>
         </div>
       )}
 
