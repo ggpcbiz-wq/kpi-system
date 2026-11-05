@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MessageSquare, PlusCircle, SplitSquareHorizontal, ChevronLeft, ChevronRight, Factory } from 'lucide-react';
 import { usePlant } from '../context/usePlant';
 
-const TargetListTable = ({ targets, onSelectTarget, submissionPeriodLabel }) => {
+const TargetListTable = ({ targets, onSelectTarget }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [prevTargets, setPrevTargets] = useState(targets);
   const { selectedPlant } = usePlant();
@@ -61,9 +61,6 @@ const TargetListTable = ({ targets, onSelectTarget, submissionPeriodLabel }) => 
               <th className="px-6 py-4 font-bold w-[12%]">Process Type</th>
               <th className="px-6 py-4 font-bold w-[10%]">Target</th>
               <th className="px-6 py-4 font-bold w-[12%]">Status</th>
-              {submissionPeriodLabel && (
-                <th className="px-6 py-4 font-bold w-[13%]">Submission ({submissionPeriodLabel})</th>
-              )}
               <th className="px-6 py-4 font-bold w-[14%]"><div className="flex items-center"><MessageSquare size={14} className="mr-1.5 text-slate-400" /> Remarks</div></th>
               {onSelectTarget && <th className="px-6 py-4 font-bold text-right w-[8%]">Action</th>}
             </tr>
@@ -85,30 +82,6 @@ const TargetListTable = ({ targets, onSelectTarget, submissionPeriodLabel }) => 
                   <td className="px-6 py-4">
                     <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold border ${getStatusBadge(target.status)}`}>{target.status}</span>
                   </td>
-                  {submissionPeriodLabel && (
-                    <td className="px-6 py-4">
-                      {target.monthlySubmission ? (
-                        <div className="flex flex-col items-start gap-1">
-                          <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold border ${
-                            target.monthlySubmission.status.includes('Returned') || target.monthlySubmission.status.includes('Rejected')
-                              ? 'bg-rose-50 text-rose-700 border-rose-200'
-                              : target.monthlySubmission.status === 'Approved' || target.monthlySubmission.status === 'CAR Requested'
-                                ? 'bg-jira-success-bg text-jira-success border-jira-success/30'
-                                : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}>
-                            {target.monthlySubmission.status}
-                          </span>
-                          <span className="text-xs text-slate-500">
-                            Actual: {target.monthlySubmission.actual_value}{target.unit ? ` ${target.unit}` : ''}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="inline-block px-2.5 py-1 rounded-md text-xs font-bold border bg-slate-100 text-slate-600 border-slate-200">
-                          Not Submitted
-                        </span>
-                      )}
-                    </td>
-                  )}
                   <td className="px-6 py-4 max-w-xs text-xs line-clamp-3">{target.remarks || <span className="text-slate-400 italic">No remarks</span>}</td>
                   {onSelectTarget && (
                     <td className="px-6 py-4 text-right">
@@ -125,7 +98,7 @@ const TargetListTable = ({ targets, onSelectTarget, submissionPeriodLabel }) => 
               )
             })}
             {targets.length === 0 && (
-              <tr><td colSpan={8 + (submissionPeriodLabel ? 1 : 0) + (selectedPlant === 'All Plants' ? 1 : 0) + (onSelectTarget ? 1 : 0)} className="px-6 py-16 text-center text-slate-500 font-medium">No KPI targets found for this view.</td></tr>
+              <tr><td colSpan={8 + (selectedPlant === 'All Plants' ? 1 : 0) + (onSelectTarget ? 1 : 0)} className="px-6 py-16 text-center text-slate-500 font-medium">No KPI targets found for this view.</td></tr>
             )}
           </tbody>
         </table>

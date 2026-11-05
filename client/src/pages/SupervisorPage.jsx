@@ -65,11 +65,6 @@ const SupervisorPage = () => {
     expectedReportYear -= 1;
   }
 
-  const [periodYear, periodMonth] = filters.period
-    ? filters.period.split('-').map(Number)
-    : [expectedReportYear, expectedReportMonth];
-  const submissionPeriodLabel = `${getMonthName(periodMonth)} ${periodYear}`;
-  
   const isFirstWeek = currentDay >= 1 && currentDay <= 7;
   const isThirdWeekOrLater = currentDay >= 15;
 
@@ -118,23 +113,18 @@ const SupervisorPage = () => {
 
   const processedTargets = useMemo(() => {
     return filteredTargets.map(target => {
-      const monthlySubmission = rawSubmissions.find(sub =>
-        sub.target_id === target.id &&
-        Number(sub.report_month) === periodMonth &&
-        Number(sub.report_year) === periodYear
-      );
-      
       return {
         ...target,
-        monthlySubmission,
-        isOverdue: !monthlySubmission
-          && periodMonth === expectedReportMonth
-          && periodYear === expectedReportYear
+        isOverdue: !rawSubmissions.some(sub =>
+          sub.target_id === target.id &&
+          Number(sub.report_month) === expectedReportMonth &&
+          Number(sub.report_year) === expectedReportYear
+        )
           && isThirdWeekOrLater
           && target.status === 'Active'
       };
     });
-  }, [filteredTargets, rawSubmissions, periodMonth, periodYear, expectedReportMonth, expectedReportYear, isThirdWeekOrLater]);
+  }, [filteredTargets, rawSubmissions, expectedReportMonth, expectedReportYear, isThirdWeekOrLater]);
 
   const hasPendingFirstWeekData = useMemo(() => {
     if (!isFirstWeek) return false;
@@ -280,11 +270,7 @@ const SupervisorPage = () => {
              
              {/* Target List Container */}
              <div className="w-full">
-               <TargetListTable
-                 targets={processedTargets}
-                 onSelectTarget={handleOpenDataEntry}
-                 submissionPeriodLabel={submissionPeriodLabel}
-               />
+               <TargetListTable targets={processedTargets} onSelectTarget={handleOpenDataEntry} />
              </div>
 
              {/* Recent Submissions Table Widget */}
@@ -315,11 +301,14 @@ const SupervisorPage = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 bg-white dark:bg-slate-800 transition-colors">
-                      {filteredSubmissions.slice(0, 5).map(sub => {
+                      {[...filteredSubmissions]
+                        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                        .slice(0, 5)
+                        .map(sub => {
                         const isMissed = checkIsMissed(sub.actual_value, sub.target_value, sub.operator);
                         return (
                           <tr key={sub.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors">
-                            <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">{sub.metric_name} <span className="text-slate-400 dark:text-slate-500 font-normal">({getMonthName(sub.report_month)})</span></td>
+                            <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">{sub.metric_name} <span className="text-slate-400 dark:text-slate-500 font-normal">({getMonthName(sub.report_month)} {sub.report_year})</span></td>
                             <td className="px-6 py-4 font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
                               {sub.operator} {sub.target_value} <span className="text-xs text-slate-400 dark:text-slate-500 ml-0.5">{sub.unit}</span>
                             </td>
