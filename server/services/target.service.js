@@ -16,6 +16,10 @@ const proposeNewTarget = async (data, user) => {
   if (!Number.isInteger(targetYear) || targetYear < 2000 || targetYear > 2100) {
     throw new Error('Target year is required and must be between 2000 and 2100');
   }
+  const plant = String(data.plant || user.plant || '').trim();
+  if (!plant || plant === 'All Plants') {
+    throw new Error('Plant is required for a target');
+  }
 
   const deptRes = await db.query('SELECT id FROM departments WHERE name = $1', [data.department]);
   if (deptRes.rowCount === 0) throw new Error('Department not found in registry');
@@ -38,9 +42,8 @@ const proposeNewTarget = async (data, user) => {
     if (secRes.rowCount > 0) secId = secRes.rows[0].id;
   }
 
-  // Explicitly map the 'plant' property from the frontend DTO
   const targetData = {
-    plant: data.plant, // <--- ADDED MAPPING
+    plant,
     metric_name: data.metric_name, 
     objective: data.objective,
     target_value: data.target_value,

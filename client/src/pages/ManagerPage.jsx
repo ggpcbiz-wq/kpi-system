@@ -158,6 +158,7 @@ const ManagerPage = () => {
     try {
       
       const payload = {
+        plant: formData.plant,
         metric_name: formData.metric_name, 
         objective: formData.objective,
         target_value: parseFloat(formData.target_value),
