@@ -11,7 +11,7 @@ router.use(requireAuth);
 router.get('/', getTargets);
 
 // POST /api/targets
-router.post('/', authorizeRoles('Manager'), createTarget);
+router.post('/', authorizeRoles('Manager', 'Top Management'), createTarget);
 
 // PATCH /api/targets/:id/status
 router.patch('/:id/status', updateTargetStatus);

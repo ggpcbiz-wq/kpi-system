@@ -59,6 +59,7 @@ const Sidebar = () => {
         return [
           { name: 'Company Scoreboard', path: '/overview', icon: Globe },
           { name: 'Executive Dashboard', path: '/top-management', icon: LayoutDashboard },
+          { name: 'Target Setting', path: '/manager/targets', icon: FileSpreadsheet },
           { name: 'CAR Ledger', path: '/car-tracking', icon: AlertCircle } 
         ];
       default:

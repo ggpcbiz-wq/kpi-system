@@ -75,6 +75,10 @@ function App() {
                 </Route>
 
                 <Route element={<ProtectedRoute allowedRoles={['Top Management']} />}>
+                  <Route path="/manager/targets" element={<ManagerPage targetSettingOnly />} />
+                </Route>
+
+                <Route element={<ProtectedRoute allowedRoles={['Top Management']} />}>
                   <Route path="/top-management" element={<TopManagementPage />} />
                 </Route>
 

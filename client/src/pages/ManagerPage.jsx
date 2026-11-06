@@ -37,7 +37,7 @@ const checkIsMissed = (actual, target, operator) => {
   
   return act < tgt; 
 };
-const ManagerPage = () => {
+const ManagerPage = ({ targetSettingOnly = false }) => {
   const { user, token } = useAuth();
   const { addToast } = useToast();
   const { selectedPlant } = usePlant();
@@ -80,6 +80,8 @@ const ManagerPage = () => {
           const targets = await targetRes.json();
           setProposedTargets(targets);
         }
+
+        if (targetSettingOnly) return;
 
         const submissionsRes = await fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -125,7 +127,7 @@ const ManagerPage = () => {
     
     fetchManagerData();
     return () => { isMounted = false; };
-  }, [token, refreshTrigger, activeChartTab, filters.department, filters.period, addToast]);
+  }, [token, refreshTrigger, activeChartTab, filters.department, filters.period, addToast, targetSettingOnly]);
 
   const departmentMetrics = globalChartData[activeChartTab] || [];
   
@@ -186,7 +188,12 @@ const ManagerPage = () => {
       });
 
       if (!response.ok) throw new Error('Failed to create target');
-      addToast("Target successfully proposed to Top Management.", "success");
+      addToast(
+        targetSettingOnly
+          ? "Target successfully submitted for approval."
+          : "Target successfully proposed to Top Management.",
+        "success"
+      );
       setRefreshTrigger(prev => prev + 1); 
     } catch (error) {
       console.error("Target Propose Error:", error); 
@@ -266,6 +273,37 @@ const ManagerPage = () => {
         <div className="flex flex-col items-center space-y-4">
           <div className="w-8 h-8 border-4 border-brand-600 dark:border-brand-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="font-medium text-slate-500 dark:text-slate-400 text-sm">Loading Aggregated Queues...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (targetSettingOnly) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 relative font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+        <div className="w-full space-y-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6 transition-colors duration-300">
+            <div>
+              <h1 className="text-5xl font-display tracking-tight text-brand-500 dark:text-brand-400 uppercase">
+                TARGET SETTING
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+                Submit KPI targets for executive approval.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 sm:p-8 w-full transition-colors duration-300">
+            <div className="mb-6">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Propose Department KPI Target</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+                Submitted targets will enter the standard approval workflow.
+              </p>
+            </div>
+            <TargetProposalForm onSubmit={handleProposeTarget} isSubmitting={isSubmittingTarget} />
+          </div>
+
+          <TargetListTable targets={filteredProposedTargets} />
         </div>
       </div>
     );
