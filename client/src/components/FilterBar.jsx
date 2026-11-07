@@ -61,7 +61,7 @@ const FilterBar = ({
             >
               {plants.map(plant => (
                 <option key={plant} value={plant}>
-                  {plant === 'All Plants' ? plant : `${plant} Plant`}
+                  {plant === 'Laguna' || plant === 'Cavite' ? `${plant} Plant` : plant}
                 </option>
               ))}
             </select>

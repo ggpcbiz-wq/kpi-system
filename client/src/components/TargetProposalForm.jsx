@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePlant } from '../context/usePlant';
 import { API_BASE_URL } from '../services/api';
 
-const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
+const TargetProposalForm = ({ onSubmit, onSaveDraft, draftData, isSubmitting }) => {
   const { user, token } = useAuth();
   const { addToast } = useToast(); 
   const { selectedPlant, plants } = usePlant();
@@ -15,7 +15,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
   const operators = ['', '≥', '≤', '>', '<', 'min', 'max'];
   const units = ['%', 'Pcs', 'Hrs', 'mins', '$', 'Days', 'Incidents'];
   
-  // Exclude 'All Plants' for data entry; targets must belong to a specific physical plant
+  // 'All Plants' is a filter option, while Company-wide is a valid target scope.
   const selectablePlants = plants.filter(p => p !== 'All Plants');
   
   // Derive the active plant directly during initialization, avoiding useEffect syncs
@@ -24,11 +24,13 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
   const managerDepartments = user?.departments?.length > 0 
     ? user.departments 
     : (user?.department ? [user.department] : ['Department Not Set']);
+  const initialDepartment = managerDepartments[0];
+  const isEditingDraft = Boolean(draftData);
 
   const [deptMappings, setDeptMappings] = useState([]);
-  const [formData, setFormData] = useState({ 
-    plant: initialPlant, 
-    department: managerDepartments[0], 
+  const [formData, setFormData] = useState(() => draftData ? { ...draftData } : {
+    plant: initialPlant,
+    department: managerDepartments[0],
     section: '',
     section_id: '',
     frequency: 'Monthly',
@@ -37,9 +39,9 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
     process_type: '',
     metric_name: '',
     objective: '',
-    operator: '≥', 
+    operator: '≥',
     target_value: '',
-    unit: '%'      
+    unit: '%'
   });
 
   useEffect(() => {
@@ -52,13 +54,12 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
         if (res.ok && isMounted) {
           const data = await res.json();
           setDeptMappings(data);
-          
-          const initialDept = data.find(d => d.name === managerDepartments[0]);
-          if (initialDept && initialDept.sections && initialDept.sections.length > 0) {
+          const initialDept = data.find(department => department.name === initialDepartment);
+          if (!isEditingDraft && initialDept?.sections?.length > 0) {
             setFormData(prev => ({
               ...prev,
-              section: initialDept.sections[0].name,
-              section_id: initialDept.sections[0].id
+              section: prev.section || initialDept.sections[0].name,
+              section_id: prev.section_id || initialDept.sections[0].id
             }));
           }
         }
@@ -68,7 +69,7 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
     };
     if (token) fetchDeptMappings();
     return () => { isMounted = false; };
-  }, [token]);
+  }, [token, initialDepartment, isEditingDraft]);
 
   const selectedDeptModel = deptMappings.find(d => d.name === formData.department);
   const availableSections = selectedDeptModel?.sections || [];
@@ -89,24 +90,34 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const getFinalData = () => ({
+    ...formData,
+    section_id: selectedSectionModel?.id || formData.section_id || '',
+    section_code: selectedSectionModel?.code || null,
+    formatted_target: `${formData.operator} ${formData.target_value} ${formData.unit}`
+  });
+
+  const resetForm = () => setFormData(prev => ({
+    ...prev,
+    process_category: '',
+    process_type: '',
+    metric_name: '',
+    objective: '',
+    target_value: ''
+  }));
+
+  const handleSaveDraft = () => {
+    if (onSaveDraft(getFinalData())) resetForm();
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.process_category || !formData.process_type) {
       addToast('Please select an ISO Process Type mapped to this Section.', 'error');
       return;
     }
-    
-    const finalData = {
-      ...formData,
-      section_id: selectedSectionModel?.id || '',
-      section_code: selectedSectionModel?.code || null, 
-      formatted_target: `${formData.operator} ${formData.target_value} ${formData.unit}`
-    };
-    
-    onSubmit(finalData);
-    setFormData(prev => ({ 
-      ...prev, process_category: '', process_type: '', metric_name: '', objective: '', target_value: '' 
-    }));
+
+    if (await onSubmit(getFinalData())) resetForm();
   };
 
   return (
@@ -142,7 +153,9 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
               onChange={(e) => setFormData({...formData, plant: e.target.value})}
             >
               {selectablePlants.map(plant => (
-                <option key={plant} value={plant}>{plant} Plant</option>
+                <option key={plant} value={plant}>
+                  {plant === 'Laguna' || plant === 'Cavite' ? `${plant} Plant` : plant}
+                </option>
               ))}
             </select>
           </div>
@@ -337,7 +350,15 @@ const TargetProposalForm = ({ onSubmit, isSubmitting }) => {
         </div>
       </div>
 
-      <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-700/50 mt-8 transition-colors">
+      <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700/50 mt-8 transition-colors">
+        <button
+          type="button"
+          onClick={handleSaveDraft}
+          disabled={isSubmitting}
+          className="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold py-2.5 px-6 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Save Draft
+        </button>
         <button 
           type="submit" 
           disabled={isSubmitting || !formData.metric_name || !formData.objective || !formData.target_value || !formData.process_type || !formData.section}

@@ -4,6 +4,7 @@ import { usePlant } from '../context/usePlant';
 import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, SplitSquareHorizontal, Factory } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
 import FilterBar from '../components/FilterBar'; 
+import TargetYearFilter from '../components/TargetYearFilter';
 import ConfirmModal from '../components/ConfirmModal';
 import FinalizedSubmissionsTable from '../components/FinalizedSubmissionTable';
 import { API_BASE_URL } from '../services/api';
@@ -36,6 +37,7 @@ const TopManagementPage = () => {
   const executiveDepartments = user?.departments?.length > 0 ? user.departments : [];
 
   const [pendingFinalTargets, setPendingFinalTargets] = useState([]);
+  const [selectedTargetYear, setSelectedTargetYear] = useState('All Years');
   const [recentNotifications, setRecentNotifications] = useState([]); 
   const [globalChartData, setGlobalChartData] = useState({}); 
   const [currentChartIndex, setCurrentChartIndex] = useState(0);
@@ -169,11 +171,12 @@ const TopManagementPage = () => {
   const filteredTargets = pendingFinalTargets.filter(t => {
     const matchesDept = filters.department === 'All' || t.dept === filters.department;
     const matchesSearch = !filters.search || t.metric.toLowerCase().includes(filters.search.toLowerCase());
-    const selectedPeriodYear = filters.period ? Number(filters.period.split('-')[0]) : null;
-    const matchesYear = selectedPeriodYear === null || Number(t.target_year) === selectedPeriodYear;
     const matchesPlant = selectedPlant === 'All Plants' || t.plant === selectedPlant;
+    const matchesYear = selectedTargetYear === 'All Years' || Number(t.target_year) === Number(selectedTargetYear);
     return matchesDept && matchesSearch && matchesPlant && matchesYear;
   });
+  const targetYears = [...new Set(pendingFinalTargets.map(target => Number(target.target_year)).filter(Number.isInteger))]
+    .sort((a, b) => b - a);
 
   const filteredNotifications = recentNotifications.filter(d => {
     const matchesDept = filters.department === 'All' || d.dept_name === filters.department;
@@ -250,6 +253,11 @@ const TopManagementPage = () => {
             <span className="bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-slate-800/50 py-1 px-3 rounded-md text-xs font-bold shadow-sm transition-colors">
               {filteredTargets.length} Pending
             </span>
+            <TargetYearFilter
+              years={targetYears}
+              value={selectedTargetYear}
+              onChange={setSelectedTargetYear}
+            />
           </div>
           <div className="overflow-x-auto">
              <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1500px]">

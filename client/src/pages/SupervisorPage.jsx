@@ -96,15 +96,13 @@ const SupervisorPage = () => {
   }, [token, refreshTrigger, addToast]);
 
   const filteredTargets = useMemo(() => {
-    const selectedPeriodYear = filters.period ? Number(filters.period.split('-')[0]) : null;
     return rawTargets.filter(t => {
       if (t.status === 'Rejected') return false;
       const matchesDepartment = filters.department === 'All' || t.dept_name === filters.department;
-      const matchesYear = selectedPeriodYear === null || Number(t.target_year) === selectedPeriodYear;
       const matchesPlant = selectedPlant === 'All Plants' || t.plant === selectedPlant;
-      return matchesDepartment && matchesYear && matchesPlant;
+      return matchesDepartment && matchesPlant;
     });
-  }, [rawTargets, filters.department, filters.period, selectedPlant]);
+  }, [rawTargets, filters.department, selectedPlant]);
 
   const targetPlantById = useMemo(
     () => new Map(rawTargets.map(target => [target.id, target.plant])),
@@ -115,26 +113,49 @@ const SupervisorPage = () => {
     const supervisorId = user?.id || user?.userId;
 
     return filteredTargets.map(target => {
-      const hasSubmittedCurrentPeriod = rawSubmissions.some(sub =>
-        sub.target_id === target.id &&
-        sub.submitted_by === supervisorId &&
-        Number(sub.report_month) === expectedReportMonth &&
-        Number(sub.report_year) === expectedReportYear
-      );
+      const currentPeriodSubmission = rawSubmissions
+        .filter(sub =>
+          sub.target_id === target.id &&
+          sub.submitted_by === supervisorId &&
+          Number(sub.report_month) === expectedReportMonth &&
+          Number(sub.report_year) === expectedReportYear
+        )
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
 
       return {
         ...target,
-        hasSubmittedCurrentPeriod,
+        hasSubmittedCurrentPeriod: Boolean(currentPeriodSubmission && currentPeriodSubmission.status !== 'Rejected'),
+        hasRejectedCurrentPeriod: currentPeriodSubmission?.status === 'Rejected',
         isOverdue: !rawSubmissions.some(sub =>
           sub.target_id === target.id &&
           Number(sub.report_month) === expectedReportMonth &&
-          Number(sub.report_year) === expectedReportYear
+          Number(sub.report_year) === expectedReportYear &&
+          sub.status !== 'Rejected'
         )
           && isThirdWeekOrLater
           && target.status === 'Active'
       };
     });
   }, [filteredTargets, rawSubmissions, user?.id, user?.userId, expectedReportMonth, expectedReportYear, isThirdWeekOrLater]);
+
+  const rejectedSubmissions = useMemo(() => {
+    const supervisorId = user?.id || user?.userId;
+    const latestByPeriod = new Map();
+
+    rawSubmissions
+      .filter(sub => sub.submitted_by === supervisorId)
+      .forEach(sub => {
+        const key = `${sub.target_id}|${sub.report_year}|${sub.report_month}`;
+        const existing = latestByPeriod.get(key);
+        if (!existing || new Date(sub.created_at) > new Date(existing.created_at)) {
+          latestByPeriod.set(key, sub);
+        }
+      });
+
+    return [...latestByPeriod.values()]
+      .filter(sub => sub.status === 'Rejected')
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }, [rawSubmissions, user?.id, user?.userId]);
 
   const hasPendingFirstWeekData = useMemo(() => {
     if (!isFirstWeek) return false;
@@ -251,6 +272,30 @@ const SupervisorPage = () => {
             </p>
           </div>
         </div>
+
+        {rejectedSubmissions.length > 0 && (
+          <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800/40 rounded-xl p-5 shadow-sm flex items-start animate-in fade-in slide-in-from-top-2 duration-300 transition-colors">
+            <div className="shrink-0 p-1 bg-rose-100 dark:bg-rose-900/40 rounded-lg mr-4">
+              <AlertTriangle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-rose-800 dark:text-rose-300">
+                Action Required: {rejectedSubmissions.length} Monthly Submission{rejectedSubmissions.length === 1 ? '' : 's'} Returned
+              </h3>
+              <p className="mt-1 text-sm text-rose-700 dark:text-rose-300/80">
+                Review the feedback and use the Resubmit button in the targets table.
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-rose-700 dark:text-rose-300/90">
+                {rejectedSubmissions.map(sub => (
+                  <li key={sub.id}>
+                    <strong>{sub.metric_name}</strong> ({getMonthName(sub.report_month)} {sub.report_year})
+                    {sub.remarks ? ` — ${sub.remarks}` : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
 
         {/* Polished Alert Banner */}
         {hasPendingFirstWeekData && (

@@ -4,8 +4,7 @@ import { useToast } from '../context/ToastContext';
 import { usePlant } from '../context/usePlant';
 import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Info, FileSpreadsheet, Layers, SplitSquareHorizontal } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
-import TargetProposalForm from '../components/TargetProposalForm';
-import TargetListTable from '../components/TargetListTable'; 
+import TargetProposalWorkspace from '../components/TargetProposalWorkspace';
 import ConfirmModal from '../components/ConfirmModal';
 import FilterBar from '../components/FilterBar';
 import FinalizedSubmissionsTable from '../components/FinalizedSubmissionTable';
@@ -92,17 +91,21 @@ const ManagerPage = ({ targetSettingOnly = false }) => {
           const pending = submissions.filter(sub => {
             const isPending = sub.status === 'Locked - Pending Manager Review';
             const matchDept = filters.department === 'All' ? true : sub.dept_name === filters.department;
+            const matchesPlant = selectedPlant === 'All Plants' || sub.plant === selectedPlant;
             let matchPeriod = true;
             if (filters.period) {
               const [year, month] = filters.period.split('-');
               matchPeriod = (sub.report_year === parseInt(year)) && (sub.report_month === parseInt(month, 10));
             }
-            return isPending && matchDept && matchPeriod;
+            return isPending && matchDept && matchesPlant && matchPeriod;
           });
           setPendingData(pending);
 
           setGlobalFinalizedSubmissions(
-            submissions.filter(s => s.status === 'Approved' || s.status === 'CAR Requested')
+            submissions.filter(s =>
+              (s.status === 'Approved' || s.status === 'CAR Requested') &&
+              (selectedPlant === 'All Plants' || s.plant === selectedPlant)
+            )
           );
         }
 
@@ -127,7 +130,7 @@ const ManagerPage = ({ targetSettingOnly = false }) => {
     
     fetchManagerData();
     return () => { isMounted = false; };
-  }, [token, refreshTrigger, activeChartTab, filters.department, filters.period, addToast, targetSettingOnly]);
+  }, [token, refreshTrigger, activeChartTab, filters.department, filters.period, selectedPlant, addToast, targetSettingOnly]);
 
   const departmentMetrics = globalChartData[activeChartTab] || [];
   
@@ -195,9 +198,11 @@ const ManagerPage = ({ targetSettingOnly = false }) => {
         "success"
       );
       setRefreshTrigger(prev => prev + 1); 
+      return true;
     } catch (error) {
       console.error("Target Propose Error:", error); 
       addToast("Failed to propose target.", "error");
+      return false;
     } finally {
       setIsSubmittingTarget(false);
     }
@@ -259,12 +264,10 @@ const ManagerPage = ({ targetSettingOnly = false }) => {
   };
 
   const allDepartments = Array.from(new Set(proposedTargets.map(t => t.dept_name).filter(Boolean)));
-  const selectedPeriodYear = filters.period ? Number(filters.period.split('-')[0]) : null;
   const filteredProposedTargets = proposedTargets.filter(target => {
-    const matchesYear = selectedPeriodYear === null || Number(target.target_year) === selectedPeriodYear;
     const matchesPlant = selectedPlant === 'All Plants' || target.plant === selectedPlant;
     const matchesDepartment = filters.department === 'All' || target.dept_name === filters.department;
-    return matchesYear && matchesPlant && matchesDepartment;
+    return matchesPlant && matchesDepartment;
   });
 
   if (isLoading && proposedTargets.length === 0) {
@@ -293,17 +296,11 @@ const ManagerPage = ({ targetSettingOnly = false }) => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 sm:p-8 w-full transition-colors duration-300">
-            <div className="mb-6">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Propose Department KPI Target</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
-                Submitted targets will enter the standard approval workflow.
-              </p>
-            </div>
-            <TargetProposalForm onSubmit={handleProposeTarget} isSubmitting={isSubmittingTarget} />
-          </div>
-
-          <TargetListTable targets={filteredProposedTargets} />
+          <TargetProposalWorkspace
+            targets={filteredProposedTargets}
+            onSubmit={handleProposeTarget}
+            isSubmitting={isSubmittingTarget}
+          />
         </div>
       </div>
     );
@@ -332,17 +329,11 @@ const ManagerPage = ({ targetSettingOnly = false }) => {
         />
 
         <div className="flex flex-col space-y-8">
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 sm:p-8 w-full transition-colors duration-300">
-            <div className="mb-6">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Propose Department KPI Target</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">Targets submitted here will be routed directly to Top Management for executive approval.</p>
-            </div>
-            <TargetProposalForm onSubmit={handleProposeTarget} isSubmitting={isSubmittingTarget} />
-          </div>
-
-          <div className="w-full">
-             <TargetListTable targets={filteredProposedTargets} />
-          </div>
+          <TargetProposalWorkspace
+            targets={filteredProposedTargets}
+            onSubmit={handleProposeTarget}
+            isSubmitting={isSubmittingTarget}
+          />
         </div>
 
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col w-full mb-8 mt-8 transition-colors duration-300">
