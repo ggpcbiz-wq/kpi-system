@@ -2,11 +2,12 @@ const submissionRepo = require('../repositories/submission.repository');
 const kintoneService = require('../services/kintone.service');
 const driveService = require('../services/drive.service'); 
 const db = require('../config/db'); 
+const departmentRepository = require('../repositories/department.repository');
 
 const createSubmission = async (req, res) => {
   try {
     const { rows: targetRows } = await db.query(`
-      SELECT d.name AS dept_name
+      SELECT d.name AS dept_name, t.section_id
       FROM kpi_targets t
       JOIN departments d ON t.department_id = d.id
       WHERE t.id = $1
@@ -18,6 +19,24 @@ const createSubmission = async (req, res) => {
 
     if (!req.user.departments?.includes(targetRows[0].dept_name)) {
       return res.status(403).json({ message: 'Forbidden. You cannot submit data for this department.' });
+    }
+
+    const reportMonth = Number(req.body.report_month);
+    const reportYear = Number(req.body.report_year);
+    if (!Number.isInteger(reportMonth) || reportMonth < 1 || reportMonth > 12) {
+      return res.status(400).json({ message: 'Report month must be between 1 and 12.' });
+    }
+    if (!Number.isInteger(reportYear) || reportYear < 2000 || reportYear > 2100) {
+      return res.status(400).json({ message: 'Report year must be between 2000 and 2100.' });
+    }
+    if (targetRows[0].section_id && await departmentRepository.isSubmissionLocked(
+      targetRows[0].section_id,
+      reportYear,
+      reportMonth
+    )) {
+      return res.status(423).json({
+        message: `Monthly submissions are locked for this section for ${reportMonth}/${reportYear}.`
+      });
     }
 
     let formattedRemark = req.body.remarks;

@@ -84,10 +84,10 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
             {paginatedTargets.map(target => {
               const isActive = target.status === 'Active';
-              const isDataEntryDisabled = !isActive || target.hasSubmittedCurrentPeriod;
-              const actionLabel = target.hasRejectedCurrentPeriod
-                ? 'Resubmit'
-                : target.hasSubmittedCurrentPeriod ? 'Submitted' : 'Data';
+              const isDataEntryDisabled = !isActive || target.hasSubmittedCurrentPeriod || target.isSubmissionLocked;
+              const actionLabel = target.isSubmissionLocked
+                ? 'Locked'
+                : target.hasRejectedCurrentPeriod ? 'Resubmit' : target.hasSubmittedCurrentPeriod ? 'Submitted' : 'Data';
               return (
                 <tr key={target.id} className="hover:bg-slate-50/80">
                   {selectedPlant === 'All Plants' && (
@@ -108,7 +108,9 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
                       <button 
                         onClick={() => onSelectTarget(target)}
                         disabled={isDataEntryDisabled}
-                        title={target.hasRejectedCurrentPeriod
+                        title={target.isSubmissionLocked
+                          ? 'Monthly submissions are locked for this section and reporting period.'
+                          : target.hasRejectedCurrentPeriod
                           ? 'Your previous submission was rejected. Submit corrected data.'
                           : target.hasSubmittedCurrentPeriod ? 'You have already submitted data for this reporting month.' : undefined}
                         className={`flex items-center justify-center w-full px-3 py-2 rounded-lg text-xs font-bold shadow-sm ${isDataEntryDisabled ? 'bg-slate-50 text-slate-400 cursor-not-allowed border border-slate-200' : 'bg-white text-brand-600 border border-brand-200 hover:bg-brand-50'}`}

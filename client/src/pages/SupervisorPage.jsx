@@ -42,6 +42,7 @@ const SupervisorPage = () => {
   
   const [rawTargets, setRawTargets] = useState([]);
   const [rawSubmissions, setRawSubmissions] = useState([]); 
+  const [submissionLocks, setSubmissionLocks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
@@ -95,6 +96,27 @@ const SupervisorPage = () => {
     return () => { isMounted = false; };
   }, [token, refreshTrigger, addToast]);
 
+  useEffect(() => {
+    if (!token) return;
+    let isMounted = true;
+    const fetchSubmissionLocks = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/departments/submission-locks`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to load submission locks.');
+        const locks = await response.json();
+        if (isMounted) setSubmissionLocks(locks);
+      } catch (error) {
+        console.error('Submission lock fetch error:', error);
+        if (isMounted) addToast('Failed to load submission lock status.', 'error');
+      }
+    };
+
+    fetchSubmissionLocks();
+    return () => { isMounted = false; };
+  }, [token, refreshTrigger, addToast]);
+
   const filteredTargets = useMemo(() => {
     return rawTargets.filter(t => {
       if (t.status === 'Rejected') return false;
@@ -121,11 +143,17 @@ const SupervisorPage = () => {
           Number(sub.report_year) === expectedReportYear
         )
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+      const isSubmissionLocked = submissionLocks.some(lock =>
+        lock.section_id === target.section_id &&
+        Number(lock.report_month) === expectedReportMonth &&
+        Number(lock.report_year) === expectedReportYear
+      );
 
       return {
         ...target,
         hasSubmittedCurrentPeriod: Boolean(currentPeriodSubmission && currentPeriodSubmission.status !== 'Rejected'),
         hasRejectedCurrentPeriod: currentPeriodSubmission?.status === 'Rejected',
+        isSubmissionLocked,
         isOverdue: !rawSubmissions.some(sub =>
           sub.target_id === target.id &&
           Number(sub.report_month) === expectedReportMonth &&
@@ -136,7 +164,7 @@ const SupervisorPage = () => {
           && target.status === 'Active'
       };
     });
-  }, [filteredTargets, rawSubmissions, user?.id, user?.userId, expectedReportMonth, expectedReportYear, isThirdWeekOrLater]);
+  }, [filteredTargets, rawSubmissions, submissionLocks, user?.id, user?.userId, expectedReportMonth, expectedReportYear, isThirdWeekOrLater]);
 
   const rejectedSubmissions = useMemo(() => {
     const supervisorId = user?.id || user?.userId;
@@ -231,6 +259,10 @@ const SupervisorPage = () => {
 
 
   const handleOpenDataEntry = (target) => {
+    if (target.isSubmissionLocked) {
+      addToast(`Monthly submissions are locked for ${getMonthName(expectedReportMonth)} ${expectedReportYear}.`, 'error');
+      return;
+    }
     setSelectedTarget(target);
     setIsEntryModalOpen(true);
   };
@@ -462,7 +494,12 @@ const SupervisorPage = () => {
               </button>
             </div>
             <div className="p-6">
-              <MonthlyDataEntryForm activeTarget={selectedTarget} onSuccess={handleDataEntrySuccess} onCancel={() => { setIsEntryModalOpen(false); setSelectedTarget(null); }} />
+              <MonthlyDataEntryForm
+                activeTarget={selectedTarget}
+                submissionLocks={submissionLocks}
+                onSuccess={handleDataEntrySuccess}
+                onCancel={() => { setIsEntryModalOpen(false); setSelectedTarget(null); }}
+              />
             </div>
           </div>
         </div>

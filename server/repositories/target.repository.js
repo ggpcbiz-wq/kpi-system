@@ -9,7 +9,7 @@ class TargetRepository {
       SELECT 
         t.id, t.metric_name, t.objective, t.target_value, t.target_year, t.operator, t.unit,
         t.process_category, t.process_type, t.status, t.remarks, t.frequency, t.created_at,
-        d.name as dept_name, s.name as section_name, COALESCE(t.section_code, s.code) as section_code, 
+        d.name as dept_name, t.section_id, s.name as section_name, COALESCE(t.section_code, s.code) as section_code,
         u.name as proposer_name, COALESCE(NULLIF(t.plant, ''), u.plant) as plant
       FROM kpi_targets t
       LEFT JOIN departments d ON t.department_id = d.id
