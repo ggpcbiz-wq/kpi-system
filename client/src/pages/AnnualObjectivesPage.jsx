@@ -53,6 +53,7 @@ const AnnualObjectivesPage = () => {
   const [submissions, setSubmissions] = useState([]);
   const [showHistorical, setShowHistorical] = useState(false);
   const [selectedPlant, setSelectedPlant] = useState('All');
+  const [selectedDepartment, setSelectedDepartment] = useState('All');
   const [selectedYear, setSelectedYear] = useState(currentYear);
 
   useEffect(() => {
@@ -94,6 +95,23 @@ const AnnualObjectivesPage = () => {
     ];
   }, [targets]);
 
+  const departmentOptions = useMemo(() => {
+    const departments = targets
+      .filter(target =>
+        Number(target.target_year) === selectedYear
+        && (selectedPlant === 'All' || normalizePlant(target.plant) === selectedPlant)
+      )
+      .map(target => target.dept_name?.trim() || null);
+    const namedDepartments = [...new Set(departments.filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b));
+
+    return [
+      { value: 'All', label: 'All Departments' },
+      ...namedDepartments.map(department => ({ value: department, label: department })),
+      ...(departments.includes(null) ? [{ value: '__unassigned__', label: 'Unassigned' }] : [])
+    ];
+  }, [targets, selectedPlant, selectedYear]);
+
   const availableYears = useMemo(() => [...new Set([
     currentYear,
     ...targets.map(target => Number(target.target_year)).filter(Number.isInteger)
@@ -107,6 +125,12 @@ const AnnualObjectivesPage = () => {
     const visibleTargets = targets.filter(target =>
       Number(target.target_year) === selectedYear
       && (selectedPlant === 'All' || normalizePlant(target.plant) === selectedPlant)
+      && (
+        selectedDepartment === 'All'
+        || (selectedDepartment === '__unassigned__'
+          ? !target.dept_name?.trim()
+          : target.dept_name?.trim() === selectedDepartment)
+      )
     );
     const merged = visibleTargets.map((target, index) => {
       const isCumulative = target.unit?.trim() !== '%';
@@ -195,7 +219,7 @@ const AnnualObjectivesPage = () => {
     }
 
     return merged;
-  }, [targets, submissions, selectedPlant, selectedYear, historicalYears]);
+  }, [targets, submissions, selectedPlant, selectedDepartment, selectedYear, historicalYears]);
 
   const handleExportExcel = () => {
     try {
@@ -243,7 +267,10 @@ const AnnualObjectivesPage = () => {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, `Objectives ${selectedYear}`);
       const plantFilename = selectedPlant === 'All' ? 'All_Plants' : selectedPlant.replace(/\s+/g, '_');
-      XLSX.writeFile(workbook, `Annual_Objectives_${selectedYear}_${plantFilename}.xlsx`);
+      const departmentFilename = selectedDepartment === 'All'
+        ? 'All_Departments'
+        : (selectedDepartment === '__unassigned__' ? 'Unassigned' : selectedDepartment).replace(/[^\w-]+/g, '_');
+      XLSX.writeFile(workbook, `Annual_Objectives_${selectedYear}_${plantFilename}_${departmentFilename}.xlsx`);
       addToast("Excel export generated successfully.", "success");
     } catch (error) {
       console.error("Excel Export Error:", error);
@@ -281,7 +308,10 @@ const AnnualObjectivesPage = () => {
               Year
               <select
                 value={selectedYear}
-                onChange={event => setSelectedYear(Number(event.target.value))}
+                onChange={event => {
+                  setSelectedYear(Number(event.target.value));
+                  setSelectedDepartment('All');
+                }}
                 className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
               >
                 {availableYears.map(year => (
@@ -293,11 +323,26 @@ const AnnualObjectivesPage = () => {
               Plant
               <select
                 value={selectedPlant}
-                onChange={event => setSelectedPlant(event.target.value)}
+                onChange={event => {
+                  setSelectedPlant(event.target.value);
+                  setSelectedDepartment('All');
+                }}
                 className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
               >
                 {plantOptions.map(plant => (
                   <option key={plant.value} value={plant.value}>{plant.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300">
+              Department
+              <select
+                value={selectedDepartment}
+                onChange={event => setSelectedDepartment(event.target.value)}
+                className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+              >
+                {departmentOptions.map(department => (
+                  <option key={department.value} value={department.value}>{department.label}</option>
                 ))}
               </select>
             </label>
