@@ -92,9 +92,17 @@ steps:
         gcloud secrets versions access latest --secret=FIREBASE_SERVICE_ACCOUNT --project=$PROJECT_ID > /tmp/firebase-service-account.json
         export GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-service-account.json
         
-        # Explicit binary installation to bypass the v15.31.0 ESM bug
-        curl -sL "https://firebase.tools/bin/linux/v13.11.0" -o /usr/local/bin/firebase
-        chmod +x /usr/local/bin/firebase
+        # Explicit binary installation to bypass the v15.31.0 ESM bug.
+        # Download to a temporary path so a failed request cannot replace the CLI.
+        curl --fail --location --silent --show-error \
+          --retry 5 --retry-all-errors --retry-delay 2 \
+          --connect-timeout 15 --max-time 120 \
+          "https://firebase.tools/bin/linux/v13.11.0" \
+          --output /tmp/firebase
+        test -s /tmp/firebase
+        chmod +x /tmp/firebase
+        /tmp/firebase --version
+        mv /tmp/firebase /usr/local/bin/firebase
         
         firebase deploy --project=$PROJECT_ID --only=hosting --non-interactive --debug
 

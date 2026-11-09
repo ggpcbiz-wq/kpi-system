@@ -5,7 +5,7 @@ const FilterBar = ({
   filters, 
   onFilterChange, 
   config = { showDept: false, showDate: true, showSearch: true, showPlant: false },
-  departments = [] 
+  departments = []
 }) => {
 
   // Consume the global plant context
@@ -16,14 +16,14 @@ const FilterBar = ({
   };
 
   const handleClear = () => {
-    onFilterChange({ search: '', period: '', department: 'All' });
+    onFilterChange({ ...filters, search: '', period: '', department: 'All' });
     if (config.showPlant) {
       setSelectedPlant('All Plants'); // Reset global plant context
     }
   };
 
   const isFiltered = filters.search || filters.period || filters.department !== 'All' || (config.showPlant && selectedPlant !== 'All Plants');
-
+1
   return (
     <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4 items-end mb-8 transition-colors duration-300">
       
@@ -61,7 +61,7 @@ const FilterBar = ({
             >
               {plants.map(plant => (
                 <option key={plant} value={plant}>
-                  {plant === 'All Plants' ? plant : `${plant} Plant`}
+                  {plant === 'Laguna' || plant === 'Cavite' ? `${plant} Plant` : plant}
                 </option>
               ))}
             </select>

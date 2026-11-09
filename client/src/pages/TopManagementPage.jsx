@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { usePlant } from '../context/usePlant';
 import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, SplitSquareHorizontal, Factory } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
 import FilterBar from '../components/FilterBar'; 
+import TargetYearFilter from '../components/TargetYearFilter';
 import ConfirmModal from '../components/ConfirmModal';
 import FinalizedSubmissionsTable from '../components/FinalizedSubmissionTable';
 import { API_BASE_URL } from '../services/api';
@@ -28,12 +30,14 @@ const checkIsMissed = (actual, target, operator) => {
 
 const TopManagementPage = () => {
   const { user, token } = useAuth();
+  const { selectedPlant } = usePlant();
   const [isLoading, setIsLoading] = useState(true);
   
-  const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All' });
+  const [filters, setFilters] = useState({ search: '', period: '', department: 'All' });
   const executiveDepartments = user?.departments?.length > 0 ? user.departments : [];
 
   const [pendingFinalTargets, setPendingFinalTargets] = useState([]);
+  const [selectedTargetYear, setSelectedTargetYear] = useState('All Years');
   const [recentNotifications, setRecentNotifications] = useState([]); 
   const [globalChartData, setGlobalChartData] = useState({}); 
   const [currentChartIndex, setCurrentChartIndex] = useState(0);
@@ -80,6 +84,7 @@ const TopManagementPage = () => {
               processCategory: t.process_category,
               processType: t.process_type,
               frequency: t.frequency,
+              target_year: t.target_year,
               value: `${t.operator} ${t.target_value} ${t.unit}`,
               comment: t.remarks
             }));
@@ -165,14 +170,17 @@ const TopManagementPage = () => {
 
   const filteredTargets = pendingFinalTargets.filter(t => {
     const matchesDept = filters.department === 'All' || t.dept === filters.department;
-    const matchesPlant = filters.plant === 'All' || t.plant === filters.plant; 
     const matchesSearch = !filters.search || t.metric.toLowerCase().includes(filters.search.toLowerCase());
-    return matchesDept && matchesSearch && matchesPlant;
+    const matchesPlant = selectedPlant === 'All Plants' || t.plant === selectedPlant;
+    const matchesYear = selectedTargetYear === 'All Years' || Number(t.target_year) === Number(selectedTargetYear);
+    return matchesDept && matchesSearch && matchesPlant && matchesYear;
   });
+  const targetYears = [...new Set(pendingFinalTargets.map(target => Number(target.target_year)).filter(Number.isInteger))]
+    .sort((a, b) => b - a);
 
   const filteredNotifications = recentNotifications.filter(d => {
     const matchesDept = filters.department === 'All' || d.dept_name === filters.department;
-    const matchesPlant = filters.plant === 'All' || d.plant === filters.plant; 
+    const matchesPlant = selectedPlant === 'All Plants' || d.plant === selectedPlant;
     const matchesSearch = !filters.search || d.metric_name.toLowerCase().includes(filters.search.toLowerCase());
     return matchesDept && matchesSearch && matchesPlant;
   });
@@ -230,7 +238,7 @@ const TopManagementPage = () => {
        <FilterBar 
           filters={filters} 
           onFilterChange={handleFilterChange} 
-          config={{ showSearch: true, showPlant: true, showDate: true, showDept: true }} 
+          config={{ showSearch: true, showPlant: true, showDate: true, showDept: true }}
           departments={executiveDepartments} 
         />
 
@@ -245,6 +253,11 @@ const TopManagementPage = () => {
             <span className="bg-brand-50 dark:bg-slate-600 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-slate-800/50 py-1 px-3 rounded-md text-xs font-bold shadow-sm transition-colors">
               {filteredTargets.length} Pending
             </span>
+            <TargetYearFilter
+              years={targetYears}
+              value={selectedTargetYear}
+              onChange={setSelectedTargetYear}
+            />
           </div>
           <div className="overflow-x-auto">
              <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300 min-w-[1500px]">
@@ -260,6 +273,7 @@ const TopManagementPage = () => {
                       <SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400 dark:text-slate-500" /> Section
                     </div>
                   </th>
+                  <th className="px-6 py-4 font-bold w-[6%]">Year</th>
                   <th className="px-6 py-4 font-bold w-[12%]">KPI</th>
                   <th className="px-6 py-4 font-bold w-[25%]">Objective</th>
                   <th className="px-6 py-4 font-bold w-[12%]">Process Type</th>
@@ -277,6 +291,7 @@ const TopManagementPage = () => {
                     </td>
                     
                     <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap align-top">{target.section || '--'}</td>
+                    <td className="px-6 py-4 font-semibold whitespace-nowrap align-top">{target.target_year || '--'}</td>
                     
                     <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200 align-top">{target.metric}</td>
                     
@@ -332,7 +347,7 @@ const TopManagementPage = () => {
                     </td>
                   </tr>
                 ))}
-                {filteredTargets.length === 0 && <tr><td colSpan="9" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending targets match current filters.</td></tr>}
+                {filteredTargets.length === 0 && <tr><td colSpan="10" className="px-6 py-16 text-center text-slate-500 dark:text-slate-400 font-medium bg-slate-50/30 dark:bg-slate-800/30 transition-colors">No pending targets match current filters.</td></tr>}
               </tbody>
             </table>
           </div>

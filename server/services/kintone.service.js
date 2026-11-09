@@ -136,7 +136,7 @@ const getUniqueDepartments = async () => {
       if (state !== 'Active') return;
 
       const rank = record.Rank?.value?.trim();
-      if (!['3rd', '4th'].includes(rank)) return;
+      if (!['2nd', '3rd', '4th'].includes(rank)) return;
 
       const deptName = record.Department?.value?.trim();
       const secName = record.Section?.value?.trim();
@@ -198,6 +198,31 @@ const getCarByControlNumber = async (controlNo) => {
     throw error;
   }
 };
+const buildMasterKpiRecord = (targetData) => {
+  const formattedDate = targetData.created_at
+    ? new Date(targetData.created_at).toISOString().split('T')[0]
+    : '';
+
+  return {
+    kpi_no:           { value: targetData.kpi_no || '' },
+    department:       { value: targetData.dept_name || '' },
+    code:             { value: targetData.section_code || '' },
+    proposed_by:      { value: targetData.proposer_name || '' },
+    proposal_date:    { value: formattedDate },
+    process_category: { value: targetData.process_category || '' },
+    process_type:     { value: targetData.process_type || '' },
+    frequency:        { value: targetData.frequency || '' },
+    objective:        { value: targetData.objective || '' },
+    kpi:              { value: targetData.metric_name || '' },
+    operator:         { value: targetData.operator || '' },
+    target_value:     { value: String(targetData.target_value ?? '') },
+    unit:             { value: targetData.unit || '' },
+    remarks:          { value: targetData.remarks || '' },
+    Plant:             { value: targetData.plant || '' },
+    target_year:      { value: String(targetData.target_year ?? '') }
+  };
+};
+
 const postTargetToMasterKpi = async (targetData) => {
   const KINTONE_DOMAIN = process.env.KINTONE_DOMAIN;
   const MASTER_KPI_APP_ID = process.env.KINTONE_MASTER_KPI_APP_ID;
@@ -208,30 +233,7 @@ const postTargetToMasterKpi = async (targetData) => {
   }
 
   const url = `https://${KINTONE_DOMAIN}/k/v1/record.json`;
-  
-  const formattedDate = targetData.created_at 
-    ? new Date(targetData.created_at).toISOString().split('T')[0] 
-    : '';
-
-  const payload = {
-    app: MASTER_KPI_APP_ID,
-    record: {
-      kpi_no:           { value: targetData.kpi_no || '' }, // ✨ New Unique ID Field
-      department:       { value: targetData.dept_name || '' },
-      code:             { value: targetData.section_code || '' },
-      proposed_by:      { value: targetData.proposer_name || '' },
-      proposal_date:    { value: formattedDate },
-      process_category: { value: targetData.process_category || '' },
-      process_type:     { value: targetData.process_type || '' },
-      frequency:        { value: targetData.frequency || '' },
-      objective:        { value: targetData.objective || '' },
-      kpi:              { value: targetData.metric_name || '' },
-      operator:         { value: targetData.operator || '' },
-      target_value:     { value: String(targetData.target_value || '') },
-      unit:             { value: targetData.unit || '' },
-      remarks:          { value: targetData.remarks || '' }
-    }
-  };
+  const payload = { app: MASTER_KPI_APP_ID, record: buildMasterKpiRecord(targetData) };
 
   try {
     const response = await fetch(url, {
@@ -255,4 +257,4 @@ const postTargetToMasterKpi = async (targetData) => {
   }
 };
 
-module.exports = { postToKintone, updateKintoneRecord, getEmployeeByEmail, getUniqueDepartments, getCarByControlNumber, postTargetToMasterKpi }; 
+module.exports = { postToKintone, updateKintoneRecord, getEmployeeByEmail, getUniqueDepartments, getCarByControlNumber, postTargetToMasterKpi, buildMasterKpiRecord };

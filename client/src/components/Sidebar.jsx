@@ -41,6 +41,7 @@ const Sidebar = () => {
           { name: 'Annual Objectives', path: '/reports/annual-objectives', icon: FileSpreadsheet } 
         ];
       case 'Supervisor':
+      case 'Senior Supervisor':
         return [
           { name: 'Company Scoreboard', path: '/overview', icon: Globe },
           { name: 'Department Dashboard', path: '/supervisor', icon: LayoutDashboard },
@@ -58,6 +59,7 @@ const Sidebar = () => {
         return [
           { name: 'Company Scoreboard', path: '/overview', icon: Globe },
           { name: 'Executive Dashboard', path: '/top-management', icon: LayoutDashboard },
+          { name: 'Target Setting', path: '/manager/targets', icon: FileSpreadsheet },
           { name: 'CAR Ledger', path: '/car-tracking', icon: AlertCircle } 
         ];
       default:

@@ -13,7 +13,7 @@ const months = [
   { value: 11, label: 'November' }, { value: 12, label: 'December' }
 ];
 
-const MonthlyDataEntryForm = ({ activeTarget, onSuccess, onCancel }) => {
+const MonthlyDataEntryForm = ({ activeTarget, submissionLocks = [], onSuccess, onCancel }) => {
   const { user, token } = useAuth(); 
   const { addToast } = useToast(); 
   const fileInputRef = useRef(null);
@@ -28,6 +28,11 @@ const MonthlyDataEntryForm = ({ activeTarget, onSuccess, onCancel }) => {
   const [remarks, setRemarks] = useState(''); 
   const [attachment, setAttachment] = useState(null); 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isPeriodLocked = submissionLocks.some(lock =>
+    lock.section_id === activeTarget?.section_id &&
+    Number(lock.report_month) === Number(reportMonth) &&
+    Number(lock.report_year) === Number(reportYear)
+  );
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -67,7 +72,8 @@ const MonthlyDataEntryForm = ({ activeTarget, onSuccess, onCancel }) => {
       });
 
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        const result = await response.json();
+        throw new Error(result.message || 'Network response was not ok');
       }
       
       addToast("Monthly data and attachment submitted successfully.", "success");
@@ -79,7 +85,7 @@ const MonthlyDataEntryForm = ({ activeTarget, onSuccess, onCancel }) => {
       
     } catch (error) {
       console.error("Submission failed", error);
-      addToast("Failed to submit data. Please try again.", "error");
+      addToast(error.message || "Failed to submit data. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -105,6 +111,11 @@ const MonthlyDataEntryForm = ({ activeTarget, onSuccess, onCancel }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {isPeriodLocked && (
+          <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-300">
+            Monthly submissions for this section are locked for {selectedMonthLabel} {reportYear}. Contact the QMR if you need access.
+          </div>
+        )}
         <div className="bg-brand-50 dark:bg-slate-600 border border-brand-200 dark:border-brand-800/50 text-brand-700 dark:text-brand-400 px-4 py-3 rounded-md flex items-start transition-colors">
           <Info size={20} className="mr-3 shrink-0 mt-0.5" />
           <p className="text-sm">
@@ -177,8 +188,8 @@ const MonthlyDataEntryForm = ({ activeTarget, onSuccess, onCancel }) => {
           {onCancel && (
             <button type="button" onClick={onCancel} disabled={isSubmitting} className="px-6 py-3 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50">Cancel</button>
           )}
-          <button type="submit" disabled={isSubmitting || actualValue === '' || remarks.trim() === ''} className="flex items-center bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white font-semibold py-3 px-8 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            {isSubmitting ? 'Uploading Data...' : <><Send size={18} className="mr-2" /> Submit to Manager</>}
+          <button type="submit" disabled={isSubmitting || isPeriodLocked || actualValue === '' || remarks.trim() === ''} className="flex items-center bg-brand-600 hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 text-white font-semibold py-3 px-8 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            {isSubmitting ? 'Uploading Data...' : isPeriodLocked ? <><Send size={18} className="mr-2" /> Submissions Locked</> : <><Send size={18} className="mr-2" /> Submit to Manager</>}
           </button>
         </div>
       </form>

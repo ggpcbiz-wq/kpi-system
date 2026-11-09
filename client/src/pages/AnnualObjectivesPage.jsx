@@ -7,7 +7,6 @@ import * as XLSX from 'xlsx';
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const currentYear = new Date().getFullYear();
-const historicalYears = Array.from({ length: 5 }, (_, i) => currentYear - 5 + i);
 const plantLabels = {
   Cavite: 'CDPC (Cavite Plant)',
   Laguna: 'GGPC (Laguna Plant)'
@@ -54,6 +53,8 @@ const AnnualObjectivesPage = () => {
   const [submissions, setSubmissions] = useState([]);
   const [showHistorical, setShowHistorical] = useState(false);
   const [selectedPlant, setSelectedPlant] = useState('All');
+  const [selectedDepartment, setSelectedDepartment] = useState('All');
+  const [selectedYear, setSelectedYear] = useState(currentYear);
 
   useEffect(() => {
     let isMounted = true;
@@ -84,23 +85,57 @@ const AnnualObjectivesPage = () => {
   const plantOptions = useMemo(() => {
     const otherPlants = [...new Set(targets
       .map(target => normalizePlant(target.plant))
-      .filter(plant => !['Cavite', 'Laguna'].includes(plant)))];
+      .filter(plant => !['Cavite', 'Laguna', 'Company-wide'].includes(plant)))];
     return [
       { value: 'All', label: 'All Plants' },
+      { value: 'Company-wide', label: 'Company-wide' },
       { value: 'Cavite', label: plantLabels.Cavite },
       { value: 'Laguna', label: plantLabels.Laguna },
       ...otherPlants.map(plant => ({ value: plant, label: plant }))
     ];
   }, [targets]);
 
+  const departmentOptions = useMemo(() => {
+    const departments = targets
+      .filter(target =>
+        Number(target.target_year) === selectedYear
+        && (selectedPlant === 'All' || normalizePlant(target.plant) === selectedPlant)
+      )
+      .map(target => target.dept_name?.trim() || null);
+    const namedDepartments = [...new Set(departments.filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b));
+
+    return [
+      { value: 'All', label: 'All Departments' },
+      ...namedDepartments.map(department => ({ value: department, label: department })),
+      ...(departments.includes(null) ? [{ value: '__unassigned__', label: 'Unassigned' }] : [])
+    ];
+  }, [targets, selectedPlant, selectedYear]);
+
+  const availableYears = useMemo(() => [...new Set([
+    currentYear,
+    ...targets.map(target => Number(target.target_year)).filter(Number.isInteger)
+  ])].sort((a, b) => b - a), [targets]);
+  const historicalYears = useMemo(
+    () => Array.from({ length: 5 }, (_, index) => selectedYear - 5 + index),
+    [selectedYear]
+  );
+
   const reportData = useMemo(() => {
     const visibleTargets = targets.filter(target =>
-      selectedPlant === 'All' || normalizePlant(target.plant) === selectedPlant
+      Number(target.target_year) === selectedYear
+      && (selectedPlant === 'All' || normalizePlant(target.plant) === selectedPlant)
+      && (
+        selectedDepartment === 'All'
+        || (selectedDepartment === '__unassigned__'
+          ? !target.dept_name?.trim()
+          : target.dept_name?.trim() === selectedDepartment)
+      )
     );
     const merged = visibleTargets.map((target, index) => {
       const isCumulative = target.unit?.trim() !== '%';
       
-      const currentSubs = submissions.filter(s => s.target_id === target.id && s.report_year === currentYear);
+      const currentSubs = submissions.filter(s => s.target_id === target.id && Number(s.report_year) === selectedYear);
       
       const monthlyData = {};
       currentSubs.forEach(sub => {
@@ -129,7 +164,7 @@ const AnnualObjectivesPage = () => {
           ? (isCumulative ? historicalSum : (historicalSum / historicalValues.length)).toFixed(2)
           : '-';
         history[year] = hYtd;
-        if (year === currentYear - 1) lastYearActual = hYtd;
+        if (year === selectedYear - 1) lastYearActual = hYtd;
       });
 
       let achievedLastYear = null;
@@ -184,7 +219,7 @@ const AnnualObjectivesPage = () => {
     }
 
     return merged;
-  }, [targets, submissions, selectedPlant]);
+  }, [targets, submissions, selectedPlant, selectedDepartment, selectedYear, historicalYears]);
 
   const handleExportExcel = () => {
     try {
@@ -202,6 +237,7 @@ const AnnualObjectivesPage = () => {
           'Department / Section': deptSectionDisplay,
           'Objectives': row.objective || '-',
           'KPI': row.metric_name,
+          'Target Year': row.target_year || '-',
         };
 
         if (showHistorical) {
@@ -213,8 +249,8 @@ const AnnualObjectivesPage = () => {
           rowData['Achieved? (Prev Year)'] = row.achievedLastYear || '-';
         }
 
-        rowData[`Target (${currentYear})`] = `${row.operator || ''} ${row.target_value || ''}${renderUnit(row.unit)}`.trim();
-        rowData[`Actual (${currentYear})`] = row.ytdActual !== '-' ? `${row.ytdActual}${renderUnit(row.unit)}`.trim() : '-';
+        rowData[`Target (${selectedYear})`] = `${row.operator || ''} ${row.target_value || ''}${renderUnit(row.unit)}`.trim();
+        rowData[`Actual (${selectedYear})`] = row.ytdActual !== '-' ? `${row.ytdActual}${renderUnit(row.unit)}`.trim() : '-';
         rowData['Process Owner'] = row.proposer_name || '-';
 
         months.forEach((month, index) => {
@@ -229,9 +265,12 @@ const AnnualObjectivesPage = () => {
 
       const worksheet = XLSX.utils.json_to_sheet(excelData);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, `Objectives ${currentYear}`);
+      XLSX.utils.book_append_sheet(workbook, worksheet, `Objectives ${selectedYear}`);
       const plantFilename = selectedPlant === 'All' ? 'All_Plants' : selectedPlant.replace(/\s+/g, '_');
-      XLSX.writeFile(workbook, `Annual_Objectives_${currentYear}_${plantFilename}.xlsx`);
+      const departmentFilename = selectedDepartment === 'All'
+        ? 'All_Departments'
+        : (selectedDepartment === '__unassigned__' ? 'Unassigned' : selectedDepartment).replace(/[^\w-]+/g, '_');
+      XLSX.writeFile(workbook, `Annual_Objectives_${selectedYear}_${plantFilename}_${departmentFilename}.xlsx`);
       addToast("Excel export generated successfully.", "success");
     } catch (error) {
       console.error("Excel Export Error:", error);
@@ -260,20 +299,50 @@ const AnnualObjectivesPage = () => {
               ANNUAL OBJECTIVES & TARGETS
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
-              Comprehensive organizational matrix for FY {currentYear}
+              Comprehensive organizational matrix for FY {selectedYear}
             </p>
           </div>
           
           <div className="flex flex-wrap gap-3 mt-4 md:mt-0 print:hidden">
             <label className="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300">
+              Year
+              <select
+                value={selectedYear}
+                onChange={event => {
+                  setSelectedYear(Number(event.target.value));
+                  setSelectedDepartment('All');
+                }}
+                className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+              >
+                {availableYears.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300">
               Plant
               <select
                 value={selectedPlant}
-                onChange={event => setSelectedPlant(event.target.value)}
+                onChange={event => {
+                  setSelectedPlant(event.target.value);
+                  setSelectedDepartment('All');
+                }}
                 className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
               >
                 {plantOptions.map(plant => (
                   <option key={plant.value} value={plant.value}>{plant.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300">
+              Department
+              <select
+                value={selectedDepartment}
+                onChange={event => setSelectedDepartment(event.target.value)}
+                className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
+              >
+                {departmentOptions.map(department => (
+                  <option key={department.value} value={department.value}>{department.label}</option>
                 ))}
               </select>
             </label>
@@ -311,7 +380,7 @@ const AnnualObjectivesPage = () => {
                     <th className="border border-slate-200 dark:border-slate-700 p-2 w-20 text-[10px] uppercase leading-tight" rowSpan={2}>Achieved?</th>
                   )}
 
-                  <th className="border border-slate-200 dark:border-slate-700 p-2" colSpan={2}>{currentYear}</th>
+                  <th className="border border-slate-200 dark:border-slate-700 p-2" colSpan={2}>{selectedYear}</th>
                   <th className="border border-slate-200 dark:border-slate-700 p-3 min-w-[120px] uppercase tracking-wider" rowSpan={2}>Process Owner</th>
                   {months.map(m => (
                     <th key={m} className="border border-slate-200 dark:border-slate-700 p-3 w-16 uppercase tracking-wider" rowSpan={2}>{m}</th>

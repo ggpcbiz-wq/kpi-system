@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { usePlant } from '../context/usePlant';
 import { CheckCircle, XCircle, AlertTriangle, BarChart3, ChevronLeft, ChevronRight, Info, FileSpreadsheet, Layers, SplitSquareHorizontal } from 'lucide-react';
 import PerformanceChart from '../components/PerformanceChart';
-import TargetProposalForm from '../components/TargetProposalForm';
-import TargetListTable from '../components/TargetListTable'; 
+import TargetProposalWorkspace from '../components/TargetProposalWorkspace';
 import ConfirmModal from '../components/ConfirmModal';
 import FilterBar from '../components/FilterBar';
 import FinalizedSubmissionsTable from '../components/FinalizedSubmissionTable';
@@ -36,15 +36,16 @@ const checkIsMissed = (actual, target, operator) => {
   
   return act < tgt; 
 };
-const ManagerPage = () => {
+const ManagerPage = ({ targetSettingOnly = false }) => {
   const { user, token } = useAuth();
   const { addToast } = useToast();
+  const { selectedPlant } = usePlant();
   const [isLoading, setIsLoading] = useState(true);
   
   const [activeChartTab, setActiveChartTab] = useState('DEPT-001');
   const [currentChartIndex, setCurrentChartIndex] = useState(0);
 
-  const [filters, setFilters] = useState({ search: '', plant: 'All', period: '', department: 'All' });
+  const [filters, setFilters] = useState({ search: '', period: '', department: 'All' });
 
   const [pendingData, setPendingData] = useState([]);
   const [globalFinalizedSubmissions, setGlobalFinalizedSubmissions] = useState([]); 
@@ -79,6 +80,8 @@ const ManagerPage = () => {
           setProposedTargets(targets);
         }
 
+        if (targetSettingOnly) return;
+
         const submissionsRes = await fetch(`${API_BASE_URL}/api/submissions?_t=${timestamp}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -88,17 +91,21 @@ const ManagerPage = () => {
           const pending = submissions.filter(sub => {
             const isPending = sub.status === 'Locked - Pending Manager Review';
             const matchDept = filters.department === 'All' ? true : sub.dept_name === filters.department;
+            const matchesPlant = selectedPlant === 'All Plants' || sub.plant === selectedPlant;
             let matchPeriod = true;
             if (filters.period) {
               const [year, month] = filters.period.split('-');
               matchPeriod = (sub.report_year === parseInt(year)) && (sub.report_month === parseInt(month, 10));
             }
-            return isPending && matchDept && matchPeriod;
+            return isPending && matchDept && matchesPlant && matchPeriod;
           });
           setPendingData(pending);
 
           setGlobalFinalizedSubmissions(
-            submissions.filter(s => s.status === 'Approved' || s.status === 'CAR Requested')
+            submissions.filter(s =>
+              (s.status === 'Approved' || s.status === 'CAR Requested') &&
+              (selectedPlant === 'All Plants' || s.plant === selectedPlant)
+            )
           );
         }
 
@@ -123,7 +130,7 @@ const ManagerPage = () => {
     
     fetchManagerData();
     return () => { isMounted = false; };
-  }, [token, refreshTrigger, activeChartTab, filters.department, filters.period, addToast]);
+  }, [token, refreshTrigger, activeChartTab, filters.department, filters.period, selectedPlant, addToast, targetSettingOnly]);
 
   const departmentMetrics = globalChartData[activeChartTab] || [];
   
@@ -158,9 +165,11 @@ const ManagerPage = () => {
     try {
       
       const payload = {
+        plant: formData.plant,
         metric_name: formData.metric_name, 
         objective: formData.objective,
         target_value: parseFloat(formData.target_value),
+        target_year: parseInt(formData.target_year, 10),
         operator: formData.operator, 
         unit: formData.unit,
         department: formData.department, 
@@ -182,11 +191,18 @@ const ManagerPage = () => {
       });
 
       if (!response.ok) throw new Error('Failed to create target');
-      addToast("Target successfully proposed to Top Management.", "success");
+      addToast(
+        targetSettingOnly
+          ? "Target successfully submitted for approval."
+          : "Target successfully proposed to Top Management.",
+        "success"
+      );
       setRefreshTrigger(prev => prev + 1); 
+      return true;
     } catch (error) {
       console.error("Target Propose Error:", error); 
       addToast("Failed to propose target.", "error");
+      return false;
     } finally {
       setIsSubmittingTarget(false);
     }
@@ -248,6 +264,11 @@ const ManagerPage = () => {
   };
 
   const allDepartments = Array.from(new Set(proposedTargets.map(t => t.dept_name).filter(Boolean)));
+  const filteredProposedTargets = proposedTargets.filter(target => {
+    const matchesPlant = selectedPlant === 'All Plants' || target.plant === selectedPlant;
+    const matchesDepartment = filters.department === 'All' || target.dept_name === filters.department;
+    return matchesPlant && matchesDepartment;
+  });
 
   if (isLoading && proposedTargets.length === 0) {
     return (
@@ -255,6 +276,31 @@ const ManagerPage = () => {
         <div className="flex flex-col items-center space-y-4">
           <div className="w-8 h-8 border-4 border-brand-600 dark:border-brand-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="font-medium text-slate-500 dark:text-slate-400 text-sm">Loading Aggregated Queues...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (targetSettingOnly) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 relative font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+        <div className="w-full space-y-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6 transition-colors duration-300">
+            <div>
+              <h1 className="text-5xl font-display tracking-tight text-brand-500 dark:text-brand-400 uppercase">
+                TARGET SETTING
+              </h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+                Submit KPI targets for executive approval.
+              </p>
+            </div>
+          </div>
+
+          <TargetProposalWorkspace
+            targets={filteredProposedTargets}
+            onSubmit={handleProposeTarget}
+            isSubmitting={isSubmittingTarget}
+          />
         </div>
       </div>
     );
@@ -278,22 +324,16 @@ const ManagerPage = () => {
         <FilterBar 
           filters={filters} 
           onFilterChange={handleFilterChange} 
-          config={{ showSearch: false, showPlant: false, showDate: true, showDept: true }}
+          config={{ showSearch: false, showPlant: true, showDate: true, showDept: true }}
           departments={allDepartments}
         />
 
         <div className="flex flex-col space-y-8">
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 sm:p-8 w-full transition-colors duration-300">
-            <div className="mb-6">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Propose Department KPI Target</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">Targets submitted here will be routed directly to Top Management for executive approval.</p>
-            </div>
-            <TargetProposalForm onSubmit={handleProposeTarget} isSubmitting={isSubmittingTarget} />
-          </div>
-
-          <div className="w-full">
-             <TargetListTable targets={proposedTargets} />
-          </div>
+          <TargetProposalWorkspace
+            targets={filteredProposedTargets}
+            onSubmit={handleProposeTarget}
+            isSubmitting={isSubmittingTarget}
+          />
         </div>
 
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col w-full mb-8 mt-8 transition-colors duration-300">

@@ -77,6 +77,69 @@ class DepartmentRepository {
     return rows;
   }
 
+  async findSubmissionLocks() {
+    const { rows } = await db.query(`
+      SELECT section_id, report_year, report_month, locked_by, locked_at
+      FROM section_submission_locks
+    `);
+    return rows;
+  }
+
+  async setSubmissionLock(sectionId, reportYear, reportMonth, isLocked, userId) {
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const currentLock = await client.query(`
+        SELECT section_id, report_year, report_month, locked_by, locked_at
+        FROM section_submission_locks
+        WHERE section_id = $1 AND report_year = $2 AND report_month = $3
+      `, [sectionId, reportYear, reportMonth]);
+
+      if (isLocked) {
+        await client.query(`
+          INSERT INTO section_submission_locks (section_id, report_year, report_month, locked_by)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (section_id, report_year, report_month)
+          DO UPDATE SET locked_by = EXCLUDED.locked_by, locked_at = CURRENT_TIMESTAMP
+        `, [sectionId, reportYear, reportMonth, userId]);
+      } else {
+        await client.query(`
+          DELETE FROM section_submission_locks
+          WHERE section_id = $1 AND report_year = $2 AND report_month = $3
+        `, [sectionId, reportYear, reportMonth]);
+      }
+
+      await client.query(`
+        INSERT INTO audit_logs (table_name, record_id, action, changed_by, old_payload, new_payload)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [
+        'section_submission_locks',
+        sectionId,
+        isLocked ? 'LOCK_SECTION_SUBMISSIONS' : 'UNLOCK_SECTION_SUBMISSIONS',
+        userId,
+        currentLock.rows[0] ? JSON.stringify(currentLock.rows[0]) : null,
+        isLocked ? JSON.stringify({ section_id: sectionId, report_year: reportYear, report_month: reportMonth }) : null
+      ]);
+
+      await client.query('COMMIT');
+      return { isLocked };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async isSubmissionLocked(sectionId, reportYear, reportMonth) {
+    const { rowCount } = await db.query(`
+      SELECT 1
+      FROM section_submission_locks
+      WHERE section_id = $1 AND report_year = $2 AND report_month = $3
+    `, [sectionId, reportYear, reportMonth]);
+    return rowCount > 0;
+  }
+
   async updateSectionProcessTypes(sectionId, processTypes, userId) {
     const currentMappings = await db.query(
       'SELECT category, process_name FROM section_process_types WHERE section_id = $1',

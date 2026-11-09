@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Building2, Edit, X, ShieldAlert, Layers, RefreshCw, ChevronDown, ChevronRight, SplitSquareHorizontal } from 'lucide-react';
+import { Building2, Edit, X, ShieldAlert, Layers, RefreshCw, ChevronDown, ChevronRight, SplitSquareHorizontal, Lock, Unlock } from 'lucide-react';
 import { API_BASE_URL } from '../services/api';
 
 const PROCESS_TAXONOMY = {
@@ -34,6 +34,11 @@ const PROCESS_TAXONOMY = {
   ]
 };
 
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 const DepartmentManagementPage = () => {
   const { user, token } = useAuth();
   const { addToast } = useToast();
@@ -47,6 +52,10 @@ const DepartmentManagementPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedSection, setSelectedSection] = useState(null);
   const [selectedProcessTypes, setSelectedProcessTypes] = useState([]);
+  const [submissionLocks, setSubmissionLocks] = useState([]);
+  const [lockMonth, setLockMonth] = useState(new Date().getMonth() + 1);
+  const [lockYear, setLockYear] = useState(new Date().getFullYear());
+  const [updatingLockSectionId, setUpdatingLockSectionId] = useState(null);
 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -76,6 +85,27 @@ const DepartmentManagementPage = () => {
     return () => { isMounted = false; };
   }, [token, refreshTrigger, addToast]);
 
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLocks = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/departments/submission-locks`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to load section submission locks');
+        const locks = await res.json();
+        if (isMounted) setSubmissionLocks(locks);
+      } catch (error) {
+        console.error('Failed to load section submission locks:', error);
+        if (isMounted) addToast('Failed to load section submission locks.', 'error');
+      }
+    };
+
+    fetchLocks();
+    return () => { isMounted = false; };
+  }, [token, addToast, refreshTrigger]);
+
   const handleManualSync = () => {
     setIsRefreshing(true);
     setRefreshTrigger(prev => prev + 1);
@@ -90,6 +120,58 @@ const DepartmentManagementPage = () => {
 
   const toggleRow = (id) => {
     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const isSectionLocked = (sectionId) => submissionLocks.some(lock =>
+    lock.section_id === sectionId &&
+    Number(lock.report_year) === Number(lockYear) &&
+    Number(lock.report_month) === Number(lockMonth)
+  );
+
+  const handleToggleSubmissionLock = async (section, currentlyLocked) => {
+    setUpdatingLockSectionId(section.id);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/departments/sections/${section.id}/submission-lock`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          reportYear: Number(lockYear),
+          reportMonth: Number(lockMonth),
+          isLocked: !currentlyLocked
+        })
+      });
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.message || 'Failed to update section lock.');
+      }
+
+      setSubmissionLocks(previous => {
+        const periodLocks = previous.filter(lock =>
+          lock.section_id !== section.id ||
+          Number(lock.report_year) !== Number(lockYear) ||
+          Number(lock.report_month) !== Number(lockMonth)
+        );
+        return currentlyLocked
+          ? periodLocks
+          : [...periodLocks, {
+            section_id: section.id,
+            report_year: Number(lockYear),
+            report_month: Number(lockMonth)
+          }];
+      });
+      addToast(
+        `${section.name} submissions ${currentlyLocked ? 'unlocked' : 'locked'} for ${MONTHS[lockMonth - 1]} ${lockYear}.`,
+        'success'
+      );
+    } catch (error) {
+      console.error('Section submission lock update failed:', error);
+      addToast(error.message || 'Failed to update section submission lock.', 'error');
+    } finally {
+      setUpdatingLockSectionId(null);
+    }
   };
 
   const toggleProcessType = (category, processName) => {
@@ -178,6 +260,38 @@ const DepartmentManagementPage = () => {
             </button>
           </div>
 
+          <div className="flex flex-wrap items-end gap-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+            <div className="mr-auto">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Supervisor Submission Lock</h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Choose a reporting period, then lock or unlock submissions for individual sections.
+              </p>
+            </div>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Month
+              <select
+                value={lockMonth}
+                onChange={event => setLockMonth(Number(event.target.value))}
+                className="mt-1 block rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-slate-700 dark:text-slate-200"
+              >
+                {MONTHS.map((month, index) => (
+                  <option key={month} value={index + 1}>{month}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Year
+              <input
+                type="number"
+                min="2000"
+                max="2100"
+                value={lockYear}
+                onChange={event => setLockYear(event.target.value)}
+                className="mt-1 block w-28 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-slate-700 dark:text-slate-200"
+              />
+            </label>
+          </div>
+
           <div className="overflow-hidden bg-white dark:bg-slate-800 border rounded-xl shadow-sm border-slate-200 dark:border-slate-700 transition-colors duration-300">
             <div className="flex items-center px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 transition-colors">
               <div className="w-1.5 h-5 bg-brand-600 dark:bg-brand-500 rounded-full mr-3"></div>
@@ -251,6 +365,30 @@ const DepartmentManagementPage = () => {
                                         </button>
                                       </div>
                                       
+                                      <div className="mt-4 border-t border-slate-100 dark:border-slate-700 pt-3">
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                          <div className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                            {MONTHS[lockMonth - 1]} {lockYear}:{' '}
+                                            <span className={isSectionLocked(sec.id) ? 'font-bold text-rose-600 dark:text-rose-400' : 'font-bold text-emerald-600 dark:text-emerald-400'}>
+                                              {isSectionLocked(sec.id) ? 'Submissions Locked' : 'Submissions Open'}
+                                            </span>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleToggleSubmissionLock(sec, isSectionLocked(sec.id))}
+                                            disabled={updatingLockSectionId === sec.id || !Number.isInteger(Number(lockYear)) || Number(lockYear) < 2000 || Number(lockYear) > 2100}
+                                            className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                                              isSectionLocked(sec.id)
+                                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400'
+                                                : 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-400'
+                                            }`}
+                                          >
+                                            {isSectionLocked(sec.id) ? <Unlock size={14} className="mr-1.5" /> : <Lock size={14} className="mr-1.5" />}
+                                            {updatingLockSectionId === sec.id ? 'Saving...' : isSectionLocked(sec.id) ? 'Unlock Submissions' : 'Lock Submissions'}
+                                          </button>
+                                        </div>
+                                      </div>
+
                                       <div className="pt-3 border-t border-slate-100 dark:border-slate-700">
                                         {sec.processTypes && sec.processTypes.length > 0 ? (
                                           <div className="flex flex-wrap gap-1.5">

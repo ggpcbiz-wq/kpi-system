@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { usePlant } from '../context/usePlant';
 import { BarChart3, ShieldAlert, FileSpreadsheet, X, AlertTriangle, Info } from 'lucide-react';
 import TargetListTable from '../components/TargetListTable';
 import PerformanceChart from '../components/PerformanceChart';
@@ -37,9 +38,11 @@ const checkIsMissed = (actual, target, operator) => {
 const SupervisorPage = () => {
   const { user, token } = useAuth();
   const { addToast } = useToast();
+  const { selectedPlant } = usePlant();
   
   const [rawTargets, setRawTargets] = useState([]);
   const [rawSubmissions, setRawSubmissions] = useState([]); 
+  const [submissionLocks, setSubmissionLocks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
@@ -47,7 +50,7 @@ const SupervisorPage = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const defaultDept = user?.departments?.[0] || 'GLOBAL';
-  const [filters, setFilters] = useState({ search: '', plant: user?.plant || 'All', period: '', department: defaultDept });
+  const [filters, setFilters] = useState({ search: '', period: '', department: defaultDept });
   
  
   const isOwnDepartment = filters.department === 'All' || (user?.departments?.includes(filters.department) || false);
@@ -62,7 +65,7 @@ const SupervisorPage = () => {
     expectedReportMonth = 12;
     expectedReportYear -= 1;
   }
-  
+
   const isFirstWeek = currentDay >= 1 && currentDay <= 7;
   const isThirdWeekOrLater = currentDay >= 15;
 
@@ -93,34 +96,102 @@ const SupervisorPage = () => {
     return () => { isMounted = false; };
   }, [token, refreshTrigger, addToast]);
 
+  useEffect(() => {
+    if (!token) return;
+    let isMounted = true;
+    const fetchSubmissionLocks = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/departments/submission-locks`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to load submission locks.');
+        const locks = await response.json();
+        if (isMounted) setSubmissionLocks(locks);
+      } catch (error) {
+        console.error('Submission lock fetch error:', error);
+        if (isMounted) addToast('Failed to load submission lock status.', 'error');
+      }
+    };
+
+    fetchSubmissionLocks();
+    return () => { isMounted = false; };
+  }, [token, refreshTrigger, addToast]);
+
   const filteredTargets = useMemo(() => {
     return rawTargets.filter(t => {
       if (t.status === 'Rejected') return false;
-      return filters.department === 'All' ? true : t.dept_name === filters.department;
+      const matchesDepartment = filters.department === 'All' || t.dept_name === filters.department;
+      const matchesPlant = selectedPlant === 'All Plants' || t.plant === selectedPlant;
+      return matchesDepartment && matchesPlant;
     });
-  }, [rawTargets, filters.department]);
+  }, [rawTargets, filters.department, selectedPlant]);
+
+  const targetPlantById = useMemo(
+    () => new Map(rawTargets.map(target => [target.id, target.plant])),
+    [rawTargets]
+  );
 
   const processedTargets = useMemo(() => {
+    const supervisorId = user?.id || user?.userId;
+
     return filteredTargets.map(target => {
-      const hasSubmission = rawSubmissions.some(sub => 
-        sub.target_id === target.id && 
-        sub.report_month === expectedReportMonth && 
-        sub.report_year === expectedReportYear
+      const currentPeriodSubmission = rawSubmissions
+        .filter(sub =>
+          sub.target_id === target.id &&
+          sub.submitted_by === supervisorId &&
+          Number(sub.report_month) === expectedReportMonth &&
+          Number(sub.report_year) === expectedReportYear
+        )
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+      const isSubmissionLocked = submissionLocks.some(lock =>
+        lock.section_id === target.section_id &&
+        Number(lock.report_month) === expectedReportMonth &&
+        Number(lock.report_year) === expectedReportYear
       );
-      
+
       return {
         ...target,
-        isOverdue: !hasSubmission && isThirdWeekOrLater && target.status === 'Active'
+        hasSubmittedCurrentPeriod: Boolean(currentPeriodSubmission && currentPeriodSubmission.status !== 'Rejected'),
+        hasRejectedCurrentPeriod: currentPeriodSubmission?.status === 'Rejected',
+        isSubmissionLocked,
+        isOverdue: !rawSubmissions.some(sub =>
+          sub.target_id === target.id &&
+          Number(sub.report_month) === expectedReportMonth &&
+          Number(sub.report_year) === expectedReportYear &&
+          sub.status !== 'Rejected'
+        )
+          && isThirdWeekOrLater
+          && target.status === 'Active'
       };
     });
-  }, [filteredTargets, rawSubmissions, expectedReportMonth, expectedReportYear, isThirdWeekOrLater]);
+  }, [filteredTargets, rawSubmissions, submissionLocks, user?.id, user?.userId, expectedReportMonth, expectedReportYear, isThirdWeekOrLater]);
+
+  const rejectedSubmissions = useMemo(() => {
+    const supervisorId = user?.id || user?.userId;
+    const latestByPeriod = new Map();
+
+    rawSubmissions
+      .filter(sub => sub.submitted_by === supervisorId)
+      .forEach(sub => {
+        const key = `${sub.target_id}|${sub.report_year}|${sub.report_month}`;
+        const existing = latestByPeriod.get(key);
+        if (!existing || new Date(sub.created_at) > new Date(existing.created_at)) {
+          latestByPeriod.set(key, sub);
+        }
+      });
+
+    return [...latestByPeriod.values()]
+      .filter(sub => sub.status === 'Rejected')
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }, [rawSubmissions, user?.id, user?.userId]);
 
   const hasPendingFirstWeekData = useMemo(() => {
     if (!isFirstWeek) return false;
     
     const activeDeptTargets = rawTargets.filter(t => 
       t.status === 'Active' && 
-      (filters.department === 'All' ? true : t.dept_name === filters.department)
+      (filters.department === 'All' || t.dept_name === filters.department) &&
+      (selectedPlant === 'All Plants' || t.plant === selectedPlant)
     );
 
     return activeDeptTargets.some(target => {
@@ -131,23 +202,24 @@ const SupervisorPage = () => {
       );
       return !hasSubmission;
     });
-  }, [isFirstWeek, rawTargets, rawSubmissions, filters.department, expectedReportMonth, expectedReportYear]);
+  }, [isFirstWeek, rawTargets, rawSubmissions, filters.department, selectedPlant, expectedReportMonth, expectedReportYear]);
 
   const filteredSubmissions = useMemo(() => {
     return rawSubmissions.filter(sub => {
       const matchDept = filters.department === 'All' ? true : sub.dept_name === filters.department;
+      const matchPlant = selectedPlant === 'All Plants' || targetPlantById.get(sub.target_id) === selectedPlant;
       let matchPeriod = true;
       if (filters.period) {
         const [year, month] = filters.period.split('-');
         matchPeriod = (sub.report_year === parseInt(year)) && (sub.report_month === parseInt(month, 10));
       }
-      return matchDept && matchPeriod;
+      return matchDept && matchPlant && matchPeriod;
     });
-  }, [rawSubmissions, filters.department, filters.period]);
+  }, [rawSubmissions, filters.department, filters.period, selectedPlant, targetPlantById]);
 
   const dynamicChartData = useMemo(() => {
     const grouped = {};
-    const targetsToChart = filters.department === 'All' ? rawTargets : filteredTargets;
+    const targetsToChart = filteredTargets;
 
     targetsToChart.forEach(t => {
       const dept = t.dept_name || 'Unassigned';
@@ -183,10 +255,14 @@ const SupervisorPage = () => {
       grouped[dept].push({ metricName: t.metric_name, unit: t.unit, data: dataPoints });
     });
     return grouped;
-  }, [filteredTargets, rawTargets, rawSubmissions, filters.department, filters.period]);
+  }, [filteredTargets, rawSubmissions, filters.period]);
 
 
   const handleOpenDataEntry = (target) => {
+    if (target.isSubmissionLocked) {
+      addToast(`Monthly submissions are locked for ${getMonthName(expectedReportMonth)} ${expectedReportYear}.`, 'error');
+      return;
+    }
     setSelectedTarget(target);
     setIsEntryModalOpen(true);
   };
@@ -229,6 +305,30 @@ const SupervisorPage = () => {
           </div>
         </div>
 
+        {rejectedSubmissions.length > 0 && (
+          <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800/40 rounded-xl p-5 shadow-sm flex items-start animate-in fade-in slide-in-from-top-2 duration-300 transition-colors">
+            <div className="shrink-0 p-1 bg-rose-100 dark:bg-rose-900/40 rounded-lg mr-4">
+              <AlertTriangle className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-rose-800 dark:text-rose-300">
+                Action Required: {rejectedSubmissions.length} Monthly Submission{rejectedSubmissions.length === 1 ? '' : 's'} Returned
+              </h3>
+              <p className="mt-1 text-sm text-rose-700 dark:text-rose-300/80">
+                Review the feedback and use the Resubmit button in the targets table.
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-rose-700 dark:text-rose-300/90">
+                {rejectedSubmissions.map(sub => (
+                  <li key={sub.id}>
+                    <strong>{sub.metric_name}</strong> ({getMonthName(sub.report_month)} {sub.report_year})
+                    {sub.remarks ? ` — ${sub.remarks}` : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {/* Polished Alert Banner */}
         {hasPendingFirstWeekData && (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/30 rounded-xl p-5 shadow-sm flex items-start animate-in fade-in slide-in-from-top-2 duration-300 transition-colors">
@@ -248,7 +348,7 @@ const SupervisorPage = () => {
         <FilterBar 
           filters={filters} 
           onFilterChange={setFilters} 
-          config={{ showSearch: false, showPlant: false, showDate: true, showDept: true }}
+          config={{ showSearch: false, showPlant: true, showDate: true, showDept: true }}
           departments={user?.departments || []} 
         />
         
@@ -288,11 +388,14 @@ const SupervisorPage = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50 bg-white dark:bg-slate-800 transition-colors">
-                      {filteredSubmissions.slice(0, 5).map(sub => {
+                      {[...filteredSubmissions]
+                        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                        .slice(0, 5)
+                        .map(sub => {
                         const isMissed = checkIsMissed(sub.actual_value, sub.target_value, sub.operator);
                         return (
                           <tr key={sub.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors">
-                            <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">{sub.metric_name} <span className="text-slate-400 dark:text-slate-500 font-normal">({getMonthName(sub.report_month)})</span></td>
+                            <td className="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">{sub.metric_name} <span className="text-slate-400 dark:text-slate-500 font-normal">({getMonthName(sub.report_month)} {sub.report_year})</span></td>
                             <td className="px-6 py-4 font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
                               {sub.operator} {sub.target_value} <span className="text-xs text-slate-400 dark:text-slate-500 ml-0.5">{sub.unit}</span>
                             </td>
@@ -391,7 +494,12 @@ const SupervisorPage = () => {
               </button>
             </div>
             <div className="p-6">
-              <MonthlyDataEntryForm activeTarget={selectedTarget} onSuccess={handleDataEntrySuccess} onCancel={() => { setIsEntryModalOpen(false); setSelectedTarget(null); }} />
+              <MonthlyDataEntryForm
+                activeTarget={selectedTarget}
+                submissionLocks={submissionLocks}
+                onSuccess={handleDataEntrySuccess}
+                onCancel={() => { setIsEntryModalOpen(false); setSelectedTarget(null); }}
+              />
             </div>
           </div>
         </div>

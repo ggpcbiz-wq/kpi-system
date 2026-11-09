@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { MessageSquare, PlusCircle, SplitSquareHorizontal, ChevronLeft, ChevronRight, Factory } from 'lucide-react';
 import { usePlant } from '../context/usePlant';
+import TargetYearFilter from './TargetYearFilter';
 
 const TargetListTable = ({ targets, onSelectTarget }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [prevTargets, setPrevTargets] = useState(targets);
+  const [selectedYear, setSelectedYear] = useState('All Years');
   const { selectedPlant } = usePlant();
   const ITEMS_PER_PAGE = 10;
 
@@ -13,9 +15,20 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
     setCurrentPage(1);
   }
 
-  const totalPages = Math.ceil(targets.length / ITEMS_PER_PAGE) || 1;
+  const years = [...new Set(targets.map(target => Number(target.target_year)).filter(Number.isInteger))]
+    .sort((a, b) => b - a);
+  const filteredTargets = selectedYear === 'All Years'
+    ? targets
+    : targets.filter(target => Number(target.target_year) === Number(selectedYear));
+
+  const handleYearChange = (year) => {
+    setSelectedYear(year);
+    setCurrentPage(1);
+  };
+
+  const totalPages = Math.ceil(filteredTargets.length / ITEMS_PER_PAGE) || 1;
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedTargets = targets.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const paginatedTargets = filteredTargets.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const handlePrev = () => setCurrentPage((prev) => Math.max(1, prev - 1));
   const handleNext = () => setCurrentPage((prev) => Math.min(totalPages, prev + 1));
@@ -37,11 +50,14 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
         <div className="flex items-center">
           <div className="w-1.5 h-5 bg-brand-500 rounded-full mr-3"></div>
           <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-            {selectedPlant === 'All Plants' ? 'Company-Wide KPI Targets' : `${selectedPlant} Plant Targets`}
+            {selectedPlant === 'All Plants' ? 'Company-Wide KPI Targets' : `${selectedPlant} Targets`}
           </h3>
         </div>
-        <div className="text-xs font-medium text-slate-500">
-          Showing {targets.length > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + ITEMS_PER_PAGE, targets.length)} of {targets.length}
+        <div className="flex items-center gap-4">
+          <TargetYearFilter years={years} value={selectedYear} onChange={handleYearChange} />
+          <div className="text-xs font-medium text-slate-500">
+            Showing {filteredTargets.length > 0 ? startIndex + 1 : 0}-{Math.min(startIndex + ITEMS_PER_PAGE, filteredTargets.length)} of {filteredTargets.length}
+          </div>
         </div>
       </div>
       
@@ -54,6 +70,7 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
                   <div className="flex items-center"><Factory size={14} className="mr-1.5 text-slate-400" /> Plant</div>
                 </th>
               )}
+              <th className="px-6 py-4 font-bold w-[7%]">Year</th>
               <th className="px-6 py-4 font-bold w-[12%]"><div className="flex items-center"><SplitSquareHorizontal size={14} className="mr-1.5 text-slate-400" /> Section</div></th>
               <th className="px-6 py-4 font-bold w-[18%]">KPI</th>
               <th className="px-6 py-4 font-bold w-[20%]">Objective</th>
@@ -67,17 +84,22 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
             {paginatedTargets.map(target => {
               const isActive = target.status === 'Active';
+              const isDataEntryDisabled = !isActive || target.hasSubmittedCurrentPeriod || target.isSubmissionLocked;
+              const actionLabel = target.isSubmissionLocked
+                ? 'Locked'
+                : target.hasRejectedCurrentPeriod ? 'Resubmit' : target.hasSubmittedCurrentPeriod ? 'Submitted' : 'Data';
               return (
                 <tr key={target.id} className="hover:bg-slate-50/80">
                   {selectedPlant === 'All Plants' && (
                     <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">{target.plant}</td>
                   )}
+                  <td className="px-6 py-4 font-semibold">{target.target_year || '--'}</td>
                   <td className="px-6 py-4 font-semibold truncate">{target.section_name || '--'}</td>
                   <td className="px-6 py-4 font-bold text-slate-900 truncate">{target.metric_name}</td>
                   <td className="px-6 py-4 min-w-[200px] max-w-xs text-xs line-clamp-3">{target.objective || '--'}</td>
                   <td className="px-6 py-4 font-medium truncate">{target.process_type || 'Uncategorized'}</td>
                   <td className="px-6 py-4 font-black whitespace-nowrap">{target.operator} {target.target_value} <span className="text-xs font-bold text-slate-500 ml-0.5">{target.unit}</span></td>
-                  <td className="px-6 py-4 flex flex-col items-start gap-1.5">
+                  <td className="px-6 py-4">
                     <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold border ${getStatusBadge(target.status)}`}>{target.status}</span>
                   </td>
                   <td className="px-6 py-4 max-w-xs text-xs line-clamp-3">{target.remarks || <span className="text-slate-400 italic">No remarks</span>}</td>
@@ -85,24 +107,29 @@ const TargetListTable = ({ targets, onSelectTarget }) => {
                     <td className="px-6 py-4 text-right">
                       <button 
                         onClick={() => onSelectTarget(target)}
-                        disabled={!isActive}
-                        className={`flex items-center justify-center w-full px-3 py-2 rounded-lg text-xs font-bold shadow-sm ${isActive ? 'bg-white text-brand-600 border border-brand-200 hover:bg-brand-50' : 'bg-slate-50 text-slate-400 cursor-not-allowed border border-slate-200'}`}
+                        disabled={isDataEntryDisabled}
+                        title={target.isSubmissionLocked
+                          ? 'Monthly submissions are locked for this section and reporting period.'
+                          : target.hasRejectedCurrentPeriod
+                          ? 'Your previous submission was rejected. Submit corrected data.'
+                          : target.hasSubmittedCurrentPeriod ? 'You have already submitted data for this reporting month.' : undefined}
+                        className={`flex items-center justify-center w-full px-3 py-2 rounded-lg text-xs font-bold shadow-sm ${isDataEntryDisabled ? 'bg-slate-50 text-slate-400 cursor-not-allowed border border-slate-200' : 'bg-white text-brand-600 border border-brand-200 hover:bg-brand-50'}`}
                       >
-                        <PlusCircle size={14} className="mr-1.5" /> Data
+                        <PlusCircle size={14} className="mr-1.5" /> {actionLabel}
                       </button>
                     </td>
                   )}
                 </tr>
               )
             })}
-            {targets.length === 0 && (
-              <tr><td colSpan="10" className="px-6 py-16 text-center text-slate-500 font-medium">No KPI targets found for this view.</td></tr>
+            {filteredTargets.length === 0 && (
+              <tr><td colSpan={8 + (selectedPlant === 'All Plants' ? 1 : 0) + (onSelectTarget ? 1 : 0)} className="px-6 py-16 text-center text-slate-500 font-medium">No KPI targets found for this view.</td></tr>
             )}
           </tbody>
         </table>
       </div>
       
-      {targets.length > ITEMS_PER_PAGE && (
+      {filteredTargets.length > ITEMS_PER_PAGE && (
         <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
           <div className="text-xs font-medium text-slate-500">Page {currentPage} of {totalPages}</div>
           <div className="flex items-center space-x-2">

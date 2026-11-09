@@ -32,6 +32,7 @@ const RootRedirect = () => {
   switch (user.role) {
     case 'Administrator': return <Navigate to="/overview" replace />;
     case 'Supervisor': return <Navigate to="/supervisor" replace />;
+    case 'Senior Supervisor': return <Navigate to="/supervisor" replace />;
     case 'Manager': return <Navigate to="/manager" replace />;
     case 'Top Management': return <Navigate to="/top-management" replace />;
     default: return <Navigate to="/unauthorized" replace />;
@@ -60,11 +61,11 @@ function App() {
                   <Route path="/reports/annual-objectives" element={<AnnualObjectivesPage />} />
                 </Route>
 
-                <Route element={<ProtectedRoute allowedRoles={['Supervisor', 'Manager']} />}>
+                <Route element={<ProtectedRoute allowedRoles={['Supervisor', 'Senior Supervisor', 'Manager']} />}>
                    <Route path="/inbox" element={<QuarterlyCarInboxPage />} />
                 </Route>
                 
-               <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Supervisor']} />}>
+               <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Supervisor', 'Senior Supervisor']} />}>
                  <Route path="/supervisor" element={<SupervisorPage />} />
                  <Route path="/supervisor/data-entry" element={<DataEntryPage />} />
                </Route>
@@ -74,14 +75,18 @@ function App() {
                 </Route>
 
                 <Route element={<ProtectedRoute allowedRoles={['Top Management']} />}>
+                  <Route path="/manager/targets" element={<ManagerPage targetSettingOnly />} />
+                </Route>
+
+                <Route element={<ProtectedRoute allowedRoles={['Top Management']} />}>
                   <Route path="/top-management" element={<TopManagementPage />} />
                 </Route>
 
-                <Route element={<ProtectedRoute allowedRoles={['Supervisor', 'Manager', 'Top Management']} />}>
+                <Route element={<ProtectedRoute allowedRoles={['Supervisor', 'Senior Supervisor', 'Manager', 'Top Management']} />}>
                   <Route path="/car-tracking" element={<CarTrackingPage />} />
                 </Route>
 
-                <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Supervisor', 'Manager', 'Top Management']} />}>
+                <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Supervisor', 'Senior Supervisor', 'Manager', 'Top Management']} />}>
                   <Route path="/overview" element={<CompanyOverviewPage />} />
                 </Route>
               </Route>

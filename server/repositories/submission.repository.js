@@ -65,8 +65,8 @@ class SubmissionRepository {
                    AND m.status IN ('Approved', 'CAR Requested')
                    ORDER BY m.created_at DESC`;
         params.push(email, id);
-      } else if (role === 'Supervisor' || role === 'Acting Supervisor') {
-        query += ` WHERE t.section_id IN (SELECT section_id FROM user_sections WHERE user_id = $1)
+      } else if (role === 'Supervisor' || role === 'Senior Supervisor' || role === 'Acting Supervisor') {
+        query += ` WHERE t.department_id IN (SELECT department_id FROM user_departments WHERE user_id = $1)
                    ORDER BY m.created_at DESC`;
         params.push(id);
       } else {
