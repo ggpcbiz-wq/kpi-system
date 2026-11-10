@@ -20,7 +20,7 @@ const loadDrafts = (storageKey) => {
   }
 };
 
-const TargetProposalWorkspace = ({ targets, onSubmit, isSubmitting }) => {
+const TargetProposalWorkspace = ({ targets, onSubmit, isSubmitting, showTargets = true }) => {
   const { user } = useAuth();
   const { addToast } = useToast();
   const userId = user?.id || user?.userId || user?.email || 'unknown';
@@ -208,7 +208,7 @@ const TargetProposalWorkspace = ({ targets, onSubmit, isSubmitting }) => {
         </div>
       )}
 
-      <TargetListTable targets={targets} />
+      {showTargets && <TargetListTable targets={targets} />}
     </div>
   );
 };
