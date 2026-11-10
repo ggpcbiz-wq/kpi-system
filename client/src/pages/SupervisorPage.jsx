@@ -9,6 +9,12 @@ import FilterBar from '../components/FilterBar';
 import MonthlyDataEntryForm from '../components/MonthlyDataEntryForm';
 import { API_BASE_URL } from '../services/api';
 
+const supervisorTabs = [
+  { id: 'targets', label: 'KPI Targets' },
+  { id: 'submissions', label: 'Recent Monthly Submissions' },
+  { id: 'performance', label: 'Department Performance' }
+];
+
 const getMonthName = (monthNumber) => {
   const date = new Date();
   date.setMonth(monthNumber - 1);
@@ -48,6 +54,7 @@ const SupervisorPage = () => {
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [activeDashboardTab, setActiveDashboardTab] = useState('targets');
 
   const defaultDept = user?.departments?.[0] || 'GLOBAL';
   const [filters, setFilters] = useState({ search: '', period: '', department: defaultDept });
@@ -277,6 +284,17 @@ const SupervisorPage = () => {
   const chartDeptToDisplay = filters.department === 'All' ? defaultDept : filters.department;
   const departmentMetrics = dynamicChartData[chartDeptToDisplay] || [];
   const hasVisibleCharts = departmentMetrics.some(m => m.data && m.data.length > 0);
+  const restrictedView = (
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-xl p-16 text-center flex flex-col items-center justify-center space-y-4 transition-colors duration-300">
+      <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-full border border-slate-100 dark:border-slate-700 transition-colors">
+        <ShieldAlert size={40} className="text-slate-300 dark:text-slate-600" />
+      </div>
+      <div>
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-1">Restricted View</h3>
+        <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm">You are viewing historical data for <span className="font-bold text-slate-700 dark:text-slate-300">{filters.department}</span>. You cannot submit data for this department.</p>
+      </div>
+    </div>
+  );
 
   if (isLoading && rawTargets.length === 0) {
     return (
@@ -339,7 +357,7 @@ const SupervisorPage = () => {
               <h3 className="text-sm font-bold text-amber-800 dark:text-amber-400">Action Required: Monthly Data Submission</h3>
               <p className="mt-1 text-sm text-amber-700 dark:text-amber-300/80 leading-relaxed">
                 You are in the first week of the month. Please ensure all KPI actuals for <strong className="font-bold text-amber-900 dark:text-amber-200">{getMonthName(expectedReportMonth)} {expectedReportYear}</strong> are submitted by the 7th. 
-                Check the targets table below to input your department's performance data.
+                Open the KPI Targets tab below to input your department's performance data.
               </p>
             </div>
           </div>
@@ -351,17 +369,74 @@ const SupervisorPage = () => {
           config={{ showSearch: false, showPlant: true, showDate: true, showDept: true }}
           departments={user?.departments || []} 
         />
+
+        <div className="overflow-x-auto border-b border-slate-200 dark:border-slate-700">
+          <div className="flex min-w-max gap-1" role="tablist" aria-label="Supervisor dashboard sections">
+            {supervisorTabs.map((tab) => {
+              const isActive = activeDashboardTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  id={`supervisor-dashboard-tab-${tab.id}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`supervisor-dashboard-panel-${tab.id}`}
+                  tabIndex={isActive ? 0 : -1}
+                  onClick={() => setActiveDashboardTab(tab.id)}
+                  onKeyDown={(event) => {
+                    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                    event.preventDefault();
+                    const currentIndex = supervisorTabs.findIndex(item => item.id === activeDashboardTab);
+                    const nextIndex = event.key === 'Home'
+                      ? 0
+                      : event.key === 'End'
+                        ? supervisorTabs.length - 1
+                        : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + supervisorTabs.length) % supervisorTabs.length;
+                    const nextTab = supervisorTabs[nextIndex];
+                    setActiveDashboardTab(nextTab.id);
+                    document.getElementById(`supervisor-dashboard-tab-${nextTab.id}`)?.focus();
+                  }}
+                  className={`border-b-2 px-4 py-3 text-sm font-bold whitespace-nowrap transition-colors ${
+                    isActive
+                      ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300'
+                      : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {tab.label}
+                  {tab.id === 'targets' && rejectedSubmissions.length > 0 && (
+                    <span className="ml-2 rounded-full bg-rose-100 px-2 py-0.5 text-xs text-rose-800 dark:bg-rose-900/40 dark:text-rose-300">
+                      {rejectedSubmissions.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         
         {isOwnDepartment ? (
            <div className="flex flex-col space-y-8">
              
              {/* Target List Container */}
-             <div className="w-full">
+             <div
+               id="supervisor-dashboard-panel-targets"
+               role="tabpanel"
+               aria-labelledby="supervisor-dashboard-tab-targets"
+               tabIndex={0}
+               className={activeDashboardTab === 'targets' ? 'w-full' : 'hidden'}
+             >
                <TargetListTable targets={processedTargets} onSelectTarget={handleOpenDataEntry} />
              </div>
 
              {/* Recent Submissions Table Widget */}
-             <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col w-full overflow-hidden transition-colors duration-300">
+             <div
+               id="supervisor-dashboard-panel-submissions"
+               role="tabpanel"
+               aria-labelledby="supervisor-dashboard-tab-submissions"
+               tabIndex={0}
+               className={`${activeDashboardTab === 'submissions' ? '' : 'hidden '}bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col w-full overflow-hidden transition-colors duration-300`}
+             >
                 <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between shrink-0 transition-colors">
                   <div className="flex items-center">
                     <div className="w-1.5 h-5 bg-brand-600 dark:bg-brand-500 rounded-full mr-3"></div>
@@ -430,19 +505,36 @@ const SupervisorPage = () => {
              </div>
            </div>
         ) : (
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-xl p-16 text-center flex flex-col items-center justify-center space-y-4 transition-colors duration-300">
-            <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-full border border-slate-100 dark:border-slate-700 transition-colors">
-              <ShieldAlert size={40} className="text-slate-300 dark:text-slate-600" />
+          <>
+            <div
+              id="supervisor-dashboard-panel-targets"
+              role="tabpanel"
+              aria-labelledby="supervisor-dashboard-tab-targets"
+              tabIndex={0}
+              className={activeDashboardTab === 'targets' ? '' : 'hidden'}
+            >
+              {restrictedView}
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-1">Restricted View</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm">You are viewing historical data for <span className="font-bold text-slate-700 dark:text-slate-300">{filters.department}</span>. You cannot submit data for this department.</p>
+            <div
+              id="supervisor-dashboard-panel-submissions"
+              role="tabpanel"
+              aria-labelledby="supervisor-dashboard-tab-submissions"
+              tabIndex={0}
+              className={activeDashboardTab === 'submissions' ? '' : 'hidden'}
+            >
+              {restrictedView}
             </div>
-          </div>
+          </>
         )}
 
         {/* Charts Container Widget */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden mt-8 transition-colors duration-300">
+        <div
+          id="supervisor-dashboard-panel-performance"
+          role="tabpanel"
+          aria-labelledby="supervisor-dashboard-tab-performance"
+          tabIndex={0}
+          className={`${activeDashboardTab === 'performance' ? '' : 'hidden '}bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors duration-300`}
+        >
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
             <div className="flex items-center">
               <div className="w-1.5 h-5 bg-brand-600 dark:bg-brand-500 rounded-full mr-3"></div>
